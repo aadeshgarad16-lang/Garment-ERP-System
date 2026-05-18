@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer base {
+  input, textarea, select {
+    @apply text-gray-900 placeholder:text-gray-400 disabled:text-gray-700 read-only:text-gray-700;
+  }
+  
+  option {
+    @apply text-gray-900;
+  }
+}

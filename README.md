@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sason ERP Platform
 
-## Getting Started
+A modern, enterprise-grade web application designed to streamline garment manufacturing workflows. This frontend architecture provides a robust, highly responsive interface for managing the entire production lifecycle—from order initiation and material procurement to factory floor tracking and delivery.
 
-First, run the development server:
+## 🚀 Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Framework:** [Next.js](https://nextjs.org/) (App Router)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Icons:** [Lucide React](https://lucide.dev/)
+- **Architecture:** Modular, Component-driven, Route Grouped `(dashboard)`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📦 Core Modules Implemented
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The application is structured into interconnected modules tailored for specific enterprise roles:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Dashboard Home (`/dashboard`)**
+   - High-level KPIs, live production status, and recent order tracking.
+   - Quick-action portals and critical inventory alerts.
 
-## Learn More
+2. **Order Management (`/orders`)**
+   - Dynamic PO creation with multi-row garment specification grids.
+   - Historical order tracking with advanced search and status filtering.
 
-To learn more about Next.js, take a look at the following resources:
+3. **BOM Calculation (`/bom-calculation`)**
+   - Automated Bill of Materials generation based on garment type and quantity.
+   - Integrated material availability checks and wastage margin controls.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Inventory Control (`/inventory`)**
+   - Real-time stock tracking with category filters.
+   - Low-stock alerts and value assessment.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. **Procurement (`/procurement`)**
+   - Purchase request lifecycle tracking (Pending -> In Transit -> Delivered).
+   - Supplier performance summaries and critical shortage alerts.
 
-## Deploy on Vercel
+6. **Production Tracking (`/production`)**
+   - Live factory pipeline visualization (Cutting, Stitching, Checking, Packing).
+   - Work order progress bars, machine utilization metrics, and delay alerts.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+7. **Authentication (`/login`)**
+   - Role-based secure login portal supporting specialized views (e.g., Super Admin, Production Head, Store Manager).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📱 Responsive & UX Polish
+
+The UI is meticulously crafted to ensure a seamless Software-as-a-Service (SaaS) experience across all devices:
+- **Mobile-First Components:** Fully responsive navigation with a smooth slide-out mobile sidebar.
+- **Fluid Data Tables:** All complex data tables (BOM, Inventory, Orders) are secured within horizontally scrollable containers to prevent breakage on small screens.
+- **Touch-Optimized:** Action buttons and interactive elements expand on mobile viewports for enhanced tap accessibility.
+- **Consistent Design Language:** Standardized typography, unified color tokens (emerald for success, amber for warnings, red for critical), and cohesive card padding across the entire platform.
+
+## 🔗 Future Backend Integration
+
+This frontend prototype is engineered for immediate connection to a production backend. Future roadmap:
+1. **API Integration:** Swap static mock data for real REST/GraphQL queries.
+2. **State Management:** Implement global state (e.g., Redux, Zustand) or server-state caching (React Query) for complex module interactions.
+3. **Database:** Persist data in a scalable RDBMS (e.g., PostgreSQL via Supabase or Prisma).
+4. **Authentication Provider:** Replace the client-side login redirect with robust server-side protection using NextAuth.js or Clerk.
+5. **Real-Time Data:** Integrate WebSockets to provide live, factory-floor machine status updates to the Production module.
+
+---
+*Developed for Sason Garments*

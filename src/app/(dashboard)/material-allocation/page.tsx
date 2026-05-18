@@ -1,0 +1,335 @@
+"use client";
+
+import React, { useState } from 'react';
+import { 
+  Box, 
+  CheckCircle2, 
+  Layers, 
+  ListChecks, 
+  Lock, 
+  ArrowRight,
+  AlertCircle,
+  PackageCheck
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import WorkflowIndicator from '@/components/WorkflowIndicator';
+
+// Mock Data representing required materials for an order that have sufficient stock
+const mockMaterials = [
+  { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', available: 1250, required: 1000, linkedPO: 'PO-2026-004', unit: 'meters' },
+  { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', available: 120, required: 100, linkedPO: 'PO-2026-004', unit: 'spools' },
+  { id: 'MAT-004', name: 'Plastic Buttons (Black)', category: 'Buttons', available: 5000, required: 5000, linkedPO: 'PO-2026-004', unit: 'pieces' },
+  { id: 'MAT-006', name: 'Standard Collar (White)', category: 'Collar/Cuff', available: 800, required: 600, linkedPO: 'PO-2026-004', unit: 'pieces' },
+];
+
+interface AllocationState {
+  isSelected: boolean;
+  allocatedQty: number;
+  status: 'Available' | 'Allocated' | 'Frozen';
+}
+
+export default function MaterialAllocationPage() {
+  const router = useRouter();
+  const [allocations, setAllocations] = useState<Record<string, AllocationState>>(
+    mockMaterials.reduce((acc, mat) => {
+      acc[mat.id] = { isSelected: false, allocatedQty: 0, status: 'Available' };
+      return acc;
+    }, {} as Record<string, AllocationState>)
+  );
+  
+  const [globalMessage, setGlobalMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  const handleAllocationChange = (id: string, value: string) => {
+    const qty = parseInt(value, 10) || 0;
+    setAllocations(prev => ({
+      ...prev,
+      [id]: { ...prev[id], allocatedQty: qty }
+    }));
+  };
+
+  const handleSelectionChange = (id: string, checked: boolean) => {
+    setAllocations(prev => ({
+      ...prev,
+      [id]: { ...prev[id], isSelected: checked }
+    }));
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setAllocations(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(id => {
+        if (next[id].status !== 'Frozen') {
+          next[id].isSelected = checked;
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleAllocate = () => {
+    setAllocations(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(id => {
+        if (next[id].isSelected && next[id].allocatedQty > 0 && next[id].status === 'Available') {
+          next[id].status = 'Allocated';
+        }
+      });
+      return next;
+    });
+    setGlobalMessage({ text: 'Selected materials allocated successfully. Proceed to freeze inventory.', type: 'info' });
+  };
+
+  const handleFreeze = () => {
+    setAllocations(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(id => {
+        if (next[id].isSelected && next[id].status === 'Allocated') {
+          next[id].status = 'Frozen';
+          next[id].isSelected = false; // Optionally unselect after freeze
+        }
+      });
+      return next;
+    });
+    setGlobalMessage({ text: 'Selected materials frozen successfully and ready for production release.', type: 'success' });
+  };
+
+  // State Logic Variables
+  const totalMaterials = mockMaterials.length;
+  
+  const hasValidAllocationsToSave = mockMaterials.some(mat => {
+    const alloc = allocations[mat.id];
+    return alloc.isSelected && alloc.status === 'Available' && alloc.allocatedQty > 0 && alloc.allocatedQty <= mat.available;
+  });
+  
+  const hasSelectedAllocatedItems = Object.values(allocations).some(a => a.isSelected && a.status === 'Allocated');
+  const hasAnyFrozen = Object.values(allocations).some(a => a.status === 'Frozen');
+  const allFrozen = Object.values(allocations).every(a => a.status === 'Frozen');
+  
+  const allocatedCount = Object.values(allocations).filter(a => a.status === 'Allocated' || a.status === 'Frozen').length;
+  const frozenCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
+
+  let readinessStatus = 'Awaiting Allocation';
+  if (allFrozen) readinessStatus = 'Fully Ready for Release';
+  else if (frozenCount > 0) readinessStatus = 'Partially Ready';
+  else if (allocatedCount > 0) readinessStatus = 'Allocated, Pending Freeze';
+
+  const isAllSelectableChecked = mockMaterials.filter(m => allocations[m.id].status !== 'Frozen').every(m => allocations[m.id].isSelected);
+  const hasSelectable = mockMaterials.some(m => allocations[m.id].status !== 'Frozen');
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'Available': return 'bg-neutral-100 text-neutral-800 border-neutral-200';
+      case 'Allocated': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Frozen': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      default: return 'bg-neutral-100 text-neutral-800 border-neutral-200';
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
+      <WorkflowIndicator currentStep="Material Allocation" />
+      
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <ListChecks className="h-6 w-6 text-indigo-600" />
+            Material Allocation
+          </h1>
+          <p className="text-neutral-500 text-sm mt-1">Reserve and freeze warehouse inventory for production</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+          <button 
+            onClick={handleAllocate}
+            disabled={!hasValidAllocationsToSave}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+              hasValidAllocationsToSave 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200'
+            }`}
+          >
+            <Box className="h-4 w-4" />
+            Allocate Materials
+          </button>
+          <button 
+            onClick={handleFreeze}
+            disabled={!hasSelectedAllocatedItems}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+              hasSelectedAllocatedItems 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200'
+            }`}
+          >
+            <Lock className="h-4 w-4" />
+            Freeze Selected
+          </button>
+          
+          {hasAnyFrozen && (
+            <button 
+              onClick={() => router.push('/material-release')}
+              className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            >
+              Proceed to Release
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {globalMessage && (
+        <div className={`p-4 rounded-xl flex items-start gap-3 border ${globalMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+          {globalMessage.type === 'success' ? <CheckCircle2 className="h-5 w-5 mt-0.5" /> : <AlertCircle className="h-5 w-5 mt-0.5" />}
+          <div>
+            <p className="font-medium text-sm">{globalMessage.text}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ERP Summary Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-neutral-100">
+            <PackageCheck className="h-6 w-6 text-neutral-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500">Total Materials Selected</p>
+            <p className="text-2xl font-bold text-neutral-900">{totalMaterials}</p>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100">
+            <ListChecks className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500">Allocated Materials</p>
+            <p className="text-2xl font-bold text-neutral-900">{allocatedCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-100">
+            <Lock className="h-6 w-6 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500">Frozen Materials</p>
+            <p className="text-2xl font-bold text-neutral-900">{frozenCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 flex items-center gap-4">
+          <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${allFrozen ? 'bg-emerald-100' : 'bg-neutral-100'}`}>
+            <Layers className={`h-6 w-6 ${allFrozen ? 'text-emerald-600' : 'text-neutral-600'}`} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500">Production Readiness</p>
+            <p className={`text-sm font-bold mt-1 ${allFrozen ? 'text-emerald-600' : 'text-neutral-900'}`}>{readinessStatus}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Allocation Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div className="border-b border-neutral-200 px-6 py-5 bg-neutral-50/50">
+          <h2 className="text-lg font-semibold text-neutral-800">Reservation & Allocation</h2>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
+            <thead>
+              <tr className="bg-white border-b border-neutral-100 text-xs uppercase tracking-wider text-neutral-500 font-medium">
+                <th className="px-6 py-4 w-12">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                    checked={isAllSelectableChecked && hasSelectable}
+                    disabled={!hasSelectable}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
+                <th className="px-6 py-4">Material Name</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4 text-right">Available Qty</th>
+                <th className="px-6 py-4">Linked PO</th>
+                <th className="px-6 py-4 text-center">Allocation Qty</th>
+                <th className="px-6 py-4">Freeze Status</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {mockMaterials.map((item) => {
+                const alloc = allocations[item.id];
+                const isError = alloc.allocatedQty > item.available;
+                
+                return (
+                  <tr key={item.id} className={`transition-colors ${alloc.status === 'Frozen' ? 'bg-indigo-50/30' : 'hover:bg-neutral-50/80'} ${alloc.isSelected ? 'bg-blue-50/30' : ''}`}>
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                        checked={alloc.isSelected}
+                        disabled={alloc.status === 'Frozen'}
+                        onChange={(e) => handleSelectionChange(item.id, e.target.checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-neutral-900">{item.name}</span>
+                        <span className="text-xs text-neutral-500">{item.id}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-600">{item.category}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-medium text-neutral-900">{item.available}</span>
+                        <span className="text-xs text-neutral-500">{item.unit}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-neutral-700">{item.linkedPO}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <input 
+                          type="number" 
+                          min="0"
+                          max={item.available}
+                          value={alloc.allocatedQty}
+                          onChange={(e) => handleAllocationChange(item.id, e.target.value)}
+                          disabled={alloc.status === 'Frozen' || !alloc.isSelected}
+                          className={`w-24 px-3 py-1.5 border rounded-lg text-sm text-right ${
+                            alloc.status === 'Frozen' || !alloc.isSelected
+                              ? 'bg-neutral-100 border-neutral-200 text-neutral-500 cursor-not-allowed' 
+                              : isError 
+                                ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-900' 
+                                : 'border-neutral-300 focus:ring-blue-500 focus:border-blue-500 bg-white text-neutral-900'
+                          }`}
+                        />
+                        <span className="text-xs text-neutral-500 w-12">{item.unit}</span>
+                      </div>
+                      {isError && alloc.isSelected && <p className="text-[10px] text-red-600 mt-1 text-center font-medium">Exceeds available</p>}
+                      {alloc.allocatedQty === 0 && alloc.status === 'Available' && alloc.isSelected && <p className="text-[10px] text-blue-600 mt-1 text-center font-medium">Req: {item.required}</p>}
+                    </td>
+                    <td className="px-6 py-4">
+                      {alloc.status === 'Frozen' ? (
+                        <span className="inline-flex items-center text-xs font-medium text-indigo-700">
+                          <Lock className="h-3 w-3 mr-1" />
+                          Reserved
+                        </span>
+                      ) : (
+                        <span className="text-xs text-neutral-400">Unlocked</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(alloc.status)}`}>
+                        {alloc.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
