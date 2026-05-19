@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Lock } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface LogisticsWorkflowHeaderProps {
   currentStep: number;
@@ -7,16 +8,18 @@ interface LogisticsWorkflowHeaderProps {
 }
 
 export default function LogisticsWorkflowHeader({ currentStep, completedSteps }: LogisticsWorkflowHeaderProps) {
+  const { t } = useTranslation();
+
   const phase3Steps = [
-    { id: 1, name: 'Packing & Verification' },
-    { id: 2, name: 'Approval' },
-    { id: 3, name: 'Compliance Docs' },
-    { id: 4, name: 'Dispatch' },
+    { id: 1, name: t('orderInitiation.tracker.verification') || 'Packing & Verification' },
+    { id: 2, name: t('orderInitiation.tracker.approval') || 'Approval' },
+    { id: 3, name: t('logistics.complianceDocs') || 'Compliance Docs' },
+    { id: 4, name: t('logistics.dispatch') || 'Dispatch' },
   ];
 
   const phase4Steps = [
-    { id: 5, name: 'Proof of Delivery' },
-    { id: 6, name: 'Financial Closure' },
+    { id: 5, name: t('logistics.pod') || 'Proof of Delivery' },
+    { id: 6, name: t('logistics.financialClosure') || 'Financial Closure' },
   ];
 
   const isPhase4Unlocked = completedSteps.includes(4);
@@ -51,7 +54,7 @@ export default function LogisticsWorkflowHeader({ currentStep, completedSteps }:
         
         {/* Phase III */}
         <div>
-          <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Phase III — Logistics & Documentation</h3>
+          <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">{t('logistics.phase3') || 'Phase III — Logistics & Documentation'}</h3>
           <div className="flex flex-wrap items-center gap-2">
             {phase3Steps.map(step => renderStep(step))}
           </div>
@@ -62,10 +65,10 @@ export default function LogisticsWorkflowHeader({ currentStep, completedSteps }:
         {/* Phase IV */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Phase IV — Fulfillment</h3>
+            <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">{t('logistics.phase4') || 'Phase IV — Fulfillment'}</h3>
             {!isPhase4Unlocked && (
               <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Locked until Dispatch
+                <Lock className="h-3 w-3" /> {t('logistics.lockedUntilDispatch') || 'Locked until Dispatch'}
               </span>
             )}
           </div>

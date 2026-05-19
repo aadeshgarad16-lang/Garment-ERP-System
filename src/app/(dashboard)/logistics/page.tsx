@@ -9,8 +9,10 @@ import ComplianceDocs from '@/components/logistics/ComplianceDocs';
 import DispatchSection from '@/components/logistics/DispatchSection';
 import ProofOfDelivery from '@/components/logistics/ProofOfDelivery';
 import FinancialClosure from '@/components/logistics/FinancialClosure';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LogisticsPage() {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [orderArchived, setOrderArchived] = useState(false);
@@ -55,9 +57,9 @@ export default function LogisticsPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Truck className="h-6 w-6 text-indigo-600" />
-            Logistics Management
+            {t('logistics.title') || 'Logistics Management'}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Manage dispatch, documentation, and final delivery fulfillment.</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}</p>
         </div>
       </div>
 
@@ -72,8 +74,8 @@ export default function LogisticsPage() {
             <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
-            <h2 className="text-xl font-bold text-emerald-800">Order Fulfilled & Archived</h2>
-            <p className="text-emerald-600 text-sm mt-1">PO-2026-004 has been successfully delivered and closed.</p>
+            <h2 className="text-xl font-bold text-emerald-800">{t('logistics.fulfilled') || 'Order Fulfilled & Archived'}</h2>
+            <p className="text-emerald-600 text-sm mt-1">{t('logistics.fulfilledDesc') || 'PO-2026-004 has been successfully delivered and closed.'}</p>
           </div>
         </div>
       ) : (

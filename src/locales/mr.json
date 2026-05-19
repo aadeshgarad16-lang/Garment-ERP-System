@@ -1,0 +1,252 @@
+{
+  "appName": "सासोन्स ईआरपी",
+  "sidebar": {
+    "dashboard": "मुख्य नियंत्रण फलक",
+    "orderInitiation": "आदेश प्रारंभ",
+    "bomCalculation": "साहित्य सूची (BOM) गणना",
+    "inventoryCheck": "मालसाठा तपासणी",
+    "procurement": "खरेदी",
+    "production": "उत्पादन",
+    "qualityPacking": "गुणवत्ता आणि वेष्टन",
+    "logistics": "वाहतूक व्यवस्थापन",
+    "accounts": "हिशोब विभाग",
+    "settings": "मांडणी पर्याय"
+  },
+  "languageSelection": {
+    "title": "तुमची भाषा निवडा",
+    "subtitle": "तुमच्या Sason ERP अनुभवासाठी पसंतीची भाषा निवडा.",
+    "changeLater": "तुम्ही हे नंतर सेटिंग्जमध्ये बदलू शकता."
+  },
+  "dashboard": {
+    "welcome": "पुन्हा आपले स्वागत आहे. आज कारखान्यामध्ये सुरू असलेल्या घडामोडींची माहिती खालीलप्रमाणे आहे.",
+    "metrics": {
+      "totalOrders": "एकूण आदेश",
+      "activeProduction": "सक्रिय उत्पादन कार्य",
+      "units": "नग",
+      "pendingProcurement": "प्रलंबित खरेदी",
+      "purchaseOrders": "खरेदी आदेश",
+      "inventoryAlerts": "मालसाठा चेतावणी",
+      "lowStockItems": "कमी साठा असलेल्या वस्तू"
+    },
+    "recentOrders": {
+      "title": "अलीकडील आदेश",
+      "viewAll": "सर्व पहा",
+      "headers": {
+        "poNumber": "पीओ क्रमांक",
+        "customer": "ग्राहक",
+        "status": "स्थिती",
+        "deliveryDate": "वितरण तारीख",
+        "amount": "रक्कम"
+      },
+      "status": {
+        "inProduction": "उत्पादनामध्ये आहे",
+        "pending": "प्रलंबित",
+        "delivered": "वितरित झाले",
+        "cutting": "कर्तन"
+      }
+    },
+    "productionStatus": {
+      "title": "उत्पादन स्थिती",
+      "steps": {
+        "cutting": "कर्तन",
+        "stitching": "शिवणकाम",
+        "checking": "तपासणी",
+        "packing": "वेष्टन"
+      }
+    },
+    "quickActions": {
+      "title": "जलद कृती",
+      "createOrder": "नवीन आदेश तयार करा",
+      "generateBom": "साहित्य सूची तयार करा",
+      "viewInventory": "मालसाठा पहा"
+    },
+    "stockAlerts": {
+      "title": "मालसाठा चेतावणी",
+      "items": {
+        "cottonFabricWhite": "सुती कापड (पांढरे)",
+        "polyesterThreadNavy": "पॉलिस्टर धागा (गडद निळा)",
+        "metalZippers15cm": "धातूची चैन १५ सेमी",
+        "denimFabric12oz": "डेनिम कापड (१२औंस)",
+        "heavyDutyThreadNavy": "मजबूत धागा (गडद निळा)",
+        "metalButtonsSilver": "धातूची बटणे (चांदीसारखी)",
+        "brandTagsWoven": "ब्रँड टॅग्ज (विणलेले)",
+        "collarHooks": "कॉलर हुक्स"
+      },
+      "severity": {
+        "critical": "चिंताजनक",
+        "low": "कमी"
+      },
+      "footer": {
+        "metersRemaining": "मीटर शिल्लक",
+        "spoolsRemaining": "रिळा शिल्लक",
+        "unitsRemaining": "नग शिल्लक",
+        "goToProcurement": "खरेदी पर्यायाकडे जा"
+      }
+    }
+  },
+  "orderInitiation": {
+    "tracker": {
+      "orderInitiation": "आदेश प्रारंभ",
+      "bomCalculation": "साहित्य सूची गणना",
+      "inventoryCheck": "मालसाठा तपासणी",
+      "procurement": "खरेदी",
+      "materialAllocation": "साहित्य वाटप",
+      "materialRelease": "साहित्य वितरण",
+      "production": "उत्पादन"
+    },
+    "header": {
+      "title": "आदेश प्रारंभ",
+      "description": "नवीन खरेदी आदेश आणि पोशाख तपशील तयार करा",
+      "cancel": "रद्द करा",
+      "saveOrder": "आदेश जतन करा"
+    },
+    "purchaseOrderInfo": {
+      "title": "खरेदी आदेश माहिती",
+      "poNumber": "पीओ क्रमांक",
+      "customerName": "ग्राहकाचे नाव",
+      "officeAddress": "कार्यालयीन पत्ता",
+      "officeAddressPlaceholder": "मुख्यालय किंवा बिलिंग पत्ता",
+      "deliveryAddress": "वितरण पत्ता",
+      "deliveryAddressPlaceholder": "पोशाख कुठे वितरित केले जावेत?",
+      "poDate": "पीओ तारीख",
+      "deliveryDate": "वितरण तारीख",
+      "uploadPoFile": "पीओ फाईल अपलोड करा",
+      "uploadInstructions": "फाईल अपलोड करा किंवा ड्रॅग आणि ड्रॉप करा",
+      "uploadConstraints": "पीडीएफ, डॉक्स, जेपीजी १० एमबी पर्यंत"
+    },
+    "paymentDetails": {
+      "title": "देय तपशील",
+      "paymentTerm": "देय मुदत",
+      "selectTerm": "मुदत निवडा...",
+      "poAmount": "पीओ रक्कम",
+      "advanceAmount": "आगाऊ रक्कम",
+      "subtotal": "उपएकूण",
+      "tax": "कर (५%)",
+      "totalAmount": "एकूण रक्कम"
+    },
+    "garmentSpecifications": {
+      "title": "पोशाख तपशील",
+      "addRow": "पंक्ती जोडा",
+      "table": {
+        "sku": "माल ओळख क्रमांक",
+        "size": "आकार",
+        "design": "आरेखन",
+        "quantity": "प्रमाण",
+        "stockAvail": "उपलब्ध साठा",
+        "useStock": "साठा वापरा",
+        "prodReq": "उत्पादन आवश्यकता",
+        "actions": "कृती"
+      },
+      "summary": {
+        "totalItems": "एकूण वस्तू",
+        "totalQuantity": "एकूण प्रमाण",
+        "formula": "उत्पादन प्रमाण = आदेश प्रमाण - वापरलेला विद्यमान साठा"
+      }
+    },
+    "stockCalculation": {
+      "title": "साठा गणना",
+      "totalRequirement": "एकूण पोशाख आवश्यकता",
+      "stockAllocated": "वाटप केलेला साठा",
+      "partialFulfillment": "आंशिक पूर्तता",
+      "newProduction": "नवीन उत्पादन आवश्यकता",
+      "unitsToBeManufactured": "उत्पादित केले जाणारे नग",
+      "calculateBom": "साहित्य सूची गणना करा"
+    }
+  },
+  "actions": {
+    "createOrder": "ऑर्डर तयार करा",
+    "generateBom": "बीओएम व्युत्पन्न करा",
+    "viewInventory": "इन्व्हेंटरी पहा",
+    "viewProfile": "प्रोफाइल पहा",
+    "deleteAccount": "खाते हटवा",
+    "search": "शोधा...",
+    "logout": "बाहेर पडा"
+  },
+  "bom": {
+    "title": "साहित्य सूची (BOM) गणना",
+    "subtitle": "साहित्य सूची व्युत्पन्न करा आणि आवश्यक खरेदीचा अंदाज लावा",
+    "config": "आदेश संरचना",
+    "po": "खरेदी आदेश",
+    "customer": "ग्राहक",
+    "details": "पोशाख तपशील",
+    "totalProd": "एकूण उत्पादन",
+    "wastage": "व्यर्थता मर्यादा",
+    "fabric": "एकूण कापड",
+    "allied": "पूरक साहित्य",
+    "cost": "अंदाजित खर्च",
+    "shortages": "तूट",
+    "materials": "साहित्य गणना",
+    "export": "साहित्य सूची निर्यात करा",
+    "checkInventory": "मालसाठा तपासा"
+  },
+  "inventoryVal": {
+    "title": "मालसाठा तपासणी",
+    "subtitle": "उपलब्ध साठ्याशी साहित्य सूचीची पडताळणी करा",
+    "allocate": "साहित्य वाटप करा",
+    "purchaseRequest": "खरेदी विनंती तयार करा",
+    "fullyAvailable": "पूर्णपणे उपलब्ध",
+    "partiallyAvailable": "आंशिक उपलब्ध",
+    "criticalShortages": "चिंताजनक तूट",
+    "readiness": "सज्जता स्थिती",
+    "materialsHeader": "साहित्य यादी",
+    "searchPlaceholder": "साहित्य शोधा..."
+  },
+  "procurement": {
+    "title": "खरेदी आणि तूट निवारण",
+    "subtitle": "तपासणीदरम्यान आढळलेल्या साहित्याची तूट सोडवा",
+    "createRequest": "खरेदी विनंती तयार करा",
+    "continueAllocation": "वाटप विभागाकडे जा",
+    "shortageItems": "एकूण तुटीच्या वस्तू",
+    "estCost": "अंदाजित खर्च",
+    "criticalItems": "चिंताजनक वस्तू",
+    "fulfillment": "पूर्तता स्थिती",
+    "requestsHeader": "खरेदी विनंत्या",
+    "supplierSummary": "विक्रेता निर्देशिका विहंगावलोकन",
+    "procCompletion": "खरेदी पूर्णता"
+  },
+  "production": {
+    "title": "उत्पादन मागोवा",
+    "subtitle": "उत्पादन टप्प्यांचा मागोवा घ्या -",
+    "progress": "एकूण प्रगती",
+    "total": "एकूण नग",
+    "cutting": "कर्तन",
+    "stitching": "शिवणकाम",
+    "fusing": "फ्युझिंग",
+    "kajButton": "काज बटन",
+    "finishing": "अंतिम हातकाम",
+    "status": "उत्पादनाची प्रतीक्षा आहे"
+  },
+  "quality": {
+    "title": "गुणवत्ता आणि वेष्टन",
+    "subtitle": "उत्पादनोत्तर पडताळणी आणि वितरणाची तयारी -",
+    "progress": "एकूण प्रगती",
+    "total": "एकूण नग",
+    "passed": "गुणवत्ता चाचणी उत्तीर्ण",
+    "failed": "गुणवत्ता चाचणी अनुत्तीर्ण",
+    "check": "गुणवत्ता तपासणी",
+    "packing": "वेष्टन",
+    "verification": "वेष्टन आणि पडताळणी",
+    "approval": "मंजुरी"
+  },
+  "logistics": {
+    "title": "वाहतूक व्यवस्थापन",
+    "subtitle": "वितरण, दस्तऐवजीकरण आणि अंतिम वितरण पूर्तता व्यवस्थापित करा",
+    "phase3": "टप्पा ३ - वाहतूक आणि दस्तऐवजीकरण",
+    "phase4": "टप्पा ४ - पूर्तता",
+    "packing": "वेष्टन आणि पडताळणी",
+    "approval": "मंजुरी",
+    "compliance": "अनुपालन दस्तऐवज",
+    "dispatch": "रवाना करणे",
+    "delivery": "वितरण पुरावा",
+    "closure": "वित्तीय पूर्तता",
+    "manifestId": "शिपिंग मॅनिफेस्ट आयडी",
+    "verifiedQty": "पडताळणीकृत प्रमाण",
+    "remarks": "नोंदी / टिप्पणी",
+    "summary": "मॅनिफेस्ट सारांश",
+    "orderId": "आदेश आयडी",
+    "targetQty": "लक्ष्य प्रमाण",
+    "cartonCount": "कार्टन संख्या",
+    "destination": "गंतव्य स्थान",
+    "confirmButton": "वेष्टन निश्चित आणि पडताळणी करा"
+  }
+}

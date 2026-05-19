@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const mockInventory = [
   { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', available: 1250, required: 1000, unit: 'meters' },
@@ -35,6 +36,7 @@ const categories = ['All Categories', 'Fabric', 'Thread', 'Buttons', 'Zippers', 
 
 export default function InventoryPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
@@ -81,9 +83,9 @@ export default function InventoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Box className="h-6 w-6 text-blue-600" />
-            Inventory Validation
+            {t('inventoryVal.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Validate BOM requirements against available stock</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('inventoryVal.subtitle')}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
           <button 
@@ -95,7 +97,7 @@ export default function InventoryPage() {
             }`}
           >
             <ListChecks className="h-4 w-4" />
-            Allocate Materials {hasShortage && '(Partial)'}
+            {t('inventoryVal.allocate')} {hasShortage && `(${t('orderInitiation.stockCalculation.partialFulfillment') || 'Partial'})`}
           </button>
           <button 
             onClick={() => router.push('/procurement')}
@@ -107,7 +109,7 @@ export default function InventoryPage() {
             }`}
           >
             <Truck className="h-4 w-4" />
-            Create Purchase Request
+            {t('inventoryVal.purchaseRequest')}
           </button>
         </div>
       </div>
@@ -119,7 +121,7 @@ export default function InventoryPage() {
             <CheckCircle2 className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Fully Available</p>
+            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.fullyAvailable')}</p>
             <p className="text-2xl font-bold text-neutral-900">{fullyAvailableCount}</p>
           </div>
         </div>
@@ -129,7 +131,7 @@ export default function InventoryPage() {
             <AlertTriangle className="h-6 w-6 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Partially Available</p>
+            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.partiallyAvailable')}</p>
             <p className="text-2xl font-bold text-neutral-900">{partiallyAvailableCount}</p>
           </div>
         </div>
@@ -139,7 +141,7 @@ export default function InventoryPage() {
             <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Critical Shortages</p>
+            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.criticalShortages')}</p>
             <p className="text-2xl font-bold text-neutral-900">{criticalCount}</p>
           </div>
         </div>
@@ -149,8 +151,10 @@ export default function InventoryPage() {
             <Layers className={`h-6 w-6 ${hasShortage ? 'text-indigo-600' : 'text-emerald-600'}`} />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Readiness Status</p>
-            <p className={`text-sm font-bold mt-1 ${hasShortage ? 'text-indigo-600' : 'text-emerald-600'}`}>{readinessStatus}</p>
+            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.readiness')}</p>
+            <p className={`text-sm font-bold mt-1 ${hasShortage ? 'text-indigo-600' : 'text-emerald-600'}`}>
+              {hasShortage ? (t('procurement.procCompletion') || 'Procurement Required') : (t('orderInitiation.tracker.materialAllocation') || 'Ready for Allocation')}
+            </p>
           </div>
         </div>
       </div>
@@ -161,7 +165,7 @@ export default function InventoryPage() {
         {/* Table Header & Controls */}
         <div className="border-b border-neutral-200 px-6 py-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-neutral-800">Materials Inventory</h2>
+            <h2 className="text-lg font-semibold text-neutral-800">{t('inventoryVal.materialsHeader')}</h2>
             
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search */}
@@ -171,7 +175,7 @@ export default function InventoryPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search materials..."
+                  placeholder={t('inventoryVal.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900"
@@ -189,7 +193,7 @@ export default function InventoryPage() {
                   className="block w-full pl-10 pr-10 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900 appearance-none bg-white cursor-pointer"
                 >
                   {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat} value={cat}>{t(`orderInitiation.tracker.${cat.toLowerCase()}`) || cat}</option>
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -207,13 +211,13 @@ export default function InventoryPage() {
           <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                <th className="px-6 py-4">Material Name</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-right">Required Qty</th>
-                <th className="px-6 py-4 text-right">Available Qty</th>
-                <th className="px-6 py-4 text-right">Shortage Qty</th>
-                <th className="px-6 py-4">Unit</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">{t('inventoryVal.materialsHeader')}</th>
+                <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.sku') || 'Category'}</th>
+                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.quantity') || 'Required Qty'}</th>
+                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.stockAvail') || 'Available Qty'}</th>
+                <th className="px-6 py-4 text-right">{t('bom.shortages') || 'Shortage Qty'}</th>
+                <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.unit') || 'Unit'}</th>
+                <th className="px-6 py-4">{t('dashboard.recentOrders.headers.status') || 'Status'}</th>
                 <th className="px-6 py-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -224,23 +228,23 @@ export default function InventoryPage() {
                     <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-900">{item.name}</span>
+                          <span className="text-sm font-semibold text-neutral-900">{t(`dashboard.stockAlerts.items.${item.id}`) || item.name}</span>
                           <span className="text-xs text-neutral-500">{item.id}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{item.category}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{t(`orderInitiation.tracker.${item.category.toLowerCase()}`) || item.category}</td>
                       <td className="px-6 py-4 text-right text-sm font-medium text-neutral-900">{item.required.toLocaleString()}</td>
                       <td className="px-6 py-4 text-right text-sm text-neutral-600">{item.available.toLocaleString()}</td>
                       <td className="px-6 py-4 text-right text-sm font-bold text-red-600">{item.shortage > 0 ? item.shortage.toLocaleString() : '-'}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-500">{item.unit}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-500">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                          {item.status}
+                          {item.status === 'Sufficient' ? (t('orderInitiation.stockCalculation.title') || 'Sufficient') : item.status === 'Low Stock' ? (t('dashboard.stockAlerts.severity.low') || 'Low Stock') : (t('dashboard.stockAlerts.severity.critical') || 'Critical')}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="View Material Details">
+                          <button className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title={t('actions.viewProfile')}>
                             <Eye className="h-4 w-4" />
                           </button>
                         </div>
@@ -250,10 +254,10 @@ export default function InventoryPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="h-8 w-8 text-neutral-300 mb-2" />
-                      <p>No materials found matching your criteria.</p>
+                      <p>{t('dashboard.recentOrders.headers.poNumber') || 'No materials found matching your criteria.'}</p>
                     </div>
                   </td>
                 </tr>
@@ -265,7 +269,7 @@ export default function InventoryPage() {
         {/* Pagination */}
         <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-200 flex items-center justify-between">
           <p className="text-sm text-neutral-500">
-            Showing <span className="font-medium text-neutral-900">1</span> to <span className="font-medium text-neutral-900">{filteredInventory.length}</span> of <span className="font-medium text-neutral-900">{mockInventory.length}</span> results
+            {t('dashboard.recentOrders.viewAll') || 'Showing'} <span className="font-medium text-neutral-900">1</span> {t('dashboard.recentOrders.headers.deliveryDate') || 'to'} <span className="font-medium text-neutral-900">{filteredInventory.length}</span> {t('dashboard.recentOrders.headers.customer') || 'of'} <span className="font-medium text-neutral-900">{mockInventory.length}</span>
           </p>
           <div className="flex items-center gap-2">
             <button className="p-2 border border-neutral-300 rounded-md bg-white text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>

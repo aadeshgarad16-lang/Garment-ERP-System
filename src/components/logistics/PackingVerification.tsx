@@ -1,12 +1,14 @@
 "use client";
 import React, { useState } from 'react';
 import { Package, Search, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PackingVerificationProps {
   onComplete: () => void;
 }
 
 export default function PackingVerification({ onComplete }: PackingVerificationProps) {
+  const { t } = useTranslation();
   const [manifestId, setManifestId] = useState('MNF-2026-089');
   const [verifiedQty, setVerifiedQty] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -29,8 +31,8 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
           <Package className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800">Packing & Verification</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">Verify packed quantities against shipping manifest before final approval.</p>
+          <h2 className="text-lg font-semibold text-neutral-800">{t('orderInitiation.tracker.verification') || 'Packing & Verification'}</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">{t('quality.stages.verification.desc') || 'Verify packed quantities against shipping manifest before final approval.'}</p>
         </div>
       </div>
       
@@ -40,7 +42,7 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
           <div className="space-y-6">
             <div>
               <label className="text-sm font-medium text-neutral-700 flex items-center gap-2 mb-1.5">
-                Shipping Manifest ID
+                {t('logistics.manifestId') || 'Shipping Manifest ID'}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -52,16 +54,16 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
                   readOnly
                 />
               </div>
-              <p className="text-xs text-neutral-400 mt-1.5">Manifest generated automatically from Quality & Packing module.</p>
+              <p className="text-xs text-neutral-400 mt-1.5">{t('logistics.manifestAutoDesc') || 'Manifest generated automatically from Quality & Packing module.'}</p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-neutral-700 flex items-center gap-2 mb-1.5">
-                Verified Quantity <span className="text-red-500">*</span>
+                {t('quality.verifiedQty') || 'Verified Quantity'} <span className="text-red-500">*</span>
               </label>
               <input 
                 type="number" 
-                placeholder="Enter physical count"
+                placeholder={t('quality.verifiedQtyPlaceholder') || "Enter physical count"}
                 value={verifiedQty}
                 onChange={(e) => setVerifiedQty(e.target.value)}
                 className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
@@ -70,10 +72,10 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
             
             <div>
               <label className="text-sm font-medium text-neutral-700 flex items-center gap-2 mb-1.5">
-                Verification Remarks
+                {t('logistics.remarks') || 'Verification Remarks'}
               </label>
               <textarea 
-                placeholder="Any discrepancies or notes..."
+                placeholder={t('logistics.remarksPlaceholder') || "Any discrepancies or notes..."}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all min-h-[100px]"
@@ -82,22 +84,22 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
           </div>
           
           <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200 flex flex-col">
-            <h3 className="text-sm font-bold text-neutral-800 mb-4 uppercase tracking-wider">Manifest Summary</h3>
+            <h3 className="text-sm font-bold text-neutral-800 mb-4 uppercase tracking-wider">{t('logistics.manifestSummary') || 'Manifest Summary'}</h3>
             <div className="space-y-4 flex-1">
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                <span className="text-sm text-neutral-500">Order ID</span>
+                <span className="text-sm text-neutral-500">{t('dashboard.recentOrders.headers.orderId') || 'Order ID'}</span>
                 <span className="text-sm font-semibold text-neutral-900">PO-2026-004</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                <span className="text-sm text-neutral-500">Target Quantity</span>
+                <span className="text-sm text-neutral-500">{t('logistics.targetQty') || 'Target Quantity'}</span>
                 <span className="text-sm font-semibold text-neutral-900">1000 pcs</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                <span className="text-sm text-neutral-500">Carton Count</span>
+                <span className="text-sm text-neutral-500">{t('logistics.cartonCount') || 'Carton Count'}</span>
                 <span className="text-sm font-semibold text-neutral-900">25 Cartons</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                <span className="text-sm text-neutral-500">Destination</span>
+                <span className="text-sm text-neutral-500">{t('logistics.destination') || 'Destination'}</span>
                 <span className="text-sm font-semibold text-neutral-900">Warehouse B, Dubai</span>
               </div>
             </div>
@@ -110,12 +112,12 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
               {isVerifying ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Verifying...
+                  {t('logistics.verifying') || 'Verifying...'}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Confirm & Verify Packing
+                  {t('logistics.confirmVerify') || 'Confirm & Verify Packing'}
                 </span>
               )}
             </button>

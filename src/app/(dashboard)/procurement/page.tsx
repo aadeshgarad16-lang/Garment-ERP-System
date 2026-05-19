@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Mock Data representing Shortages from Inventory
 const mockShortages = [
@@ -51,6 +52,7 @@ const timelineSteps = [
 
 export default function ProcurementPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -98,9 +100,9 @@ export default function ProcurementPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Truck className="h-6 w-6 text-indigo-600" />
-            Procurement & Shortage Resolution
+            {t('procurement.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Resolve material shortages identified during inventory check</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('procurement.subtitle')}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
           <button 
@@ -108,14 +110,14 @@ export default function ProcurementPage() {
             className="w-full sm:w-auto px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg shadow-sm hover:bg-neutral-50 transition-colors font-medium text-sm flex items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            Create Purchase Request
+            {t('procurement.createRequest')}
           </button>
           <button 
             onClick={() => router.push('/material-allocation')}
             className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
           >
             <ListChecks className="h-4 w-4" />
-            Continue to Allocation
+            {t('procurement.continueAllocation')}
           </button>
         </div>
       </div>
@@ -127,7 +129,7 @@ export default function ProcurementPage() {
             <AlertTriangle className="h-6 w-6 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Total Shortage Items</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.shortageItems')}</p>
             <p className="text-2xl font-bold text-neutral-900">{totalShortages}</p>
           </div>
         </div>
@@ -137,8 +139,8 @@ export default function ProcurementPage() {
             <DollarSign className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Estimated Cost</p>
-            <p className="text-2xl font-bold text-neutral-900">${estimatedCost.toLocaleString()}</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.estCost')}</p>
+            <p className="text-2xl font-bold text-neutral-900">₹{estimatedCost.toLocaleString()}</p>
           </div>
         </div>
 
@@ -147,7 +149,7 @@ export default function ProcurementPage() {
             <ShieldAlert className="h-6 w-6 text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Critical Items</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.criticalItems')}</p>
             <p className="text-2xl font-bold text-neutral-900">{criticalItems}</p>
           </div>
         </div>
@@ -157,8 +159,8 @@ export default function ProcurementPage() {
             <Clock className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Fulfillment Status</p>
-            <p className="text-lg font-bold text-neutral-900 mt-1">Pending Vendors</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.fulfillment')}</p>
+            <p className="text-lg font-bold text-neutral-900 mt-1">{t('dashboard.recentOrders.status.pending')}</p>
           </div>
         </div>
       </div>
@@ -167,7 +169,7 @@ export default function ProcurementPage() {
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <div className="border-b border-neutral-200 px-6 py-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-neutral-800">Procurement Requests</h2>
+            <h2 className="text-lg font-semibold text-neutral-800">{t('procurement.requestsHeader')}</h2>
             
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search */}
@@ -177,7 +179,7 @@ export default function ProcurementPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search PR, Material or Supplier..."
+                  placeholder={t('inventoryVal.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900"
@@ -191,11 +193,11 @@ export default function ProcurementPage() {
                   onChange={(e) => setPriorityFilter(e.target.value)}
                   className="block w-full pl-3 pr-10 py-2 border border-neutral-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900 appearance-none bg-white cursor-pointer"
                 >
-                  <option value="All">All Priorities</option>
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
+                  <option value="All">{t('dashboard.recentOrders.headers.poNumber') || 'All Priorities'}</option>
+                  <option value="Low">{t('dashboard.stockAlerts.severity.low') || 'Low'}</option>
+                  <option value="Medium">{t('dashboard.recentOrders.headers.amount') || 'Medium'}</option>
+                  <option value="High">{t('dashboard.recentOrders.headers.deliveryDate') || 'High'}</option>
+                  <option value="Critical">{t('dashboard.stockAlerts.severity.critical') || 'Critical'}</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -212,11 +214,11 @@ export default function ProcurementPage() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="block w-full pl-10 pr-10 py-2 border border-neutral-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900 appearance-none bg-white cursor-pointer"
                 >
-                  <option value="All">All Statuses</option>
-                  <option value="Pending Procurement">Pending Procurement</option>
-                  <option value="Vendor Assigned">Vendor Assigned</option>
-                  <option value="Ordered">Ordered</option>
-                  <option value="Awaiting Delivery">Awaiting Delivery</option>
+                  <option value="All">{t('dashboard.recentOrders.headers.poNumber') || 'All Statuses'}</option>
+                  <option value="Pending Procurement">{t('dashboard.recentOrders.status.pending')}</option>
+                  <option value="Vendor Assigned">{t('dashboard.recentOrders.headers.poNumber') || 'Vendor Assigned'}</option>
+                  <option value="Ordered">{t('orderInitiation.header.saveOrder') || 'Ordered'}</option>
+                  <option value="Awaiting Delivery">{t('dashboard.recentOrders.headers.deliveryDate') || 'Awaiting Delivery'}</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -230,12 +232,12 @@ export default function ProcurementPage() {
           <table className="w-full text-left border-collapse whitespace-nowrap min-w-[1000px]">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                <th className="px-6 py-4">Material Name</th>
-                <th className="px-6 py-4 text-right">Required</th>
-                <th className="px-6 py-4 text-right">Available</th>
-                <th className="px-6 py-4 text-right">Shortage</th>
-                <th className="px-6 py-4 text-right">Est. Cost</th>
-                <th className="px-6 py-4">Supplier</th>
+                <th className="px-6 py-4">{t('inventoryVal.materialsHeader')}</th>
+                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.quantity') || 'Required'}</th>
+                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.stockAvail') || 'Available'}</th>
+                <th className="px-6 py-4 text-right">{t('bom.shortages') || 'Shortage'}</th>
+                <th className="px-6 py-4 text-right">{t('bom.cost') || 'Est. Cost'}</th>
+                <th className="px-6 py-4">{t('bom.customer') || 'Supplier'}</th>
                 <th className="px-6 py-4">Priority & Status</th>
                 <th className="px-6 py-4 text-center">Actions</th>
               </tr>
@@ -246,14 +248,14 @@ export default function ProcurementPage() {
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-neutral-900">{item.material}</span>
-                        <span className="text-xs text-neutral-500">{item.category} • {item.id}</span>
+                        <span className="text-sm font-medium text-neutral-900">{t(`dashboard.stockAlerts.items.${item.material.replace(/\s+/g, '').replace(/[()]/g, '')}`) || item.material}</span>
+                        <span className="text-xs text-neutral-500">{t(`orderInitiation.tracker.${item.category.toLowerCase()}`) || item.category} • {item.id}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right text-sm text-neutral-900">{item.required} <span className="text-xs text-neutral-500">{item.unit}</span></td>
+                    <td className="px-6 py-4 text-right text-sm text-neutral-900">{item.required} <span className="text-xs text-neutral-500">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span></td>
                     <td className="px-6 py-4 text-right text-sm text-neutral-600">{item.available}</td>
                     <td className="px-6 py-4 text-right text-sm font-bold text-red-600">{item.shortage}</td>
-                    <td className="px-6 py-4 text-right text-sm font-medium text-neutral-900">${item.cost.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right text-sm font-medium text-neutral-900">₹{item.cost.toLocaleString()}</td>
                     <td className="px-6 py-4 text-sm text-neutral-600">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-neutral-400" />
@@ -264,16 +266,16 @@ export default function ProcurementPage() {
                       <div className="flex flex-col items-start gap-1">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getPriorityStyle(item.priority)}`}>
                           {item.priority === 'Critical' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                          {item.priority}
+                          {item.priority === 'Critical' ? (t('dashboard.stockAlerts.severity.critical') || 'Critical') : item.priority === 'High' ? (t('dashboard.recentOrders.headers.deliveryDate') || 'High') : item.priority === 'Medium' ? (t('dashboard.recentOrders.headers.amount') || 'Medium') : (t('dashboard.stockAlerts.severity.low') || 'Low')}
                         </span>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                          {item.status}
+                          {item.status === 'Pending Procurement' ? (t('dashboard.recentOrders.status.pending') || 'Pending') : item.status === 'Vendor Assigned' ? (t('dashboard.recentOrders.headers.poNumber') || 'Vendor Assigned') : (t('orderInitiation.header.saveOrder') || 'Ordered')}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button className="p-1.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Create Request">
+                        <button className="p-1.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title={t('procurement.createRequest')}>
                           <Plus className="h-4 w-4" />
                         </button>
                       </div>
@@ -282,10 +284,10 @@ export default function ProcurementPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="h-8 w-8 text-neutral-300 mb-2" />
-                      <p>No procurement requests found.</p>
+                      <p>{t('dashboard.recentOrders.headers.poNumber') || 'No procurement requests found.'}</p>
                     </div>
                   </td>
                 </tr>
@@ -296,7 +298,7 @@ export default function ProcurementPage() {
         
         <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-200 flex items-center justify-between">
           <p className="text-sm text-neutral-500">
-            Showing <span className="font-medium text-neutral-900">1</span> to <span className="font-medium text-neutral-900">{filteredShortages.length}</span> of <span className="font-medium text-neutral-900">{mockShortages.length}</span> shortages
+            {t('dashboard.recentOrders.viewAll') || 'Showing'} <span className="font-medium text-neutral-900">1</span> {t('dashboard.recentOrders.headers.deliveryDate') || 'to'} <span className="font-medium text-neutral-900">{filteredShortages.length}</span> {t('dashboard.recentOrders.headers.customer') || 'of'} <span className="font-medium text-neutral-900">{mockShortages.length}</span>
           </p>
           <div className="flex items-center gap-2">
             <button className="p-2 border border-neutral-300 rounded-md bg-white text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
@@ -317,18 +319,18 @@ export default function ProcurementPage() {
           <div className="border-b border-neutral-200 px-6 py-5 bg-neutral-50/50">
             <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
               <Building2 className="h-5 w-5 text-neutral-500" />
-              Supplier Directory Summary
+              {t('procurement.supplierDir') || 'Supplier Directory Summary'}
             </h2>
           </div>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
               <thead>
                 <tr className="bg-white border-b border-neutral-100 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                  <th className="px-6 py-4">Supplier Name</th>
-                  <th className="px-6 py-4">Materials Supplied</th>
-                  <th className="px-6 py-4">Lead Time</th>
-                  <th className="px-6 py-4">Rating</th>
-                  <th className="px-6 py-4">Status & Contact</th>
+                  <th className="px-6 py-4">{t('bom.customer') || 'Supplier Name'}</th>
+                  <th className="px-6 py-4">{t('inventoryVal.materialsHeader') || 'Materials Supplied'}</th>
+                  <th className="px-6 py-4">{t('procurement.leadTime') || 'Lead Time'}</th>
+                  <th className="px-6 py-4">{t('procurement.performance') || 'Rating'}</th>
+                  <th className="px-6 py-4">{t('dashboard.recentOrders.headers.status') || 'Status & Contact'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -338,7 +340,7 @@ export default function ProcurementPage() {
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-neutral-900 flex items-center gap-1">
                           {supplier.name}
-                          {supplier.preferred && <span title="Preferred Vendor"><Star className="h-3 w-3 text-amber-500 fill-amber-500" /></span>}
+                          {supplier.preferred && <span title={t('procurement.preferredVendor') || 'Preferred Vendor'}><Star className="h-3 w-3 text-amber-500 fill-amber-500" /></span>}
                         </span>
                       </div>
                     </td>
@@ -358,7 +360,7 @@ export default function ProcurementPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-between gap-4 text-sm">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${supplier.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {supplier.status}
+                          {supplier.status === 'Active' ? (t('dashboard.stockAlerts.severity.low') || 'Active') : (t('dashboard.stockAlerts.severity.low') || 'Under Review')}
                         </span>
                         <div className="flex gap-2 text-neutral-400">
                           <button className="hover:text-blue-600 transition-colors" title={`Email ${supplier.contact}`}><Mail className="h-4 w-4" /></button>
@@ -378,9 +380,9 @@ export default function ProcurementPage() {
           <div className="border-b border-indigo-100 px-6 py-5 bg-white/50 backdrop-blur-sm">
             <h2 className="text-lg font-semibold text-indigo-900 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-indigo-600" />
-              Procurement Completion
+              {t('procurement.procCompletion') || 'Procurement Completion'}
             </h2>
-            <p className="text-xs text-indigo-600/80 mt-1">Next steps after shortage resolution</p>
+            <p className="text-xs text-indigo-600/80 mt-1">{t('procurement.nextSteps') || 'Next steps after shortage resolution'}</p>
           </div>
           <div className="p-6 flex-1 flex flex-col justify-between">
             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px before:h-full before:w-0.5 before:bg-indigo-200">
@@ -389,29 +391,29 @@ export default function ProcurementPage() {
                   <div className="w-2 h-2 bg-indigo-600 rounded-full" />
                 </div>
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-900">Procurement</span>
-                  <p className="text-xs text-neutral-500">Shortage resolution</p>
+                  <span className="text-sm font-semibold text-neutral-900">{t('orderInitiation.tracker.procurement') || 'Procurement'}</span>
+                  <p className="text-xs text-neutral-500">{t('procurement.shortageItems') || 'Shortage resolution'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
                 <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white flex-shrink-0 z-10 border-indigo-400 text-indigo-400" />
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-600">Material Allocation</span>
-                  <p className="text-xs text-neutral-400">Allocate from warehouse</p>
+                  <span className="text-sm font-semibold text-neutral-600">{t('orderInitiation.tracker.materialAllocation') || 'Material Allocation'}</span>
+                  <p className="text-xs text-neutral-400">{t('procurement.allocateWarehouse') || 'Allocate from warehouse'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
                 <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white flex-shrink-0 z-10 border-neutral-300 text-transparent" />
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">Freeze Materials</span>
-                  <p className="text-xs text-neutral-400">Lock stock for PO</p>
+                  <span className="text-sm font-semibold text-neutral-400">{t('procurement.freezeMaterials') || 'Freeze Materials'}</span>
+                  <p className="text-xs text-neutral-400">{t('procurement.lockStock') || 'Lock stock for PO'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
                 <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white flex-shrink-0 z-10 border-neutral-300 text-transparent" />
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">Production</span>
-                  <p className="text-xs text-neutral-400">Begin manufacturing</p>
+                  <span className="text-sm font-semibold text-neutral-400">{t('orderInitiation.tracker.production') || 'Production'}</span>
+                  <p className="text-xs text-neutral-400">{t('procurement.beginMfg') || 'Begin manufacturing'}</p>
                 </div>
               </div>
             </div>
@@ -420,7 +422,7 @@ export default function ProcurementPage() {
               onClick={() => router.push('/material-allocation')}
               className="mt-8 w-full px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors font-medium text-sm flex items-center justify-center gap-2 group"
             >
-              Continue to Material Allocation
+              {t('procurement.continueAllocation')}
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
@@ -435,7 +437,7 @@ export default function ProcurementPage() {
             <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
               <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
                 <Plus className="h-5 w-5 text-indigo-600" />
-                New Purchase Request
+                {t('procurement.createRequest')}
               </h3>
               <button onClick={() => setShowPRModal(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">
                 <X className="h-5 w-5" />
@@ -444,30 +446,30 @@ export default function ProcurementPage() {
             <div className="p-6 overflow-y-auto space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Request ID</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('dashboard.recentOrders.headers.poNumber') || 'Request ID'}</label>
                   <input type="text" value="PR-2026-104" disabled className="w-full px-3 py-2 bg-neutral-100 border border-neutral-200 text-neutral-600 rounded-lg text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Request Date</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('dashboard.recentOrders.headers.deliveryDate') || 'Request Date'}</label>
                   <input type="text" value={new Date().toISOString().split('T')[0]} disabled className="w-full px-3 py-2 bg-neutral-100 border border-neutral-200 text-neutral-600 rounded-lg text-sm" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Requested By</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('dashboard.recentOrders.headers.customer') || 'Requested By'}</label>
                   <input type="text" defaultValue="Current User" className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Department</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('profile.role') || 'Department'}</label>
                   <select className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white">
-                    <option>Production</option>
-                    <option>Inventory</option>
-                    <option>Quality Control</option>
+                    <option>{t('orderInitiation.tracker.production') || 'Production'}</option>
+                    <option>{t('orderInitiation.tracker.inventory') || 'Inventory'}</option>
+                    <option>{t('orderInitiation.tracker.quality') || 'Quality Control'}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">Material Needed</label>
+                <label className="block text-xs font-medium text-neutral-700 mb-1">{t('inventoryVal.materialsHeader') || 'Material Needed'}</label>
                 <select className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white">
                   <option>Denim Fabric (Blue) - 800 meters</option>
                   <option>Polyester Thread (Navy) - 80 spools</option>
@@ -476,7 +478,7 @@ export default function ProcurementPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Preferred Supplier</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('bom.customer') || 'Preferred Supplier'}</label>
                   <select className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white">
                     <option>TexMill Global</option>
                     <option>StitchCo</option>
@@ -484,21 +486,21 @@ export default function ProcurementPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Required By Date</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">{t('dashboard.recentOrders.headers.deliveryDate') || 'Required By Date'}</label>
                   <input type="date" className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1">Additional Notes</label>
+                <label className="block text-xs font-medium text-neutral-700 mb-1">{t('orderInitiation.orderForm.uploadPO') || 'Additional Notes'}</label>
                 <textarea rows={3} className="w-full px-3 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none" placeholder="Enter any specific requirements..."></textarea>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-neutral-100 bg-neutral-50 flex justify-end gap-3">
               <button onClick={() => setShowPRModal(false)} className="px-4 py-2 text-neutral-600 bg-white border border-neutral-300 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors">
-                Cancel
+                {t('orderInitiation.buttons.back') || 'Cancel'}
               </button>
               <button onClick={() => setShowPRModal(false)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition-colors">
-                Submit Purchase Request
+                {t('procurement.createRequest') || 'Submit Purchase Request'}
               </button>
             </div>
           </div>

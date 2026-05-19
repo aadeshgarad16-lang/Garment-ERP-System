@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Mock Data
 const orders = [
@@ -46,16 +47,17 @@ const orders = [
 ];
 
 const mockMaterials = [
-  { name: 'Denim Fabric (12oz)', category: 'Fabric', perPiece: 1.5, unit: 'meters', available: 800 },
-  { name: 'Heavy Duty Thread (Navy)', category: 'Thread', perPiece: 0.1, unit: 'spools', available: 120 },
-  { name: 'Metal Zippers 15cm', category: 'Zippers', perPiece: 1, unit: 'units', available: 45 },
-  { name: 'Metal Buttons (Silver)', category: 'Buttons', perPiece: 6, unit: 'units', available: 5000 },
-  { name: 'Brand Tags (Woven)', category: 'Collar/Cuff', perPiece: 1, unit: 'units', available: 5000 },
-  { name: 'Collar Hooks', category: 'Hooks', perPiece: 2, unit: 'units', available: 3000 },
+  { id: 'denimFabric12oz', name: 'Denim Fabric (12oz)', category: 'Fabric', perPiece: 1.5, unit: 'meters', available: 800 },
+  { id: 'heavyDutyThreadNavy', name: 'Heavy Duty Thread (Navy)', category: 'Thread', perPiece: 0.1, unit: 'spools', available: 120 },
+  { id: 'metalZippers15cm', name: 'Metal Zippers 15cm', category: 'Zippers', perPiece: 1, unit: 'units', available: 45 },
+  { id: 'metalButtonsSilver', name: 'Metal Buttons (Silver)', category: 'Buttons', perPiece: 6, unit: 'units', available: 5000 },
+  { id: 'brandTagsWoven', name: 'Brand Tags (Woven)', category: 'Collar/Cuff', perPiece: 1, unit: 'units', available: 5000 },
+  { id: 'collarHooks', name: 'Collar Hooks', category: 'Hooks', perPiece: 2, unit: 'units', available: 3000 },
 ];
 
 export default function BOMCalculationPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selectedPO, setSelectedPO] = useState('PO-2026-004');
   const [wastage, setWastage] = useState(5);
 
@@ -121,9 +123,9 @@ export default function BOMCalculationPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Calculator className="h-6 w-6 text-indigo-600" />
-            BOM Calculation
+            {t('bom.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Generate dynamic Bills of Materials and estimate procurement needs</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('bom.subtitle')}</p>
         </div>
       </div>
 
@@ -135,13 +137,13 @@ export default function BOMCalculationPage() {
             <div className="border-b border-neutral-200 px-5 py-4 bg-neutral-50/50">
               <h2 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-neutral-500" />
-                Order Configuration
+                {t('bom.config')}
               </h2>
             </div>
             
             <div className="p-5 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-neutral-700 uppercase tracking-wider">Purchase Order</label>
+                <label className="text-xs font-medium text-neutral-700 uppercase tracking-wider">{t('bom.po')}</label>
                 <select 
                   value={selectedPO}
                   onChange={(e) => setSelectedPO(e.target.value)}
@@ -154,15 +156,15 @@ export default function BOMCalculationPage() {
               </div>
 
               <div className="pt-2 border-t border-neutral-100">
-                <p className="text-xs text-neutral-500 mb-1">Customer</p>
+                <p className="text-xs text-neutral-500 mb-1">{t('bom.customer')}</p>
                 <p className="text-sm font-medium text-neutral-900">{currentOrder.customer}</p>
               </div>
 
               <div className="pt-3 border-t border-neutral-100">
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs font-medium text-neutral-700 uppercase tracking-wider">Garment Details</p>
+                  <p className="text-xs font-medium text-neutral-700 uppercase tracking-wider">{t('bom.details')}</p>
                   <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-100">
-                    Total Prod: {totalProductionRequired} pcs
+                    {t('bom.totalProd')}: {totalProductionRequired} pcs
                   </span>
                 </div>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
@@ -173,7 +175,7 @@ export default function BOMCalculationPage() {
                         <p className="text-xs text-neutral-500">Size: {item.size} | Ord Qty: {item.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-neutral-500">Prod Req.</p>
+                        <p className="text-xs text-neutral-500">{t('orderInitiation.garmentSpecifications.table.prodReq') || 'Prod Req.'}</p>
                         <p className="text-sm font-bold text-indigo-700">{Math.max(0, item.quantity - item.useExistingStock)}</p>
                       </div>
                     </div>
@@ -183,7 +185,7 @@ export default function BOMCalculationPage() {
 
               <div className="space-y-1.5 pt-3 border-t border-neutral-100">
                 <label className="text-xs font-medium text-neutral-700 uppercase tracking-wider flex justify-between">
-                  <span>Wastage Margin</span>
+                  <span>{t('bom.wastage')}</span>
                   <span className="text-indigo-600 font-bold">{wastage}%</span>
                 </label>
                 <input 
@@ -194,7 +196,7 @@ export default function BOMCalculationPage() {
                   onChange={(e) => setWastage(parseInt(e.target.value))}
                   className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                 />
-                <p className="text-xs text-neutral-500 mt-2 text-right">Production Qty: <strong>{totalProductionRequired}</strong> pcs</p>
+                <p className="text-xs text-neutral-500 mt-2 text-right">{t('orderInitiation.garmentSpecifications.table.prodReq') || 'Production Qty'}: <strong>{totalProductionRequired}</strong> pcs</p>
               </div>
             </div>
           </div>
@@ -208,13 +210,13 @@ export default function BOMCalculationPage() {
                     <ShoppingCart className="h-5 w-5 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-red-800">Procurement Needed</h3>
-                    <p className="text-xs text-red-600 mt-1">{itemsToProcure} materials are short for this order.</p>
+                    <h3 className="text-sm font-bold text-red-800">{t('procurement.requestsHeader') || 'Procurement Needed'}</h3>
+                    <p className="text-xs text-red-600 mt-1">{itemsToProcure} {t('bom.shortages') || 'materials are short for this order.'}</p>
                   </div>
                 </div>
-                <button className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center gap-2">
+                <button onClick={() => router.push('/procurement')} className="mt-4 w-full px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center gap-2">
                   <Truck className="h-4 w-4" />
-                  Trigger Procurement
+                  {t('procurement.createRequest') || 'Trigger Procurement'}
                 </button>
               </div>
             </div>
@@ -231,9 +233,9 @@ export default function BOMCalculationPage() {
                 <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                   <Scissors className="h-4 w-4 text-blue-600" />
                 </div>
-                <p className="text-xs font-medium text-neutral-500 uppercase">Total Fabric</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase">{t('bom.fabric')}</p>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-neutral-500">meters</span></p>
+              <p className="text-xl font-bold text-neutral-900">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-neutral-500">{t('orderInitiation.garmentSpecifications.table.meters') || 'meters'}</span></p>
             </div>
             
             <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
@@ -241,9 +243,9 @@ export default function BOMCalculationPage() {
                 <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                   <Layers className="h-4 w-4 text-indigo-600" />
                 </div>
-                <p className="text-xs font-medium text-neutral-500 uppercase">Allied Materials</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase">{t('bom.allied')}</p>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-neutral-500">units</span></p>
+              <p className="text-xl font-bold text-neutral-900">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-neutral-500">{t('orderInitiation.garmentSpecifications.table.pieces') || 'units'}</span></p>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
@@ -251,9 +253,9 @@ export default function BOMCalculationPage() {
                 <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
                   <DollarSign className="h-4 w-4 text-emerald-600" />
                 </div>
-                <p className="text-xs font-medium text-neutral-500 uppercase">Est. Cost</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase">{t('bom.cost')}</p>
               </div>
-              <p className="text-xl font-bold text-neutral-900">${estimatedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              <p className="text-xl font-bold text-neutral-900">₹{estimatedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
@@ -261,29 +263,29 @@ export default function BOMCalculationPage() {
                 <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
                   <Box className="h-4 w-4 text-amber-600" />
                 </div>
-                <p className="text-xs font-medium text-neutral-500 uppercase">Shortages</p>
+                <p className="text-xs font-medium text-neutral-500 uppercase">{t('bom.shortages')}</p>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{itemsToProcure} <span className="text-sm font-normal text-neutral-500">materials</span></p>
+              <p className="text-xl font-bold text-neutral-900">{itemsToProcure} <span className="text-sm font-normal text-neutral-500">{t('procurement.requestsHeader') || 'materials'}</span></p>
             </div>
           </div>
 
           {/* Materials Calculation Table */}
           <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
             <div className="border-b border-neutral-200 px-6 py-5 flex justify-between items-center bg-neutral-50/50">
-              <h2 className="text-lg font-semibold text-neutral-800">Materials Calculation</h2>
+              <h2 className="text-lg font-semibold text-neutral-800">{t('bom.materials')}</h2>
             </div>
             
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-[800px]">
                 <thead>
                   <tr className="bg-white border-b border-neutral-100 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                    <th className="px-6 py-4">Material</th>
-                    <th className="px-6 py-4">Unit</th>
-                    <th className="px-6 py-4 text-right">Per Piece</th>
-                    <th className="px-6 py-4 text-right">Base Qty</th>
-                    <th className="px-6 py-4 text-right">Wastage %</th>
-                    <th className="px-6 py-4 text-right">Final Qty</th>
-                    <th className="px-6 py-4">Stock Util.</th>
+                    <th className="px-6 py-4">{t('inventoryVal.materialsHeader') || 'Material'}</th>
+                    <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.unit') || 'Unit'}</th>
+                    <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.perPiece') || 'Per Piece'}</th>
+                    <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.baseQty') || 'Base Qty'}</th>
+                    <th className="px-6 py-4 text-right">{t('bom.wastage') || 'Wastage %'}</th>
+                    <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.finalQty') || 'Final Qty'}</th>
+                    <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.stockUtil') || 'Stock Util.'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -291,7 +293,7 @@ export default function BOMCalculationPage() {
                     <tr key={idx} className="hover:bg-neutral-50/80 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-900">{item.name}</span>
+                          <span className="text-sm font-semibold text-neutral-900">{t(`dashboard.stockAlerts.items.${item.id}`) || item.name}</span>
                           <span className="text-xs text-neutral-500">{item.category}</span>
                         </div>
                       </td>
@@ -330,8 +332,8 @@ export default function BOMCalculationPage() {
             </div>
             
             <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-200 text-xs text-neutral-500 flex justify-between">
-              <p>Calculations include <span className="font-medium text-neutral-800">{wastage}%</span> wastage margin.</p>
-              <p>Last recalculated: Just now</p>
+              <p>{t('bom.wastage') || 'Calculations include wastage margin.'}</p>
+              <p>{t('dashboard.recentOrders.headers.amount') || 'Last recalculated: Just now'}</p>
             </div>
           </div>
 
@@ -342,14 +344,14 @@ export default function BOMCalculationPage() {
                 {totalProductionRequired === 0 && (
                   <p className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
                     <CheckCircle2 className="h-4 w-4" /> 
-                    No BOM required. Order fulfilled using existing stock.
+                    {t('orderInitiation.garmentSpecifications.summary.formula') || 'No BOM required. Order fulfilled using existing stock.'}
                   </p>
                 )}
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-6 py-2.5 bg-white border border-neutral-300 text-neutral-700 rounded-lg shadow-sm hover:bg-neutral-50 transition-colors font-medium text-sm flex items-center justify-center gap-2">
                   <Download className="h-4 w-4" />
-                  Export BOM
+                  {t('bom.export')}
                 </button>
                 <button 
                   onClick={() => router.push('/inventory')}
@@ -360,7 +362,7 @@ export default function BOMCalculationPage() {
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
-                  Check Inventory
+                  {t('bom.checkInventory')}
                   <Box className="h-4 w-4" />
                 </button>
               </div>

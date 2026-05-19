@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Mock Data representing required materials for an order that have sufficient stock
 const mockMaterials = [
@@ -29,6 +30,7 @@ interface AllocationState {
 }
 
 export default function MaterialAllocationPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [allocations, setAllocations] = useState<Record<string, AllocationState>>(
     mockMaterials.reduce((acc, mat) => {
@@ -76,7 +78,7 @@ export default function MaterialAllocationPage() {
       });
       return next;
     });
-    setGlobalMessage({ text: 'Selected materials allocated successfully. Proceed to freeze inventory.', type: 'info' });
+    setGlobalMessage({ text: t('procurement.allocatedSuccess') || 'Selected materials allocated successfully. Proceed to freeze inventory.', type: 'info' });
   };
 
   const handleFreeze = () => {
@@ -90,7 +92,7 @@ export default function MaterialAllocationPage() {
       });
       return next;
     });
-    setGlobalMessage({ text: 'Selected materials frozen successfully and ready for production release.', type: 'success' });
+    setGlobalMessage({ text: t('procurement.frozenSuccess') || 'Selected materials frozen successfully and ready for production release.', type: 'success' });
   };
 
   // State Logic Variables
@@ -108,10 +110,10 @@ export default function MaterialAllocationPage() {
   const allocatedCount = Object.values(allocations).filter(a => a.status === 'Allocated' || a.status === 'Frozen').length;
   const frozenCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
 
-  let readinessStatus = 'Awaiting Allocation';
-  if (allFrozen) readinessStatus = 'Fully Ready for Release';
-  else if (frozenCount > 0) readinessStatus = 'Partially Ready';
-  else if (allocatedCount > 0) readinessStatus = 'Allocated, Pending Freeze';
+  let readinessStatus = t('procurement.awaitingAllocation') || 'Awaiting Allocation';
+  if (allFrozen) readinessStatus = t('procurement.fullyReady') || 'Fully Ready for Release';
+  else if (frozenCount > 0) readinessStatus = t('procurement.partiallyReady') || 'Partially Ready';
+  else if (allocatedCount > 0) readinessStatus = t('procurement.allocatedPending') || 'Allocated, Pending Freeze';
 
   const isAllSelectableChecked = mockMaterials.filter(m => allocations[m.id].status !== 'Frozen').every(m => allocations[m.id].isSelected);
   const hasSelectable = mockMaterials.some(m => allocations[m.id].status !== 'Frozen');
@@ -134,9 +136,9 @@ export default function MaterialAllocationPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <ListChecks className="h-6 w-6 text-indigo-600" />
-            Material Allocation
+            {t('procurement.materialAllocation') || 'Material Allocation'}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Reserve and freeze warehouse inventory for production</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('procurement.materialAllocationDesc') || 'Reserve and freeze warehouse inventory for production'}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
           <button 
@@ -149,7 +151,7 @@ export default function MaterialAllocationPage() {
             }`}
           >
             <Box className="h-4 w-4" />
-            Allocate Materials
+            {t('procurement.allocateMaterials') || 'Allocate Materials'}
           </button>
           <button 
             onClick={handleFreeze}
@@ -161,7 +163,7 @@ export default function MaterialAllocationPage() {
             }`}
           >
             <Lock className="h-4 w-4" />
-            Freeze Selected
+            {t('procurement.freezeSelected') || 'Freeze Selected'}
           </button>
           
           {hasAnyFrozen && (
@@ -169,7 +171,7 @@ export default function MaterialAllocationPage() {
               onClick={() => router.push('/material-release')}
               className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
             >
-              Proceed to Release
+              {t('procurement.proceedToRelease') || 'Proceed to Release'}
               <ArrowRight className="h-4 w-4" />
             </button>
           )}
@@ -192,7 +194,7 @@ export default function MaterialAllocationPage() {
             <PackageCheck className="h-6 w-6 text-neutral-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Total Materials Selected</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.totalMaterialsSelected') || 'Total Materials Selected'}</p>
             <p className="text-2xl font-bold text-neutral-900">{totalMaterials}</p>
           </div>
         </div>
@@ -202,7 +204,7 @@ export default function MaterialAllocationPage() {
             <ListChecks className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Allocated Materials</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.allocatedMaterials') || 'Allocated Materials'}</p>
             <p className="text-2xl font-bold text-neutral-900">{allocatedCount}</p>
           </div>
         </div>
@@ -212,7 +214,7 @@ export default function MaterialAllocationPage() {
             <Lock className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Frozen Materials</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.frozenMaterials') || 'Frozen Materials'}</p>
             <p className="text-2xl font-bold text-neutral-900">{frozenCount}</p>
           </div>
         </div>
@@ -222,7 +224,7 @@ export default function MaterialAllocationPage() {
             <Layers className={`h-6 w-6 ${allFrozen ? 'text-emerald-600' : 'text-neutral-600'}`} />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">Production Readiness</p>
+            <p className="text-sm font-medium text-neutral-500">{t('procurement.productionReadiness') || 'Production Readiness'}</p>
             <p className={`text-sm font-bold mt-1 ${allFrozen ? 'text-emerald-600' : 'text-neutral-900'}`}>{readinessStatus}</p>
           </div>
         </div>
@@ -231,7 +233,7 @@ export default function MaterialAllocationPage() {
       {/* Main Allocation Table */}
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <div className="border-b border-neutral-200 px-6 py-5 bg-neutral-50/50">
-          <h2 className="text-lg font-semibold text-neutral-800">Reservation & Allocation</h2>
+          <h2 className="text-lg font-semibold text-neutral-800">{t('procurement.reservationAllocation') || 'Reservation & Allocation'}</h2>
         </div>
         
         <div className="overflow-x-auto w-full">
@@ -247,13 +249,13 @@ export default function MaterialAllocationPage() {
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
                 </th>
-                <th className="px-6 py-4">Material Name</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-right">Available Qty</th>
-                <th className="px-6 py-4">Linked PO</th>
-                <th className="px-6 py-4 text-center">Allocation Qty</th>
-                <th className="px-6 py-4">Freeze Status</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">{t('inventory.materials.table.headers.name') || 'Material Name'}</th>
+                <th className="px-6 py-4">{t('inventory.materials.table.headers.category') || 'Category'}</th>
+                <th className="px-6 py-4 text-right">{t('inventory.materials.table.headers.qty') || 'Available Qty'}</th>
+                <th className="px-6 py-4">{t('procurement.linkedPO') || 'Linked PO'}</th>
+                <th className="px-6 py-4 text-center">{t('procurement.allocationQty') || 'Allocation Qty'}</th>
+                <th className="px-6 py-4">{t('procurement.freezeStatus') || 'Freeze Status'}</th>
+                <th className="px-6 py-4">{t('procurement.status') || 'Status'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -274,15 +276,15 @@ export default function MaterialAllocationPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-900">{item.name}</span>
+                        <span className="text-sm font-semibold text-neutral-900">{t(`procurement.materials.${item.id}.name`) || item.name}</span>
                         <span className="text-xs text-neutral-500">{item.id}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-neutral-600">{item.category}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600">{t(`inventory.categories.${item.category.toLowerCase()}`) || item.category}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-col items-end">
                         <span className="text-sm font-medium text-neutral-900">{item.available}</span>
-                        <span className="text-xs text-neutral-500">{item.unit}</span>
+                        <span className="text-xs text-neutral-500">{t(`inventory.units.${item.unit}`) || item.unit}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-neutral-700">{item.linkedPO}</td>
@@ -303,24 +305,24 @@ export default function MaterialAllocationPage() {
                                 : 'border-neutral-300 focus:ring-blue-500 focus:border-blue-500 bg-white text-neutral-900'
                           }`}
                         />
-                        <span className="text-xs text-neutral-500 w-12">{item.unit}</span>
+                        <span className="text-xs text-neutral-500 w-12">{t(`inventory.units.${item.unit}`) || item.unit}</span>
                       </div>
-                      {isError && alloc.isSelected && <p className="text-[10px] text-red-600 mt-1 text-center font-medium">Exceeds available</p>}
-                      {alloc.allocatedQty === 0 && alloc.status === 'Available' && alloc.isSelected && <p className="text-[10px] text-blue-600 mt-1 text-center font-medium">Req: {item.required}</p>}
+                      {isError && alloc.isSelected && <p className="text-[10px] text-red-600 mt-1 text-center font-medium">{t('procurement.exceedsAvailable') || 'Exceeds available'}</p>}
+                      {alloc.allocatedQty === 0 && alloc.status === 'Available' && alloc.isSelected && <p className="text-[10px] text-blue-600 mt-1 text-center font-medium">{t('procurement.req') || 'Req'}: {item.required}</p>}
                     </td>
                     <td className="px-6 py-4">
                       {alloc.status === 'Frozen' ? (
                         <span className="inline-flex items-center text-xs font-medium text-indigo-700">
                           <Lock className="h-3 w-3 mr-1" />
-                          Reserved
+                          {t('procurement.reserved') || 'Reserved'}
                         </span>
                       ) : (
-                        <span className="text-xs text-neutral-400">Unlocked</span>
+                        <span className="text-xs text-neutral-400">{t('procurement.unlocked') || 'Unlocked'}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(alloc.status)}`}>
-                        {alloc.status}
+                        {alloc.status === 'Frozen' ? (t('procurement.frozen') || 'Frozen') : alloc.status === 'Allocated' ? (t('procurement.allocated') || 'Allocated') : (t('procurement.available') || 'Available')}
                       </span>
                     </td>
                   </tr>

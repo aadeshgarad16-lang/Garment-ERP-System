@@ -1,12 +1,14 @@
 "use client";
 import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ApprovalSectionProps {
   onComplete: () => void;
 }
 
 export default function ApprovalSection({ onComplete }: ApprovalSectionProps) {
+  const { t } = useTranslation();
   const [approvedBy, setApprovedBy] = useState('');
   const [notes, setNotes] = useState('');
   const [isApproving, setIsApproving] = useState(false);
@@ -28,8 +30,8 @@ export default function ApprovalSection({ onComplete }: ApprovalSectionProps) {
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800">Final Dispatch Approval</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">Authorized sign-off required before generating compliance documents.</p>
+          <h2 className="text-lg font-semibold text-neutral-800">{t('quality.stages.approval.name') || 'Final Dispatch Approval'}</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">{t('quality.stages.approval.desc') || 'Authorized sign-off required before generating compliance documents.'}</p>
         </div>
       </div>
       
@@ -37,11 +39,11 @@ export default function ApprovalSection({ onComplete }: ApprovalSectionProps) {
         <div className="space-y-6">
           <div>
             <label className="text-sm font-medium text-neutral-700 flex items-center gap-2 mb-1.5">
-              Authorized Approver <span className="text-red-500">*</span>
+              {t('quality.approvedBy') || 'Authorized Approver'} <span className="text-red-500">*</span>
             </label>
             <input 
               type="text" 
-              placeholder="Enter name of the authorizing manager"
+              placeholder={t('production.supervisorPlaceholder') || "Enter name of the authorizing manager"}
               value={approvedBy}
               onChange={(e) => setApprovedBy(e.target.value)}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
@@ -50,10 +52,10 @@ export default function ApprovalSection({ onComplete }: ApprovalSectionProps) {
           
           <div>
             <label className="text-sm font-medium text-neutral-700 flex items-center gap-2 mb-1.5">
-              Approval Conditions & Notes
+              {t('quality.dispatchNotes') || 'Approval Conditions & Notes'}
             </label>
             <textarea 
-              placeholder="Any specific conditions for this shipment..."
+              placeholder={t('quality.dispatchNotesPlaceholder') || "Any specific conditions for this shipment..."}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-4 py-3 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all min-h-[100px]"
@@ -69,12 +71,12 @@ export default function ApprovalSection({ onComplete }: ApprovalSectionProps) {
               {isApproving ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Approving...
+                  {t('logistics.verifying') || 'Approving...'}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Grant Approval
+                  {t('quality.grantApproval') || 'Grant Approval'}
                 </span>
               )}
             </button>

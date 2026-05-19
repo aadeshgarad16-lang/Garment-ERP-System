@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Factory, Mail, Lock, UserCog, ArrowRight } from 'lucide-react';
+import { Factory, Mail, Lock, UserCog, ArrowRight, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const roles = [
@@ -17,23 +17,32 @@ const roles = [
   "Accounts Manager"
 ];
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { register, login } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState(roles[0]);
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const result = login({ name: "", email, role, password });
-    
-    if (!result.success) {
-      setError(result.error || "Login failed");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
+    
+    const result = register({ name, email, role, password });
+    
+    if (!result.success) {
+      setError(result.error || "Registration failed");
+      return;
+    }
+    
+    // Auto-login after registration
+    login({ name: "", email, role, password });
     
     setError('');
     router.push('/language');
@@ -51,7 +60,7 @@ export default function LoginPage() {
           Sason ERP
         </h2>
         <p className="mt-2 text-center text-sm text-neutral-600">
-          Sign in to your account
+          Create a new account
         </p>
       </div>
 
@@ -62,8 +71,28 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-          <form className="space-y-6" onSubmit={handleLogin}>
+          <form className="space-y-6" onSubmit={handleRegister}>
             
+            {/* Name Field */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700">
+                Full Name
+              </label>
+              <div className="mt-1 relative rounded-lg shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-neutral-400" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors text-neutral-900"
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
+
             {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-neutral-700">
@@ -104,10 +133,30 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Confirm Password Field */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700">
+                Confirm Password
+              </label>
+              <div className="mt-1 relative rounded-lg shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-neutral-400" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors text-neutral-900"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
             {/* Role Selector */}
             <div>
               <label className="block text-sm font-medium text-neutral-700">
-                Sign in as
+                Register as
               </label>
               <div className="mt-1 relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -130,43 +179,22 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded cursor-pointer"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-neutral-700 cursor-pointer">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                  Forgot your password?
-                </a>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <div className="pt-2">
               <button
                 type="submit"
                 className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
-                Sign in to Dashboard
+                Sign up
                 <ArrowRight className="ml-2 h-4 w-4" />
               </button>
             </div>
           </form>
           
           <div className="mt-6 text-center text-sm text-neutral-600">
-            Don't have an account?{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              Sign up
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Log in
             </Link>
           </div>
 

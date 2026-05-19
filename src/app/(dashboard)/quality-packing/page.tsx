@@ -11,6 +11,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type StageName = 'Quality Check' | 'Packing' | 'Packing & Verification' | 'Approval';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
@@ -38,6 +39,7 @@ interface StageData {
 const TOTAL_ORDER_QTY = 1000;
 
 export default function QualityPackingPage() {
+  const { t } = useTranslation();
   const [stages, setStages] = useState<StageData[]>([
     { id: 'qc', name: 'Quality Check', description: 'Inspect for defects & standards', icon: ClipboardCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', qcStatus: null, qcRemarks: '' },
     { id: 'packing', name: 'Packing', description: 'Pack finished products', icon: Package, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', packedQty: 0 },
@@ -100,11 +102,11 @@ export default function QualityPackingPage() {
 
   const getStatusBadge = (status: StageStatus) => {
     switch (status) {
-      case 'Pending': return <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Pending</span>;
-      case 'In Progress': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">In Progress</span>;
-      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Completed</span>;
+      case 'Pending': return <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.status.pending') || 'Pending'}</span>;
+      case 'In Progress': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.headers.poNumber') || 'In Progress'}</span>;
+      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('orderInitiation.header.saveOrder') || 'Completed'}</span>;
       case 'Failed':
-      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{status}</span>;
+      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.stockAlerts.severity.critical') || 'Rework Required'}</span>;
       default: return null;
     }
   };
@@ -142,9 +144,9 @@ export default function QualityPackingPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-indigo-600" />
-            Quality & Packing
+            {t('quality.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Post-production validation and dispatch preparation for PO-2026-004</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('quality.subtitle')}</p>
         </div>
         <div>
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${
@@ -153,7 +155,7 @@ export default function QualityPackingPage() {
             overallStatus === 'In Progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
             'bg-neutral-100 text-neutral-800 border-neutral-200'
           }`}>
-            {overallStatus}
+            {overallStatus === 'Ready for Dispatch' ? (t('quality.readyDispatch') || 'Ready for Dispatch') : overallStatus === 'Rework Required' ? t('dashboard.stockAlerts.severity.critical') : overallStatus === 'In Progress' ? t('dashboard.recentOrders.headers.poNumber') : t('dashboard.recentOrders.status.pending')}
           </span>
         </div>
       </div>
@@ -164,12 +166,12 @@ export default function QualityPackingPage() {
           <div className="flex-1 w-full">
             <div className="flex justify-between items-end mb-2">
               <div>
-                <p className="text-sm font-medium text-neutral-500">Overall Progress</p>
+                <p className="text-sm font-medium text-neutral-500">{t('production.overallProgress') || 'Overall Progress'}</p>
                 <p className="text-2xl font-bold text-neutral-900">{progressPercentage}%</p>
               </div>
               <div className="text-right">
                 <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                  {completedStagesCount} / {stages.length} Stages Completed
+                  {completedStagesCount} / {stages.length} {t('production.stagesCompleted') || 'Stages Completed'}
                 </span>
               </div>
             </div>
@@ -183,15 +185,15 @@ export default function QualityPackingPage() {
           
           <div className="flex gap-4 md:gap-8 flex-shrink-0">
             <div>
-              <p className="text-xs text-neutral-500 uppercase font-semibold">Total Pieces</p>
+              <p className="text-xs text-neutral-500 uppercase font-semibold">{t('orderInitiation.garmentSpecifications.table.pieces') || 'Total Pieces'}</p>
               <p className="text-xl font-bold text-neutral-900">{TOTAL_ORDER_QTY}</p>
             </div>
             <div>
-              <p className="text-xs text-emerald-600 uppercase font-semibold">QC Passed</p>
+              <p className="text-xs text-emerald-600 uppercase font-semibold">{t('quality.passed') || 'QC Passed'}</p>
               <p className="text-xl font-bold text-emerald-700">{qcPassedCount}</p>
             </div>
             <div>
-              <p className="text-xs text-red-600 uppercase font-semibold">QC Failed</p>
+              <p className="text-xs text-red-600 uppercase font-semibold">{t('quality.failed') || 'QC Failed'}</p>
               <p className="text-xl font-bold text-red-700">{qcFailedCount}</p>
             </div>
           </div>
@@ -217,10 +219,10 @@ export default function QualityPackingPage() {
                   {getStatusBadge(stage.status)}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-neutral-900 text-sm">{stage.name}</h3>
-                  <p className="text-[11px] text-neutral-500 leading-tight mt-0.5 mb-1.5">{stage.description}</p>
+                  <h3 className="font-semibold text-neutral-900 text-sm">{t(`orderInitiation.tracker.${stage.id}`) || stage.name}</h3>
+                  <p className="text-[11px] text-neutral-500 leading-tight mt-0.5 mb-1.5">{t(`quality.stages.${stage.id}.desc`) || stage.description}</p>
                   <p className="text-xs font-medium text-neutral-600">
-                    {stage.status === 'Completed' ? 'Stage complete' : stage.status === 'In Progress' ? 'Action required' : 'Pending validation'}
+                    {stage.status === 'Completed' ? (t('quality.stageComplete') || 'Stage complete') : stage.status === 'In Progress' ? (t('quality.actionRequired') || 'Action required') : (t('quality.pendingValidation') || 'Pending validation')}
                   </p>
                 </div>
               </div>
@@ -235,10 +237,10 @@ export default function QualityPackingPage() {
           <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
               <ActiveIcon className="h-5 w-5 text-indigo-500" />
-              {stages[activeStageIdx].name} Data Entry
+              {t(`orderInitiation.tracker.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} {t('quality.dataEntry') || 'Data Entry'}
             </h2>
             <button onClick={() => setActiveStageIdx(null)} className="text-sm font-medium text-neutral-500 hover:text-neutral-700">
-              Close
+              {t('orderInitiation.buttons.back') || 'Close'}
             </button>
           </div>
           
@@ -246,15 +248,15 @@ export default function QualityPackingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Supervisor Field (Shared except for Approval) */}
-              {stages[activeStageIdx].name !== 'Approval' && (
+              {stages[activeStageIdx].id !== 'approval' && (
                 <div>
                   <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                    {stages[activeStageIdx].name === 'Packing & Verification' ? 'Verification Supervisor' : 'Supervisor Name'}
+                    {stages[activeStageIdx].id === 'verification' ? (t('quality.verificationSupervisor') || 'Verification Supervisor') : (t('production.supervisor') || 'Supervisor Name')}
                   </label>
                   <input 
                     type="text" 
                     className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                    placeholder="Enter name"
+                    placeholder={t('production.supervisorPlaceholder') || "Enter name"}
                     value={stages[activeStageIdx].supervisor}
                     onChange={(e) => handleStageUpdate(activeStageIdx, 'supervisor', e.target.value)}
                     disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -263,9 +265,9 @@ export default function QualityPackingPage() {
               )}
 
               {/* Quantity Fields */}
-              {stages[activeStageIdx].name === 'Quality Check' && (
+              {stages[activeStageIdx].id === 'qc' && (
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Items Checked</label>
+                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.itemsChecked') || 'Items Checked'}</label>
                   <input 
                     type="number" 
                     className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -276,9 +278,9 @@ export default function QualityPackingPage() {
                 </div>
               )}
 
-              {stages[activeStageIdx].name === 'Packing' && (
+              {stages[activeStageIdx].id === 'packing' && (
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Packed Quantity</label>
+                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.packedQty') || 'Packed Quantity'}</label>
                   <input 
                     type="number" 
                     className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -289,9 +291,9 @@ export default function QualityPackingPage() {
                 </div>
               )}
 
-              {stages[activeStageIdx].name === 'Packing & Verification' && (
+              {stages[activeStageIdx].id === 'verification' && (
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Verified Quantity</label>
+                  <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.verifiedQty') || 'Verified Quantity'}</label>
                   <input 
                     type="number" 
                     className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -303,25 +305,25 @@ export default function QualityPackingPage() {
               )}
 
               {/* Approval Fields */}
-              {stages[activeStageIdx].name === 'Approval' && (
+              {stages[activeStageIdx].id === 'approval' && (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Approved By</label>
+                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.approvedBy') || 'Approved By'}</label>
                     <input 
                       type="text" 
                       className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                      placeholder="Authorized Person Name"
+                      placeholder={t('production.supervisorPlaceholder') || "Authorized Person Name"}
                       value={stages[activeStageIdx].approvedBy || ''}
                       onChange={(e) => handleStageUpdate(activeStageIdx, 'approvedBy', e.target.value)}
                       disabled={stages[activeStageIdx].status === 'Completed'}
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Dispatch Notes</label>
+                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.dispatchNotes') || 'Dispatch Notes'}</label>
                     <input 
                       type="text" 
                       className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                      placeholder="Final instructions for shipping"
+                      placeholder={t('quality.dispatchNotesPlaceholder') || "Final instructions for shipping"}
                       value={stages[activeStageIdx].dispatchNotes || ''}
                       onChange={(e) => handleStageUpdate(activeStageIdx, 'dispatchNotes', e.target.value)}
                       disabled={stages[activeStageIdx].status === 'Completed'}
@@ -331,16 +333,16 @@ export default function QualityPackingPage() {
               )}
 
               {/* QC Specific Block */}
-              {stages[activeStageIdx].name === 'Quality Check' && (
+              {stages[activeStageIdx].id === 'qc' && (
                 <div className="md:col-span-2 bg-neutral-50 p-4 rounded-lg border border-neutral-200 mt-2">
                   <div className="flex items-start gap-3 mb-4">
                     <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
                     <div>
-                      <h4 className="text-sm font-bold text-amber-800">Quality Check Required</h4>
-                      <p className="text-sm text-amber-700 mt-1">Please inspect garments against quality standards. Failed items will be flagged for rework.</p>
+                      <h4 className="text-sm font-bold text-amber-800">{t('quality.qcRequired') || 'Quality Check Required'}</h4>
+                      <p className="text-sm text-amber-700 mt-1">{t('quality.qcDesc') || 'Please inspect garments against quality standards. Failed items will be flagged for rework.'}</p>
                     </div>
                   </div>
-                  <label className="text-sm font-bold text-neutral-800 mb-3 block">QC Status</label>
+                  <label className="text-sm font-bold text-neutral-800 mb-3 block">{t('quality.qcStatus') || 'QC Status'}</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
@@ -352,7 +354,7 @@ export default function QualityPackingPage() {
                         disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
                         className="text-emerald-600 focus:ring-emerald-500"
                       />
-                      <span className="text-sm font-medium text-neutral-700">Pass (Meets standards)</span>
+                      <span className="text-sm font-medium text-neutral-700">{t('quality.pass') || 'Pass (Meets standards)'}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
@@ -364,15 +366,15 @@ export default function QualityPackingPage() {
                         disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
                         className="text-red-600 focus:ring-red-500"
                       />
-                      <span className="text-sm font-medium text-neutral-700">Fail (Requires rework)</span>
+                      <span className="text-sm font-medium text-neutral-700">{t('quality.fail') || 'Fail (Requires rework)'}</span>
                     </label>
                   </div>
                   <div className="mt-4">
-                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Defect Notes</label>
+                    <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('quality.defectNotes') || 'Defect Notes'}</label>
                     <input 
                       type="text" 
                       className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                      placeholder="Specific defect details if any"
+                      placeholder={t('quality.defectNotesPlaceholder') || "Specific defect details if any"}
                       value={stages[activeStageIdx].qcRemarks || ''}
                       onChange={(e) => handleStageUpdate(activeStageIdx, 'qcRemarks', e.target.value)}
                       disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -383,10 +385,10 @@ export default function QualityPackingPage() {
 
               {/* General Remarks */}
               <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Remarks</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('orderInitiation.orderForm.uploadPO') || 'Remarks'}</label>
                 <textarea 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]" 
-                  placeholder="Any additional notes"
+                  placeholder={t('production.remarksPlaceholder') || "Any additional notes"}
                   value={stages[activeStageIdx].remarks}
                   onChange={(e) => handleStageUpdate(activeStageIdx, 'remarks', e.target.value)}
                   disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -400,7 +402,7 @@ export default function QualityPackingPage() {
                   onClick={() => handleStartStage(activeStageIdx)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2"
                 >
-                  Start Stage
+                  {t('production.startStage') || 'Start Stage'}
                 </button>
               )}
               
@@ -408,18 +410,18 @@ export default function QualityPackingPage() {
                 <button 
                   onClick={() => handleCompleteStage(activeStageIdx)}
                   disabled={
-                    (stages[activeStageIdx].name === 'Quality Check' && !stages[activeStageIdx].qcStatus) ||
-                    (stages[activeStageIdx].name === 'Approval' && !stages[activeStageIdx].approvedBy)
+                    (stages[activeStageIdx].id === 'qc' && !stages[activeStageIdx].qcStatus) ||
+                    (stages[activeStageIdx].id === 'approval' && !stages[activeStageIdx].approvedBy)
                   }
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Complete Stage
+                  {t('production.completeStage') || 'Complete Stage'}
                 </button>
               )}
 
               {(stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required') && (
                 <span className="text-sm font-medium text-neutral-500 flex items-center">
-                  Stage locked (Action completed)
+                  {t('production.stageLocked') || 'Stage locked (Action completed)'}
                 </span>
               )}
             </div>

@@ -15,6 +15,7 @@ import {
   AlignEndHorizontal
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type StageName = 'Cutting' | 'Stitching' | 'Fusing' | 'Kaj Button' | 'Finishing';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
@@ -35,6 +36,7 @@ interface StageData {
 const TOTAL_ORDER_QTY = 1000;
 
 export default function ProductionPage() {
+  const { t } = useTranslation();
   const [stages, setStages] = useState<StageData[]>([
     { id: 'cutting', name: 'Cutting', description: 'Fabric cutting as per pattern', icon: Scissors, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '' },
     { id: 'stitching', name: 'Stitching', description: 'Sewing and assembling pieces', icon: Layers, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '' },
@@ -87,11 +89,11 @@ export default function ProductionPage() {
 
   const getStatusBadge = (status: StageStatus) => {
     switch (status) {
-      case 'Pending': return <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Pending</span>;
-      case 'In Progress': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">In Progress</span>;
-      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Completed</span>;
+      case 'Pending': return <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.status.pending') || 'Pending'}</span>;
+      case 'In Progress': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.headers.poNumber') || 'In Progress'}</span>;
+      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('orderInitiation.header.saveOrder') || 'Completed'}</span>;
       case 'Failed':
-      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{status}</span>;
+      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.stockAlerts.severity.critical') || 'Rework Required'}</span>;
       default: return null;
     }
   };
@@ -129,9 +131,9 @@ export default function ProductionPage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <Activity className="h-6 w-6 text-indigo-600" />
-            Production Tracking
+            {t('production.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">Track production stages for PO-2026-004</p>
+          <p className="text-neutral-500 text-sm mt-1">{t('production.subtitle')}</p>
         </div>
         <div>
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${
@@ -140,7 +142,7 @@ export default function ProductionPage() {
             overallProductionStatus === 'Production Started' ? 'bg-blue-100 text-blue-800 border-blue-200' :
             'bg-neutral-100 text-neutral-800 border-neutral-200'
           }`}>
-            {overallProductionStatus}
+            {overallProductionStatus === 'Completed' ? t('orderInitiation.header.saveOrder') : overallProductionStatus === 'Rework Required' ? t('dashboard.stockAlerts.severity.critical') : overallProductionStatus === 'Production Started' ? t('dashboard.recentOrders.headers.poNumber') : t('dashboard.recentOrders.status.pending')}
           </span>
         </div>
       </div>
@@ -151,12 +153,12 @@ export default function ProductionPage() {
           <div className="flex-1 w-full">
             <div className="flex justify-between items-end mb-2">
               <div>
-                <p className="text-sm font-medium text-neutral-500">Overall Progress</p>
+                <p className="text-sm font-medium text-neutral-500">{t('production.overallProgress') || 'Overall Progress'}</p>
                 <p className="text-2xl font-bold text-neutral-900">{progressPercentage}%</p>
               </div>
               <div className="text-right">
                 <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                  {completedStagesCount} / {stages.length} Stages Completed
+                  {completedStagesCount} / {stages.length} {t('production.stagesCompleted') || 'Stages Completed'}
                 </span>
               </div>
             </div>
@@ -170,7 +172,7 @@ export default function ProductionPage() {
           
           <div className="flex gap-4 md:gap-8 flex-shrink-0 items-center">
             <div>
-              <p className="text-xs text-neutral-500 uppercase font-semibold">Total Pieces</p>
+              <p className="text-xs text-neutral-500 uppercase font-semibold">{t('orderInitiation.garmentSpecifications.table.pieces') || 'Total Pieces'}</p>
               <p className="text-xl font-bold text-neutral-900">{TOTAL_ORDER_QTY}</p>
             </div>
             
@@ -179,7 +181,7 @@ export default function ProductionPage() {
                 onClick={() => router.push('/quality-packing')}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2 group"
               >
-                Proceed to Quality & Packing
+                {t('production.proceedQuality') || 'Proceed to Quality & Packing'}
                 <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
             )}
@@ -206,10 +208,10 @@ export default function ProductionPage() {
                   {getStatusBadge(stage.status)}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-neutral-900 text-sm">{stage.name}</h3>
-                  <p className="text-[11px] text-neutral-500 leading-tight mt-0.5 mb-1.5">{stage.description}</p>
+                  <h3 className="font-semibold text-neutral-900 text-sm">{t(`orderInitiation.tracker.${stage.id}`) || stage.name}</h3>
+                  <p className="text-[11px] text-neutral-500 leading-tight mt-0.5 mb-1.5">{t(`production.stages.${stage.id}.desc`) || stage.description}</p>
                   <p className="text-xs font-medium text-neutral-600">
-                    {stage.completedQty > 0 ? `${stage.completedQty} units processed` : 'Not started'}
+                    {stage.completedQty > 0 ? `${stage.completedQty} ${t('production.unitsProcessed') || 'units processed'}` : (t('dashboard.recentOrders.status.pending') || 'Not started')}
                   </p>
                 </div>
               </div>
@@ -223,10 +225,10 @@ export default function ProductionPage() {
           <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
               <ActiveIcon className="h-5 w-5 text-indigo-500" />
-              {stages[activeStageIdx].name} Update
+              {t(`orderInitiation.tracker.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} {t('production.update') || 'Update'}
             </h2>
             <button onClick={() => setActiveStageIdx(null)} className="text-sm font-medium text-neutral-500 hover:text-neutral-700">
-              Close
+              {t('orderInitiation.buttons.back') || 'Close'}
             </button>
           </div>
           
@@ -234,11 +236,11 @@ export default function ProductionPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Supervisor Name</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('production.supervisor') || 'Supervisor Name'}</label>
                 <input 
                   type="text" 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                  placeholder="Enter supervisor name"
+                  placeholder={t('production.supervisorPlaceholder') || "Enter supervisor name"}
                   value={stages[activeStageIdx].supervisor}
                   onChange={(e) => handleStageUpdate(activeStageIdx, 'supervisor', e.target.value)}
                   disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -246,7 +248,7 @@ export default function ProductionPage() {
               </div>
               
               <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Completed Quantity</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('production.completedQty') || 'Completed Quantity'}</label>
                 <input 
                   type="number" 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -259,7 +261,7 @@ export default function ProductionPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">Start Time</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('production.startTime') || 'Start Time'}</label>
                 <input 
                   type="time" 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -270,7 +272,7 @@ export default function ProductionPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">End Time</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('production.endTime') || 'End Time'}</label>
                 <input 
                   type="time" 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500" 
@@ -281,10 +283,10 @@ export default function ProductionPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">General Remarks</label>
+                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">{t('orderInitiation.orderForm.uploadPO') || 'General Remarks'}</label>
                 <textarea 
                   className="w-full px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 border rounded-lg border-neutral-300 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]" 
-                  placeholder="Any stage-specific notes"
+                  placeholder={t('production.remarksPlaceholder') || "Any stage-specific notes"}
                   value={stages[activeStageIdx].remarks}
                   onChange={(e) => handleStageUpdate(activeStageIdx, 'remarks', e.target.value)}
                   disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -298,7 +300,7 @@ export default function ProductionPage() {
                   onClick={() => handleStartStage(activeStageIdx)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2"
                 >
-                  Start Stage
+                  {t('production.startStage') || 'Start Stage'}
                 </button>
               )}
               
@@ -310,13 +312,13 @@ export default function ProductionPage() {
                   }
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Complete Stage
+                  {t('production.completeStage') || 'Complete Stage'}
                 </button>
               )}
 
               {(stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required') && (
                 <span className="text-sm font-medium text-neutral-500 flex items-center">
-                  Stage locked (Action completed)
+                  {t('production.stageLocked') || 'Stage locked (Action completed)'}
                 </span>
               )}
             </div>

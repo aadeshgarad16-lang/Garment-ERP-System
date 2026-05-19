@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useRef } from 'react';
 import { Camera, UploadCloud, CheckCircle2, FileCheck } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProofOfDeliveryProps {
   onComplete: () => void;
 }
 
 export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
+  const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [podImage, setPodImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,8 +31,8 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
           <Camera className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800">Proof of Delivery (POD)</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">Upload delivery confirmation and receiver signature.</p>
+          <h2 className="text-lg font-semibold text-neutral-800">{t('logistics.pod') || 'Proof of Delivery (POD)'}</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">{t('logistics.podDesc') || 'Upload delivery confirmation and receiver signature.'}</p>
         </div>
       </div>
       
@@ -56,7 +58,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
                 <div className="h-14 w-14 bg-emerald-100 rounded-full flex items-center justify-center shadow-sm border border-emerald-200 mb-4">
                   <FileCheck className="h-7 w-7 text-emerald-600" />
                 </div>
-                <h3 className="text-sm font-semibold text-emerald-800 mb-1">POD Uploaded Successfully</h3>
+                <h3 className="text-sm font-semibold text-emerald-800 mb-1">{t('logistics.podSuccess') || 'POD Uploaded Successfully'}</h3>
                 <p className="text-xs text-emerald-600 font-medium">{podImage}</p>
               </>
             ) : (
@@ -64,15 +66,15 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
                 <div className="h-14 w-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-neutral-200 mb-4 group-hover:scale-110 transition-transform">
                   <UploadCloud className="h-7 w-7 text-blue-500" />
                 </div>
-                <h3 className="text-sm font-semibold text-neutral-800 mb-1">Upload POD Document</h3>
-                <p className="text-xs text-neutral-500">Supports JPG, PNG, PDF (Max 5MB)</p>
+                <h3 className="text-sm font-semibold text-neutral-800 mb-1">{t('logistics.uploadPod') || 'Upload POD Document'}</h3>
+                <p className="text-xs text-neutral-500">{t('orderInitiation.orderForm.maxSize') || 'Supports JPG, PNG, PDF (Max 5MB)'}</p>
               </>
             )}
             
             {isUploading && (
               <div className="mt-6 flex items-center gap-2 text-sm text-blue-600 font-medium">
                 <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
-                Processing document...
+                {t('logistics.processingDoc') || 'Processing document...'}
               </div>
             )}
           </div>
@@ -84,7 +86,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Confirm Delivery
+              {t('logistics.confirmDelivery') || 'Confirm Delivery'}
             </button>
           </div>
         </div>
