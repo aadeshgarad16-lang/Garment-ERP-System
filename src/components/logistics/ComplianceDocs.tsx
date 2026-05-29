@@ -27,14 +27,14 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
   const hasRequiredDocs = uploadedDocs.length > 0;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-neutral-200 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
         <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
           <FileText className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800">{t('logistics.complianceDocs') || 'Compliance & Shipping Documents'}</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">{t('logistics.complianceDocsDesc') || 'Upload required customs, packing lists, and commercial invoices.'}</p>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('logistics.complianceDocs') || 'Compliance & Shipping Documents'}</h2>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t('logistics.complianceDocsDesc') || 'Upload required customs, packing lists, and commercial invoices.'}</p>
         </div>
       </div>
       
@@ -43,7 +43,7 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
           
           <div className="flex flex-col">
             <div 
-              className="flex-1 border-2 border-dashed border-neutral-300 rounded-xl bg-neutral-50 hover:bg-neutral-100 transition-colors flex flex-col items-center justify-center p-8 text-center cursor-pointer group"
+              className="flex-1 border-2 border-dashed border-neutral-300 dark:border-slate-600 rounded-xl bg-neutral-50 dark:bg-slate-900 hover:bg-neutral-100 dark:hover:bg-slate-700 transition-colors flex flex-col items-center justify-center p-8 text-center cursor-pointer group"
               onClick={() => fileInputRef.current?.click()}
             >
               <input 
@@ -53,11 +53,11 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
                 onChange={handleSimulateUpload}
                 accept=".pdf,.doc,.docx,.jpg,.png"
               />
-              <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-neutral-200 mb-4 group-hover:scale-110 transition-transform">
+              <div className="h-12 w-12 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-sm border border-neutral-200 dark:border-slate-700 mb-4 group-hover:scale-110 transition-transform">
                 <UploadCloud className="h-6 w-6 text-indigo-500" />
               </div>
-              <h3 className="text-sm font-semibold text-neutral-800 mb-1">{t('orderInitiation.orderForm.dragDrop') || 'Click to upload documents'}</h3>
-              <p className="text-xs text-neutral-500">{t('orderInitiation.orderForm.maxSize') || 'Supports PDF, DOCX, JPG (Max 5MB)'}</p>
+              <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-1">{t('orderInitiation.orderForm.dragDrop') || 'Click to upload documents'}</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('orderInitiation.orderForm.maxSize') || 'Supports PDF, DOCX, JPG (Max 5MB)'}</p>
               
               {isUploading && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-indigo-600 font-medium">
@@ -69,8 +69,8 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
           </div>
 
           <div className="flex flex-col">
-            <h3 className="text-sm font-bold text-neutral-800 mb-4">{t('logistics.uploadedDocs') || 'Uploaded Documents'}</h3>
-            <div className="flex-1 bg-white border border-neutral-200 rounded-xl p-4 overflow-y-auto max-h-[250px] space-y-3">
+            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-4">{t('logistics.uploadedDocs') || 'Uploaded Documents'}</h3>
+            <div className="flex-1 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl p-4 overflow-y-auto max-h-[250px] space-y-3">
               {uploadedDocs.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-neutral-400 py-8">
                   <FileText className="h-8 w-8 mb-2 opacity-20" />
@@ -78,10 +78,10 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
                 </div>
               ) : (
                 uploadedDocs.map((doc, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-100 rounded-lg">
+                  <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-slate-900 border border-neutral-100 dark:border-slate-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <FileCheck className="h-5 w-5 text-emerald-500" />
-                      <span className="text-sm font-medium text-neutral-700 truncate max-w-[200px]">{doc}</span>
+                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">{doc}</span>
                     </div>
                     <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">{t('orderInitiation.header.saveOrder') || 'Verified'}</span>
                   </div>

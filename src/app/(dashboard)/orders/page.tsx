@@ -1,463 +1,798 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+
 import {
-  Building2,
-  Calendar,
   CreditCard,
-  DollarSign,
   FileText,
   MapPin,
-  Package,
   Plus,
   Save,
   Trash2,
   Upload,
-  User,
   ShoppingBag,
-  Box,
-  Calculator,
-  AlertCircle,
-  CheckCircle2
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import WorkflowIndicator from '@/components/WorkflowIndicator';
-import { useLanguage } from '@/contexts/language-context';
+  X,
+  Package,
+} from "lucide-react";
+import WorkflowIndicator from "@/components/WorkflowIndicator";
 
 interface GarmentSpec {
   id: string;
-  sku: string;
+  itemDescription: string;
   size: string;
-  design: string;
+  pattern: string;
   quantity: number;
   stockAvailable: number;
-  useExistingStock: number;
+  unitPrice: number;
+  photoName: string | null;
 }
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+
+  const [poNumber, setPoNumber] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [poDate, setPoDate] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const inputStyle =
+    "w-full px-3 py-2 border border-neutral-300 rounded-lg bg-white text-gray-900 placeholder:text-neutral-400 caret-black focus:outline-none focus:ring-2 focus:ring-blue-500";
+
   const [specs, setSpecs] = useState<GarmentSpec[]>([
-    { id: '1', sku: '', size: '', design: '', quantity: 0, stockAvailable: 0, useExistingStock: 0 }
+    {
+      id: "1",
+      itemDescription: "",
+      size: "",
+      pattern: "",
+      quantity: 0,
+      stockAvailable: 0,
+      unitPrice: 0,
+      photoName: null,
+    },
   ]);
 
-  const isValidRow = (spec: GarmentSpec) => {
-    return spec.useExistingStock <= spec.stockAvailable && spec.useExistingStock <= spec.quantity;
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const [poAmount, setPoAmount] = useState<number>(0);
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+
+  const subtotal = poAmount;
+  const tax = 0;
+  const totalAmount = subtotal + tax;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setUploadedFile(file);
   };
 
-  const isFormValid = specs.every(isValidRow);
-  const totalQuantity = specs.reduce((sum, spec) => sum + (spec.quantity || 0), 0);
-  const totalStockUsed = specs.reduce((sum, spec) => sum + (spec.useExistingStock || 0), 0);
-  const totalProductionRequired = specs.reduce((sum, spec) => sum + Math.max(0, (spec.quantity || 0) - (spec.useExistingStock || 0)), 0);
-  const partialFulfillmentPercentage = totalQuantity > 0 ? Math.round((totalStockUsed / totalQuantity) * 100) : 0;
+  const removeFile = () => {
+    setUploadedFile(null);
+  };
 
   const addRow = () => {
     setSpecs([
       ...specs,
-      { id: Math.random().toString(36).substring(7), sku: '', size: '', design: '', quantity: 0, stockAvailable: 0, useExistingStock: 0 }
+      {
+        id: Math.random().toString(),
+        itemDescription: "",
+        size: "",
+        pattern: "",
+        quantity: 0,
+        stockAvailable: 0,
+        unitPrice: 0,
+        photoName: null,
+      },
     ]);
   };
 
   const removeRow = (id: string) => {
     if (specs.length > 1) {
-      setSpecs(specs.filter(spec => spec.id !== id));
+      setSpecs(specs.filter((spec) => spec.id !== id));
     }
   };
 
-  const updateRow = (id: string, field: keyof GarmentSpec, value: string | number) => {
-    setSpecs(specs.map(spec => spec.id === id ? { ...spec, [field]: value } : spec));
+  const updateRow = (
+    id: string,
+    field: keyof GarmentSpec,
+    value: string | number,
+  ) => {
+    setSpecs(
+      specs.map((spec) =>
+        spec.id === id ? { ...spec, [field]: value } : spec,
+      ),
+    );
+  };
+
+  const handleSaveDraft = () => {
+    alert("Draft Saved Successfully");
+  };
+
+  const handleViewDrafts = () => {
+    window.location.href = "/drafts";
+  };
+
+  const handleSubmitOrder = () => {
+    const newOrder = {
+      id: Date.now().toString(),
+      poNumber,
+      customerName,
+      poDate,
+      deliveryDate,
+      poAmount,
+      totalAmount,
+      specs,
+      status: "Submitted",
+      stage: "Stock Check",
+      date: new Date().toISOString(),
+    };
+
+    const existingOrders = JSON.parse(
+      localStorage.getItem("savedOrders") || "[]",
+    );
+
+    existingOrders.push(newOrder);
+
+    localStorage.setItem("savedOrders", JSON.stringify(existingOrders));
+
+    alert("Order Submitted Successfully");
+  };
+
+  const handleStockCalculation = () => {
+    window.location.href = "/stock-calculation";
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8 font-sans pb-8">
-      <WorkflowIndicator currentStep={t('orderInitiation.tracker.orderInitiation')} />
+    <div className="max-w-7xl mx-auto space-y-6 pb-20">
+      <WorkflowIndicator currentStep="Order Initiation" />
+      {/* HEADER */}
 
-      {/* ----------------- ORDER INITIATION SECTION ----------------- */}
-      <section className="space-y-6">
-        {/* Form Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-              <ShoppingBag className="h-6 w-6 text-blue-600" />
-              {t('orderInitiation.header.title')}
-            </h1>
-            <p className="text-neutral-500 text-sm mt-1">{t('orderInitiation.header.description')}</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
-            <button className="w-full sm:w-auto px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg shadow-sm hover:bg-neutral-50 transition-colors font-medium text-sm">
-              {t('orderInitiation.header.cancel')}
-            </button>
-            <button className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors font-medium text-sm flex items-center justify-center gap-2">
-              <Save className="h-4 w-4" />
-              {t('orderInitiation.header.saveOrder')}
-            </button>
-          </div>
+      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-5 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <ShoppingBag className="h-6 w-6 text-blue-600" />
+            Order Initiation
+          </h1>
+
+          <p className="text-sm text-neutral-500 mt-1">
+            Create and manage purchase orders
+          </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form Column */}
-          <div className="lg:col-span-2 space-y-6">
+      {/* MAIN GRID */}
 
-            {/* Purchase Order Info Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-              <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50">
-                <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-neutral-500" />
-                  {t('orderInitiation.purchaseOrderInfo.title')}
-                </h2>
-              </div>
+      <div className="space-y-6">
+        {/* LEFT SIDE */}
 
-              <div className="p-4 sm:p-5 lg:p-6 space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <FileText className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.poNumber')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                      placeholder="e.g. PO-2023-001"
-                    />
-                  </div>
+        <div className="w-full space-y-6">
+          {/* PURCHASE ORDER */}
 
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <User className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.customerName')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <Building2 className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.officeAddress')}
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow min-h-[80px]"
-                      placeholder={t('orderInitiation.purchaseOrderInfo.officeAddressPlaceholder') as string}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.deliveryAddress')} <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow min-h-[80px]"
-                      placeholder={t('orderInitiation.purchaseOrderInfo.deliveryAddressPlaceholder') as string}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.poDate')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-neutral-400" />
-                      {t('orderInitiation.purchaseOrderInfo.deliveryDate')} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <label className="text-sm font-medium text-neutral-700 block mb-2">{t('orderInitiation.purchaseOrderInfo.uploadPoFile')}</label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-300 border-dashed rounded-xl bg-neutral-50 hover:bg-neutral-100 transition-colors cursor-pointer group">
-                    <div className="space-y-2 text-center">
-                      <div className="mx-auto h-12 w-12 text-neutral-400 group-hover:text-blue-500 transition-colors flex items-center justify-center bg-white rounded-full shadow-sm border border-neutral-200">
-                        <Upload className="h-6 w-6" />
-                      </div>
-                      <div className="flex text-sm text-neutral-600 justify-center">
-                        <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                          <span>{t('orderInitiation.purchaseOrderInfo.uploadInstructions').split(' ')[0]} {t('orderInitiation.purchaseOrderInfo.uploadInstructions').split(' ')[1]}</span>
-                          <input id="file-upload" name="file-upload" type="file" className="sr-only" />
-                        </label>
-                        <p className="pl-1">{t('orderInitiation.purchaseOrderInfo.uploadInstructions').substring(t('orderInitiation.purchaseOrderInfo.uploadInstructions').indexOf(' ') + 1)}</p>
-                      </div>
-                      <p className="text-xs text-neutral-500">{t('orderInitiation.purchaseOrderInfo.uploadConstraints')}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-visible">
+            <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50">
+              <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-neutral-500" />
+                Purchase Order Information
+              </h2>
             </div>
 
-          </div>
+            <div className="p-6 space-y-6">
+              {/* PO NUMBER + CUSTOMER */}
 
-          {/* Sidebar Form Column */}
-          <div className="space-y-6">
+              {/* PURCHASE ORDER DETAILS */}
 
-            {/* Payment Details Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden sticky top-6">
-              <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50">
-                <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-neutral-500" />
-                  {t('orderInitiation.paymentDetails.title')}
-                </h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                {/* 1. PO ORDER NUMBER */}
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    PO Order Number <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    value={poNumber}
+                    onChange={(e) => setPoNumber(e.target.value)}
+                    placeholder="e.g. PO-2026-001"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                {/* 2. PO DATE */}
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    PO Date <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="date"
+                    value={poDate}
+                    onChange={(e) => setPoDate(e.target.value)}
+                    style={{ color: "#111827" }}
+                    className={`${inputStyle} h-[48px]`}
+                  />
+                </div>
+
+                {/* 3. DELIVERY ADDRESS */}
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Delivery Date <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    style={{ color: "#111827" }}
+                    className={`${inputStyle} h-[48px]`}
+                  />
+                </div>
+
+                {/* 4. CUSTOMER NAME */}
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Customer Name <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                {/* DELIVERY DATE */}
               </div>
 
-              <div className="p-4 sm:p-5 lg:p-6 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-neutral-700 block">{t('orderInitiation.paymentDetails.paymentTerm')}</label>
-                  <select className="w-full px-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow appearance-none">
-                    <option value="">{t('orderInitiation.paymentDetails.selectTerm')}</option>
-                    <option value="net30">Net 30 Days</option>
-                    <option value="net60">Net 60 Days</option>
-                    <option value="upon_receipt">Due Upon Receipt</option>
-                    <option value="advance">50% Advance, 50% on Delivery</option>
+              {/* CUSTOMER CONTACT */}
+
+              <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-5">
+                <h3 className="text-base font-semibold text-neutral-800 mb-4">
+                  Customer Contact Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-neutral-700">
+                      Contact Person Name
+                    </label>
+
+                    <input
+                      type="text"
+                      placeholder="Contact person"
+                      style={{ color: "#111827" }}
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-neutral-700">
+                      Phone Number
+                    </label>
+
+                    <input
+                      type="tel"
+                      placeholder="Phone number"
+                      style={{ color: "#111827" }}
+                      className={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-neutral-700">
+                      Email ID
+                    </label>
+
+                    <input
+                      type="email"
+                      placeholder="Email address"
+                      style={{ color: "#111827" }}
+                      className={inputStyle}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* DELIVERY */}
+
+              {/* DELIVERY ADDRESS */}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* DELIVERY ADDRESS */}
+
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-neutral-700 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Delivery Address <span className="text-red-500">*</span>
+                  </label>
+
+                  <textarea
+                    placeholder="Enter complete delivery address"
+                    style={{ color: "#111827" }}
+                    className={`${inputStyle} min-h-[120px]`}
+                  />
+                </div>
+
+                {/* PIN CODE */}
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    PIN Code <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="e.g. 422001"
+                    style={{ color: "#111827" }}
+                    className={`${inputStyle} h-[48px]`}
+                  />
+                </div>
+              </div>
+
+              {/* BILLING */}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Bill / Invoice To */}
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Bill / Invoice To <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Company name"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                {/* Billing Address PIN */}
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Billing Address (PIN)
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Billing PIN"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                {/* Billing Address */}
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-neutral-700">
+                    Billing Address
+                  </label>
+
+                  <textarea
+                    placeholder="Billing address"
+                    style={{ color: "#111827" }}
+                    className={`${inputStyle} min-h-[100px]`}
+                  />
+                </div>
+              </div>
+
+              {/* GST + CIN */}
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    GST Reg No <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="GST Number"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    CIN <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="CIN Number"
+                    style={{ color: "#111827" }}
+                    className={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Test Certificate Required
+                  </label>
+
+                  <select style={{ color: "#111827" }} className={inputStyle}>
+                    <option>Yes</option>
+                    <option>No</option>
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                    <DollarSign className="h-4 w-4 text-neutral-400" />
-                    {t('orderInitiation.paymentDetails.poAmount')} <span className="text-red-500">*</span>
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Transport Cost
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-neutral-500 sm:text-sm">$</span>
-                    </div>
+
+                  <select style={{ color: "#111827" }} className={inputStyle}>
+                    <option>Paid by Customer</option>
+                    <option>Paid by Sasons</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* FILE */}
+
+              <div>
+                <label className="text-sm font-medium text-neutral-700">
+                  PO File <span className="text-red-500">*</span>
+                </label>
+
+                {!uploadedFile ? (
+                  <label className="mt-3 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center bg-neutral-50 cursor-pointer hover:bg-neutral-100 transition block">
+                    <Upload className="h-10 w-10 mx-auto text-neutral-400" />
+
+                    <p className="mt-3 text-sm text-blue-600 font-medium">
+                      Upload PO File
+                    </p>
+
+                    <p className="text-xs text-neutral-500 mt-1">
+                      PDF, DOC, XLS, PNG, JPG up to 10MB
+                    </p>
+
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                ) : (
+                  <div className="mt-3 flex items-center justify-between border border-neutral-200 rounded-xl p-4">
+                    <p className="font-medium text-neutral-900">
+                      {uploadedFile.name}
+                    </p>
+
+                    <button
+                      onClick={removeFile}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* GARMENT SPECIFICATIONS */}
+
+          {/* PAYMENT */}
+          {/* PAYMENT */}
+
+          <div className="w-full">
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
+              <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50">
+                <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-neutral-500" />
+                  Payment Details
+                </h2>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Payment Term
+                  </label>
+
+                  <select style={{ color: "#111827" }} className={inputStyle}>
+                    <option>Select term...</option>
+                    <option>Within 30 Days</option>
+                    <option>Within 60 Days</option>
+                    <option>Within 90 Days</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    PO Amount <span className="text-red-500">*</span>
+                  </label>
+
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                      ₹
+                    </span>
+
                     <input
                       type="number"
-                      min="0"
-                      step="0.01"
-                      className="w-full pl-7 pr-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      value={poAmount || ""}
+                      onChange={(e) => setPoAmount(Number(e.target.value))}
+                      style={{ color: "#111827" }}
+                      className={`${inputStyle} pl-10`}
                       placeholder="0.00"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5">
-                    <DollarSign className="h-4 w-4 text-neutral-400" />
-                    {t('orderInitiation.paymentDetails.advanceAmount')}
+                <div>
+                  <label className="text-sm font-medium text-neutral-700">
+                    Advance Amount
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-neutral-500 sm:text-sm">$</span>
-                    </div>
+
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                      ₹
+                    </span>
+
                     <input
                       type="number"
-                      min="0"
-                      step="0.01"
-                      className="w-full pl-7 pr-3 py-2 bg-white border border-neutral-300 text-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                      value={advanceAmount || ""}
+                      onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                      style={{ color: "#111827" }}
+                      className={`${inputStyle} pl-10`}
                       placeholder="0.00"
                     />
                   </div>
                 </div>
 
-                <div className="pt-4 mt-2 border-t border-neutral-100">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-neutral-500">{t('orderInitiation.paymentDetails.subtotal')}</span>
-                    <span className="font-medium text-neutral-900">$0.00</span>
+                <div className="border-t border-neutral-200 pt-5 mt-2 space-y-2">
+                  <div className="flex justify-between text-sm text-neutral-500">
+                    <span>Subtotal</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-neutral-500">{t('orderInitiation.paymentDetails.tax')}</span>
-                    <span className="font-medium text-neutral-900">$0.00</span>
+
+                  <div className="flex justify-between text-sm text-neutral-500">
+                    <span>Tax (0%)</span>
+                    <span>₹{tax.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-base font-semibold mt-4 pt-4 border-t border-neutral-100">
-                    <span className="text-neutral-900">{t('orderInitiation.paymentDetails.totalAmount')}</span>
-                    <span className="text-blue-600">$0.00</span>
+
+                  <div className="flex justify-end pt-4 mt-4 border-t border-neutral-200 text-lg font-bold">
+                    <span className="text-blue-600">
+                      ₹{totalAmount.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-
-          </div>
-        </div>
-
-        {/* Garment Specifications Card - Full Width Below */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mt-6">
-          <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-              <Package className="h-5 w-5 text-neutral-500" />
-              {t('orderInitiation.garmentSpecifications.title')}
-            </h2>
-            <button
-              onClick={addRow}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              {t('orderInitiation.garmentSpecifications.addRow')}
-            </button>
           </div>
 
-          <div className="p-0 overflow-x-auto">
-            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
-              <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                  <th className="px-4 py-3 min-w-[120px]">{t('orderInitiation.garmentSpecifications.table.sku')}</th>
-                  <th className="px-4 py-3 min-w-[100px]">{t('orderInitiation.garmentSpecifications.table.size')}</th>
-                  <th className="px-4 py-3 min-w-[150px]">{t('orderInitiation.garmentSpecifications.table.design')}</th>
-                  <th className="px-4 py-3 min-w-[120px]">{t('orderInitiation.garmentSpecifications.table.quantity')}</th>
-                  <th className="px-4 py-3 min-w-[120px]">{t('orderInitiation.garmentSpecifications.table.stockAvail')}</th>
-                  <th className="px-4 py-3 min-w-[120px]">{t('orderInitiation.garmentSpecifications.table.useStock')}</th>
-                  <th className="px-4 py-3 min-w-[120px]">{t('orderInitiation.garmentSpecifications.table.prodReq')}</th>
-                  <th className="px-4 py-3 w-16 text-center">{t('orderInitiation.garmentSpecifications.table.actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {specs.map((spec) => (
-                  <tr key={spec.id} className="hover:bg-neutral-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={spec.sku}
-                        onChange={(e) => updateRow(spec.id, 'sku', e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-neutral-300 text-neutral-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="e.g. TS-001"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={spec.size}
-                        onChange={(e) => updateRow(spec.id, 'size', e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-neutral-300 text-neutral-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="e.g. M, L, XL"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={spec.design}
-                        onChange={(e) => updateRow(spec.id, 'design', e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-neutral-300 text-neutral-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="e.g. V-Neck Logo"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        value={spec.quantity || ''}
-                        onChange={(e) => updateRow(spec.id, 'quantity', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-1.5 bg-white border border-neutral-300 text-neutral-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        value={spec.stockAvailable || ''}
-                        onChange={(e) => updateRow(spec.id, 'stockAvailable', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-1.5 bg-white border border-neutral-300 text-neutral-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
+          {/* GARMENT SPECIFICATIONS */}
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
+            <div className="border-b border-neutral-200 dark:border-slate-800 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                <Package className="h-5 w-5 text-neutral-500" />
+                Garment Specifications
+              </h2>
+
+              <button
+                onClick={addRow}
+                className="px-4 py-2 bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-100 transition"
+              >
+                <Plus className="h-4 w-4" />
+                Add Row
+              </button>
+            </div>
+
+            <div className="w-full">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-neutral-50 dark:bg-slate-800/50">
+                  <tr className="text-xs uppercase text-neutral-500 dark:text-neutral-400 font-medium">
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Item Description
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Size
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Pattern
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Quantity
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Available Quantity
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Unit Price
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
+                      Upload Photo
+                    </th>
+
+                    <th className="px-4 py-3 border-b border-neutral-200 dark:border-slate-700 text-center">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                  {specs.map((spec) => (
+                    <tr
+                      key={spec.id}
+                      className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      {/* ITEM DESCRIPTION */}
+
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={spec.itemDescription}
+                          onChange={(e) =>
+                            updateRow(
+                              spec.id,
+                              "itemDescription",
+                              e.target.value,
+                            )
+                          }
+                          className={inputStyle}
+                        />
+                      </td>
+
+                      {/* SIZE */}
+
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={spec.size}
+                          onChange={(e) =>
+                            updateRow(spec.id, "size", e.target.value)
+                          }
+                          className={inputStyle}
+                        />
+                      </td>
+
+                      {/* PATTERN */}
+
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={spec.pattern}
+                          onChange={(e) =>
+                            updateRow(spec.id, "pattern", e.target.value)
+                          }
+                          className={inputStyle}
+                        />
+                      </td>
+
+                      {/* QUANTITY */}
+
+                      <td className="px-4 py-3">
                         <input
                           type="number"
-                          min="0"
-                          value={spec.useExistingStock || ''}
-                          onChange={(e) => updateRow(spec.id, 'useExistingStock', parseInt(e.target.value) || 0)}
-                          className={`w-full px-3 py-1.5 bg-white border ${!isValidRow(spec) ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : 'border-neutral-300 focus:ring-blue-500 focus:border-blue-500'} text-neutral-900 rounded-md focus:outline-none focus:ring-2 text-sm transition-colors`}
-                          placeholder="0"
+                          value={spec.quantity}
+                          onChange={(e) =>
+                            updateRow(
+                              spec.id,
+                              "quantity",
+                              Number(e.target.value),
+                            )
+                          }
+                          className={inputStyle}
                         />
-                        {!isValidRow(spec) && (
-                          <span className="text-[10px] text-red-500 font-medium leading-tight max-w-[120px]">Invalid allocation</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="font-medium text-neutral-900">{Math.max(0, (spec.quantity || 0) - (spec.useExistingStock || 0))}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => removeRow(spec.id)}
-                        disabled={specs.length === 1}
-                        className={`p-1.5 rounded-md transition-colors ${specs.length === 1 ? 'text-neutral-300 cursor-not-allowed' : 'text-neutral-400 hover:text-red-600 hover:bg-red-50'}`}
-                        title="Remove row"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="bg-neutral-50 px-6 py-3 border-t border-neutral-200 flex justify-between items-center text-sm">
-            <span className="text-neutral-500">{t('orderInitiation.garmentSpecifications.summary.totalItems')}: <span className="font-medium text-neutral-900">{specs.length}</span></span>
-            <span className="text-neutral-500 hidden sm:inline-block italic text-xs">{t('orderInitiation.garmentSpecifications.summary.formula')}</span>
-            <span className="text-neutral-500">{t('orderInitiation.garmentSpecifications.summary.totalQuantity')}: <span className="font-medium text-neutral-900">{totalQuantity}</span></span>
-          </div>
-        </div>
+                      </td>
 
-        {/* Stock Calculation Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden mt-6">
-          <div className="border-b border-neutral-200 px-6 py-4 bg-neutral-50/50 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-              <Box className="h-5 w-5 text-neutral-500" />
-              {t('orderInitiation.stockCalculation.title')}
-            </h2>
-          </div>
-          <div className="p-4 sm:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-sm font-medium text-blue-800 mb-1">{t('orderInitiation.stockCalculation.totalRequirement')}</p>
-                <p className="text-2xl font-bold text-blue-900">{totalQuantity}</p>
-              </div>
-              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
-                <p className="text-sm font-medium text-emerald-800 mb-1">{t('orderInitiation.stockCalculation.stockAllocated')}</p>
-                <p className="text-2xl font-bold text-emerald-900">{totalStockUsed}</p>
-                <p className="text-xs text-emerald-700 mt-1">{t('orderInitiation.stockCalculation.partialFulfillment')}: {partialFulfillmentPercentage}%</p>
-              </div>
-              <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
-                <p className="text-sm font-medium text-amber-800 mb-1">{t('orderInitiation.stockCalculation.newProduction')}</p>
-                <p className="text-2xl font-bold text-amber-900">{totalProductionRequired}</p>
-                <p className="text-xs text-amber-700 mt-1">{t('orderInitiation.stockCalculation.unitsToBeManufactured')}</p>
-              </div>
+                      {/* AVAILABLE QUANTITY */}
+
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          placeholder="Available Qty"
+                          className={inputStyle}
+                        />
+                      </td>
+
+                      {/* UNIT PRICE */}
+
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={spec.unitPrice}
+                          onChange={(e) =>
+                            updateRow(
+                              spec.id,
+                              "unitPrice",
+                              Number(e.target.value),
+                            )
+                          }
+                          className={inputStyle}
+                        />
+                      </td>
+
+                      {/* PHOTO */}
+
+                      <td className="px-4 py-3">
+                        <label className="cursor-pointer inline-flex items-center justify-center px-4 py-2 bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg text-sm hover:bg-blue-100 transition whitespace-nowrap">
+                          <Upload className="h-4 w-4 mr-2" />
+
+                          <span className="truncate max-w-[100px]">
+                            {spec.photoName || "Select Photo"}
+                          </span>
+
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={(e) =>
+                              updateRow(
+                                spec.id,
+                                "photoName",
+                                e.target.files?.[0]?.name || "",
+                              )
+                            }
+                          />
+                        </label>
+                      </td>
+
+                      {/* DELETE */}
+
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => removeRow(spec.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
+          {/* BOTTOM ACTION BUTTONS */}
 
-            <div className="mt-6 pt-6 border-t border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="flex-1">
-                {!isFormValid && (
-                  <p className="text-sm text-red-600 font-medium flex items-center gap-1.5"><AlertCircle className="h-4 w-4" /> Please resolve stock allocation errors before proceeding.</p>
-                )}
-                {isFormValid && totalProductionRequired === 0 && totalQuantity > 0 && (
-                  <p className="text-sm text-emerald-600 font-medium flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Order can be fulfilled entirely using existing stock.</p>
-                )}
-              </div>
+          <div className="w-full flex justify-end mt-6 border-t border-neutral-200 pt-6">
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={() => router.push('/bom-calculation')}
-                disabled={!isFormValid || totalProductionRequired === 0 || totalQuantity === 0}
-                className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${!isFormValid || totalProductionRequired === 0 || totalQuantity === 0
-                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                onClick={() => alert("Draft Saved Successfully")}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition"
               >
-                {t('orderInitiation.stockCalculation.calculateBom')}
-                <Calculator className="h-4 w-4" />
+                Save as Draft
+              </button>
+
+              <button
+                onClick={() => router.push("/drafts")}
+                className="px-5 py-2.5 border border-neutral-300 bg-white rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition"
+              >
+                View Drafts
+              </button>
+
+              <button
+                onClick={handleSubmitOrder}
+                className="px-5 py-2.5 bg-blue-600 ..."
+              >
+                Submit Order
+              </button>
+
+              <button
+                onClick={() => router.push("/stock-calculation")}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+              >
+                Go to Stock Calculation →
               </button>
             </div>
           </div>
         </div>
-      </section>
-
+      </div>
     </div>
   );
 }

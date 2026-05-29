@@ -3,6 +3,7 @@
   "sidebar": {
     "dashboard": "मुख्य नियंत्रण फलक",
     "orderInitiation": "आदेश प्रारंभ",
+    "stockCalculation": "साठा गणना",
     "bomCalculation": "साहित्य सूची (BOM) गणना",
     "inventoryCheck": "मालसाठा तपासणी",
     "procurement": "खरेदी",
@@ -18,6 +19,11 @@
     "changeLater": "तुम्ही हे नंतर सेटिंग्जमध्ये बदलू शकता."
   },
   "dashboard": {
+    "sidebar": {
+      "accounts": "हिशोब विभाग",
+      "settings": "मांडणी पर्याय",
+      "underDevelopment": "हा विभाग सध्या विकसनशील आहे."
+    },
     "welcome": "पुन्हा आपले स्वागत आहे. आज कारखान्यामध्ये सुरू असलेल्या घडामोडींची माहिती खालीलप्रमाणे आहे.",
     "metrics": {
       "totalOrders": "एकूण आदेश",
@@ -87,60 +93,78 @@
   "orderInitiation": {
     "tracker": {
       "orderInitiation": "आदेश प्रारंभ",
+      "stockCheck": "स्टॉक तपासणी",
       "bomCalculation": "साहित्य सूची गणना",
       "inventoryCheck": "मालसाठा तपासणी",
       "procurement": "खरेदी",
       "materialAllocation": "साहित्य वाटप",
       "materialRelease": "साहित्य वितरण",
-      "production": "उत्पादन"
+      "production": "उत्पादन",
+      "verification": "वेष्टन आणि पडताळणी",
+      "approval": "मंजुरी",
+      "cutting": "कापणी (Cutting)",
+      "stitching": "शिवणकाम (Stitching)",
+      "fusing": "फ्युझिंग (Fusing)",
+      "kaj-button": "काज-बटण (Kaj Button)",
+      "finishing": "अंतिम प्रक्रिया (Finishing)",
+      "qc": "गुणवत्ता नियंत्रण",
+      "packing": "वेष्टन",
+      "quality": "गुणवत्ता नियंत्रण",
+      "inventory": "मालसाठा",
+      "fabric": "कापड",
+      "thread": "धागा",
+      "zippers": "चैन",
+      "buttons": "बटणे",
+      "collar/cuff": "कॉलर/कफ",
+      "hooks": "हुक्स"
     },
     "header": {
-      "title": "आदेश प्रारंभ",
-      "description": "नवीन खरेदी आदेश आणि पोशाख तपशील तयार करा",
-      "cancel": "रद्द करा",
-      "saveOrder": "आदेश जतन करा"
+      "title": "ऑर्डर सुरूवात",
+      "description": "खरेदी ऑर्डर तयार आणि व्यवस्थापित करा"
     },
     "purchaseOrderInfo": {
-      "title": "खरेदी आदेश माहिती",
+      "title": "खरेदी ऑर्डर माहिती",
       "poNumber": "पीओ क्रमांक",
       "customerName": "ग्राहकाचे नाव",
-      "officeAddress": "कार्यालयीन पत्ता",
-      "officeAddressPlaceholder": "मुख्यालय किंवा बिलिंग पत्ता",
-      "deliveryAddress": "वितरण पत्ता",
-      "deliveryAddressPlaceholder": "पोशाख कुठे वितरित केले जावेत?",
       "poDate": "पीओ तारीख",
       "deliveryDate": "वितरण तारीख",
-      "uploadPoFile": "पीओ फाईल अपलोड करा",
-      "uploadInstructions": "फाईल अपलोड करा किंवा ड्रॅग आणि ड्रॉप करा",
-      "uploadConstraints": "पीडीएफ, डॉक्स, जेपीजी १० एमबी पर्यंत"
+      "contactPerson": "संपर्क व्यक्तीचे नाव",
+      "phoneNumber": "फोन नंबर",
+      "emailId": "ईमेल आयडी",
+      "deliveryAddress": "वितरण पत्ता",
+      "deliveryAddressPin": "वितरण पत्ता (पिन)",
+      "billTo": "बिल / चलन",
+      "billingAddressPin": "बिलिंग पत्ता (पिन)",
+      "billingAddress": "बिलिंग पत्ता",
+      "gstRegNo": "जीएसटी नोंदणी क्रमांक",
+      "cin": "सीआयएन",
+      "testCertificate": "चाचणी प्रमाणपत्र आवश्यक",
+      "transportCost": "वाहतूक खर्च",
+      "poFile": "पीओ फाइल",
+      "uploadPoFile": "पीओ फाइल अपलोड करा",
+      "uploadConstraints": "PDF, DOCX, XLS, PNG, JPG 10MB पर्यंत"
     },
     "paymentDetails": {
-      "title": "देय तपशील",
-      "paymentTerm": "देय मुदत",
+      "title": "पेमेंट तपशील",
+      "paymentTerm": "पेमेंट मुदत",
       "selectTerm": "मुदत निवडा...",
       "poAmount": "पीओ रक्कम",
       "advanceAmount": "आगाऊ रक्कम",
-      "subtotal": "उपएकूण",
-      "tax": "कर (५%)",
+      "subtotal": "उप-एकूण",
+      "tax": "कर (0%)",
       "totalAmount": "एकूण रक्कम"
     },
     "garmentSpecifications": {
-      "title": "पोशाख तपशील",
-      "addRow": "पंक्ती जोडा",
+      "title": "गारमेंट तपशील",
+      "addRow": "ओळ जोडा",
       "table": {
-        "sku": "माल ओळख क्रमांक",
+        "itemDescription": "वस्तूचे वर्णन",
         "size": "आकार",
-        "design": "आरेखन",
         "quantity": "प्रमाण",
-        "stockAvail": "उपलब्ध साठा",
-        "useStock": "साठा वापरा",
-        "prodReq": "उत्पादन आवश्यकता",
-        "actions": "कृती"
-      },
-      "summary": {
-        "totalItems": "एकूण वस्तू",
-        "totalQuantity": "एकूण प्रमाण",
-        "formula": "उत्पादन प्रमाण = आदेश प्रमाण - वापरलेला विद्यमान साठा"
+        "unitPrice": "एकक किंमत",
+        "pattern": "पॅटर्न",
+        "uploadPhoto": "फोटो अपलोड करा",
+        "action": "कृती"
       }
     },
     "stockCalculation": {
@@ -151,6 +175,12 @@
       "newProduction": "नवीन उत्पादन आवश्यकता",
       "unitsToBeManufactured": "उत्पादित केले जाणारे नग",
       "calculateBom": "साहित्य सूची गणना करा"
+    },
+    "footer": {
+      "saveDraft": "ड्राफ्ट म्हणून सेव्ह करा",
+      "viewDrafts": "ड्राफ्ट्स पहा",
+      "submitOrder": "ऑर्डर सबमिट करा",
+      "goToStockCalculation": "स्टॉक गणनेवर जा →"
     }
   },
   "actions": {
@@ -160,7 +190,8 @@
     "viewProfile": "प्रोफाइल पहा",
     "deleteAccount": "खाते हटवा",
     "search": "शोधा...",
-    "logout": "बाहेर पडा"
+    "logout": "बाहेर पडा",
+    "actions": "कृती"
   },
   "bom": {
     "title": "साहित्य सूची (BOM) गणना",
@@ -189,7 +220,57 @@
     "criticalShortages": "चिंताजनक तूट",
     "readiness": "सज्जता स्थिती",
     "materialsHeader": "साहित्य यादी",
-    "searchPlaceholder": "साहित्य शोधा..."
+    "searchPlaceholder": "साहित्य शोधा...",
+    "noMaterialsFound": "तुमच्या निकषांशी जुळणारे कोणतेही साहित्य सापडले नाही.",
+    "showing": "दर्शवित आहे",
+    "to": "ते",
+    "of": "पैकी",
+    "status": {
+      "sufficient": "पुरेसे",
+      "lowstock": "कमी स्टॉक",
+      "critical": "चिंताजनक",
+      "procurementrequired": "खरेदी आवश्यक",
+      "readyforallocation": "वाटपासाठी सज्ज"
+    }
+  },
+  "inventory": {
+    "materials": {
+      "table": {
+        "headers": {
+          "name": "साहित्याचे नाव",
+          "category": "वर्ग",
+          "qty": "उपलब्ध प्रमाण"
+        }
+      },
+      "items": {
+        "MAT-001": "सुती कापड (पांढरे)",
+        "MAT-002": "पॉलिस्टर धागा (गडद निळा)",
+        "MAT-003": "धातूची चैन १५ सेमी",
+        "MAT-004": "प्लॅस्टिक बटणे (काळे)",
+        "MAT-005": "डेनिम कापड (निळे)",
+        "MAT-006": "प्रमाणित कॉलर (पांढरे)",
+        "MAT-007": "धातूचे हुक्स (चांदीसारखे)",
+        "MAT-008": "लिनेन कापड (तपकिरी)",
+        "PR-2026-101": "डेनिम कापड (निळे)",
+        "PR-2026-102": "पॉलिस्टर धागा (गडद निळा)",
+        "PR-2026-103": "धातूचे हुक्स (चांदीसारखे)"
+      }
+    },
+    "categories": {
+      "allcategories": "सर्व श्रेणी",
+      "fabric": "कापड",
+      "thread": "धागा",
+      "zippers": "चैन",
+      "buttons": "बटणे",
+      "collar/cuff": "कॉलर/कफ",
+      "hooks": "हुक्स"
+    },
+    "units": {
+      "meters": "मीटर",
+      "spools": "रिळा",
+      "pieces": "नग",
+      "units": "नग"
+    }
   },
   "procurement": {
     "title": "खरेदी आणि तूट निवारण",
@@ -202,31 +283,209 @@
     "fulfillment": "पूर्तता स्थिती",
     "requestsHeader": "खरेदी विनंत्या",
     "supplierSummary": "विक्रेता निर्देशिका विहंगावलोकन",
-    "procCompletion": "खरेदी पूर्णता"
+    "procCompletion": "खरेदी पूर्णता",
+    "allPriorities": "सर्व प्राथमिकता",
+    "allStatuses": "सर्व स्थिती",
+    "low": "कमी",
+    "medium": "मध्यम",
+    "high": "उच्च",
+    "critical": "चिंताजनक",
+    "pending": "प्रलंबित",
+    "vendorAssigned": "विक्रेता नियुक्त",
+    "ordered": "आदेश दिलेला",
+    "awaitingDelivery": "वितरणाची प्रतीक्षा",
+    "reservationAllocation": "आरक्षण आणि वाटप",
+    "materialAllocation": "साहित्य वाटप",
+    "materialAllocationDesc": "उत्पादनासाठी गोदामातील मालसाठा आरक्षित आणि गोठवून ठेवा (Freeze करा)",
+    "allocateMaterials": "साहित्य वाटप करा",
+    "freezeSelected": "निवडलेले गोठवून ठेवा (Freeze)",
+    "proceedToRelease": "वितरणासाठी पुढे जा",
+    "totalMaterialsSelected": "निवडलेले एकूण साहित्य",
+    "allocatedMaterials": "वाटप केलेले साहित्य",
+    "frozenMaterials": "गोठवलेले (Freeze) साहित्य",
+    "productionReadiness": "उत्पादन सज्जता",
+    "linkedPO": "संबंधित पीओ (Linked PO)",
+    "allocationQty": "वाटप प्रमाण",
+    "freezeStatus": "गोठवलेली स्थिती (Freeze Status)",
+    "status": "स्थिती",
+    "exceedsAvailable": "उपलब्ध प्रमाणापेक्षा जास्त",
+    "req": "आवश्यक",
+    "reserved": "आरक्षित",
+    "unlocked": "खुले (Unlocked)",
+    "frozen": "गोठवलेले (Frozen)",
+    "allocated": "वाटप केलेले",
+    "available": "उपलब्ध",
+    "allocatedSuccess": "निवडलेले साहित्य यशस्वीरित्या वाटप केले गेले. मालसाठा गोठवण्यासाठी (Freeze) पुढे जा.",
+    "frozenSuccess": "निवडलेले साहित्य यशस्वीरित्या गोठवले गेले आणि उत्पादन वितरणासाठी सज्ज आहे.",
+    "awaitingAllocation": "वाटपाची प्रतीक्षा आहे",
+    "fullyReady": "वितरणासाठी पूर्णपणे सज्ज",
+    "partiallyReady": "अंशतः सज्ज",
+    "materialRelease": "साहित्य वितरण",
+    "materialReleaseDesc": "गोदामातील गोठवलेला (Frozen) माल उत्पादनासाठी वितरित करा",
+    "releaseToProduction": "उत्पादनासाठी वितरित करा",
+    "trackProduction": "उत्पादन मागोवा घ्या",
+    "releaseId": "वितरण आयडी",
+    "releaseDate": "वितरण तारीख",
+    "releaseTime": "वितरण वेळ",
+    "storeManager": "स्टोअर व्यवस्थापक",
+    "managerName": "व्यवस्थापकाचे नाव",
+    "floorSupervisor": "फ्लोर पर्यवेक्षक",
+    "supervisorName": "पर्यवेक्षकाचे नाव",
+    "selectSupervisor": "पर्यवेक्षक निवडा",
+    "productionFloor": "उत्पादन फ्लोर",
+    "selectProductionFloor": "उत्पादन फ्लोर निवडा",
+    "floor1": "फ्लोर १ - कर्तन (Cutting)",
+    "floor2": "फ्लोर २ - शिवणकाम (Stitching)",
+    "floor3": "फ्लोर ३ - अंतिम प्रक्रिया (Finishing)",
+    "floor4": "फ्लोर ४ - गुणवत्ता नियंत्रण",
+    "notesOptional": "नोंदी (वैकल्पिक)",
+    "specialInstructions": "उत्पादन फ्लोरसाठी काही विशिष्ट सूचना किंवा टिप्पण्या",
+    "totalFrozenMaterials": "एकूण गोठवलेल्या वस्तू",
+    "releasedMaterials": "वितरित वस्तू",
+    "pendingRelease": "वितरण प्रलंबित",
+    "releaseStatus": "वितरण स्थिती",
+    "releasedSuccessTitle": "साहित्य यशस्वीरित्या वितरित केले",
+    "releasedSuccessDesc": "मालसाठा उत्पादन फ्लोरसाठी वितरित केला गेला आहे.",
+    "releaseSummary": "वितरण सारांश",
+    "releasedQty": "वितरित प्रमाण",
+    "issueInventory": "उत्पादनासाठी मालसाठा वितरित करा",
+    "frozenQty": "गोठवलेले प्रमाण",
+    "destination": "गंतव्य",
+    "destinations": {
+      "line_1_-_stitching": "लाईन १ - शिवणकाम",
+      "line_2_-_assembly": "लाईन २ - असेंब्ली"
+    },
+    "exceedsFrozen": "गोठवलेल्या प्रमाणापेक्षा जास्त",
+    "readyForRelease": "वितरणासाठी सज्ज",
+    "released": "वितरित केले",
+    "releaseSuccess": "साहित्य यशस्वीरित्या वितरित केले आणि उत्पादन विभागाकडे पाठवले.",
+    "awaitingRelease": "वितरणाची प्रतीक्षा आहे",
+    "fullyReleased": "पूर्णपणे वितरित",
+    "partiallyReleased": "अंशतः वितरित",
+    "floor_floor_1_-_cutting": "फ्लोर १ - कर्तन (Cutting)",
+    "floor_floor_2_-_stitching": "फ्लोर २ - शिवणकाम (Stitching)",
+    "floor_floor_3_-_finishing": "फ्लोर ३ - अंतिम प्रक्रिया (Finishing)",
+    "floor_floor_4_-_quality_control": "फ्लोर ४ - गुणवत्ता नियंत्रण",
+    "materials": {
+      "MAT-001": {
+        "name": "सुती कापड (पांढरे)"
+      },
+      "MAT-002": {
+        "name": "पॉलिस्टर धागा (गडद निळा)"
+      },
+      "MAT-003": {
+        "name": "धातूची चैन १५ सेमी"
+      },
+      "MAT-004": {
+        "name": "प्लॅस्टिक बटणे (काळे)"
+      },
+      "MAT-005": {
+        "name": "डेनिम कापड (निळे)"
+      },
+      "MAT-006": {
+        "name": "प्रमाणित कॉलर (पांढरे)"
+      },
+      "MAT-007": {
+        "name": "धातूचे हुक्स (चांदीसारखे)"
+      },
+      "MAT-008": {
+        "name": "लिनेन कापड (तपकिरी)"
+      }
+    }
   },
   "production": {
     "title": "उत्पादन मागोवा",
     "subtitle": "उत्पादन टप्प्यांचा मागोवा घ्या -",
     "progress": "एकूण प्रगती",
+    "overallProgress": "एकूण प्रगती",
+    "stagesCompleted": "टप्पे पूर्ण झाले",
     "total": "एकूण नग",
-    "cutting": "कर्तन",
-    "stitching": "शिवणकाम",
-    "fusing": "फ्युझिंग",
+    "cutting": "कर्तन (Cutting)",
+    "stitching": "शिवणकाम (Stitching)",
+    "fusing": "फ्युझिंग (Fusing)",
     "kajButton": "काज बटन",
-    "finishing": "अंतिम हातकाम",
-    "status": "उत्पादनाची प्रतीक्षा आहे"
+    "kaj-button": "काज बटन (Kaj Button)",
+    "finishing": "अंतिम हातकाम (Finishing)",
+    "status": "उत्पादनाची प्रतीक्षा आहे",
+    "proceedQuality": "गुणवत्ता आणि वेष्टन वर जा",
+    "proceedToRelease": "वितरणासाठी पुढे जा",
+    "unitsProcessed": "नग प्रक्रियेत",
+    "update": "अद्यतनित करा",
+    "supervisor": "पर्यवेक्षकाचे नाव",
+    "supervisorPlaceholder": "पर्यवेक्षकाचे नाव प्रविष्ट करा",
+    "completedQty": "पूर्ण झालेले प्रमाण",
+    "startTime": "सुरुवातीची वेळ",
+    "endTime": "समाप्तीची वेळ",
+    "remarksPlaceholder": "टप्प्याशी संबंधित नोंदी",
+    "startStage": "टप्पा सुरू करा",
+    "completeStage": "टप्पा पूर्ण करा",
+    "stageLocked": "टप्पा लॉक केला (कृती पूर्ण)",
+    "stages": {
+      "cutting": {
+        "desc": "नमुन्यानुसार कापड कापणी"
+      },
+      "stitching": {
+        "desc": "तुकडे शिवणे आणि जोडणे"
+      },
+      "fusing": {
+        "desc": "फ्युझिबल इंटरलायनिंग लावा"
+      },
+      "kaj-button": {
+        "desc": "काज आणि बटण जोडणे"
+      },
+      "finishing": {
+        "desc": "अंतिम हातकाम आणि इस्त्री"
+      }
+    }
   },
   "quality": {
     "title": "गुणवत्ता आणि वेष्टन",
     "subtitle": "उत्पादनोत्तर पडताळणी आणि वितरणाची तयारी -",
     "progress": "एकूण प्रगती",
+    "overallProgress": "एकूण प्रगती",
+    "stagesCompleted": "टप्पे पूर्ण झाले",
     "total": "एकूण नग",
     "passed": "गुणवत्ता चाचणी उत्तीर्ण",
     "failed": "गुणवत्ता चाचणी अनुत्तीर्ण",
     "check": "गुणवत्ता तपासणी",
+    "qc": "गुणवत्ता तपासणी",
     "packing": "वेष्टन",
     "verification": "वेष्टन आणि पडताळणी",
-    "approval": "मंजुरी"
+    "approval": "मंजुरी",
+    "stageComplete": "टप्पा पूर्ण झाला",
+    "actionRequired": "कृती आवश्यक",
+    "pendingValidation": "पडताळणी प्रलंबित",
+    "dataEntry": "माहिती प्रविष्ट करा",
+    "verificationSupervisor": "पडताळणी पर्यवेक्षक",
+    "itemsChecked": "तपासलेल्या वस्तू",
+    "qcRequired": "गुणवत्ता तपासणी आवश्यक",
+    "qcDesc": "कृपया पोशाखांची गुणवत्ता मानकांनुसार तपासणी करा. अयशस्वी वस्तू दुरुस्तीसाठी पाठवल्या जातील.",
+    "qcStatus": "गुणवत्ता स्थिती",
+    "pass": "उत्तीर्ण (मानकांचे पालन करते)",
+    "fail": "अनुत्तीर्ण (दुरुस्ती आवश्यक)",
+    "defectNotes": "त्रुटी नोंदी",
+    "defectNotesPlaceholder": "त्रुटीचे विशिष्ट तपशील",
+    "stages": {
+      "qc": {
+        "desc": "त्रुटी आणि मानकांसाठी तपासणी करा"
+      },
+      "packing": {
+        "desc": "तयार उत्पादने पॅक करा"
+      },
+      "verification": {
+        "desc": "अंतिम मंजुरीपूर्वी शिपिंग मॅनिफेस्टसह वेष्टन केलेल्या प्रमाणाची पडताळणी करा."
+      },
+      "approval": {
+        "name": "अंतिम वहन मंजुरी",
+        "desc": "अनुपालन दस्तऐवज तयार करण्यापूर्वी अधिकृत स्वाक्षरी आवश्यक आहे."
+      }
+    },
+    "approvedBy": "अधिकृत मंजुरी देणारा",
+    "dispatchNotes": "मंजुरी अटी आणि नोंदी",
+    "dispatchNotesPlaceholder": "या जहाजासाठी काही विशिष्ट अटी...",
+    "grantApproval": "मंजुरी द्या",
+    "verifiedQty": "पडताळलेले प्रमाण",
+    "verifiedQtyPlaceholder": "भौतिक मोजणी प्रविष्ट करा"
   },
   "logistics": {
     "title": "वाहतूक व्यवस्थापन",
@@ -247,6 +506,37 @@
     "targetQty": "लक्ष्य प्रमाण",
     "cartonCount": "कार्टन संख्या",
     "destination": "गंतव्य स्थान",
-    "confirmButton": "वेष्टन निश्चित आणि पडताळणी करा"
+    "confirmButton": "वेष्टन निश्चित आणि पडताळणी करा",
+    "complianceDocs": "अनुपालन आणि वहन दस्तऐवज",
+    "complianceDocsDesc": "आवश्यक सीमाशुल्क, वेष्टन सूची आणि व्यावसायिक बीजक अपलोड करा.",
+    "uploadedDocs": "अपलोड केलेले दस्तऐवज",
+    "noDocs": "अद्याप कोणतेही दस्तऐवज अपलोड केलेले नाहीत",
+    "confirmDocs": "दस्तऐवजांची खात्री करा आणि पुढे जा",
+    "dispatchDetails": "वहन तपशील",
+    "dispatchDetailsDesc": "कुरिअर नियुक्त करा आणि प्रत्यक्ष वहन सुरू करा.",
+    "courierPartner": "कुरिअर / मालवाहतूक भागीदार",
+    "selectPartner": "भागीदार निवडा...",
+    "trackingNumber": "ट्रॅकिंग / AWB क्रमांक",
+    "eta": "आगमनाची अंदाजित वेळ (ETA)",
+    "dispatching": "वहन प्रक्रियेत आहे...",
+    "markDispatched": "पाठवले म्हणून चिन्हांकित करा",
+    "pod": "वितरणाचा पुरावा (POD)",
+    "podDesc": "वितरण पुष्टीकरण आणि प्राप्तकर्त्याची स्वाक्षरी अपलोड करा.",
+    "podSuccess": "वितरणाचा पुरावा यशस्वीरित्या अपलोड केला",
+    "uploadPod": "वितरणाचा पुरावा दस्तऐवज अपलोड करा",
+    "processingDoc": "दस्तऐवज प्रक्रिया करत आहे...",
+    "confirmDelivery": "वितरणाची खात्री करा",
+    "financialClosure": "आर्थिक सांगता",
+    "financialClosureDesc": "अंतिम वहन खर्च नोंदवा आणि पूर्ण झालेली ऑर्डर संग्रहित करा.",
+    "freightCost": "एकूण मालवाहतूक खर्च ($)",
+    "customsDuties": "सीमाशुल्क आणि कर ($)",
+    "archiving": "ऑर्डर संग्रहित करत आहे...",
+    "closeOrder": "ऑर्डर बंद करा आणि संग्रहित करा",
+    "fulfilled": "ऑर्डर पूर्ण आणि संग्रहित झाली",
+    "fulfilledDesc": "PO-2026-004 यशस्वीरित्या वितरित आणि बंद केली गेली आहे.",
+    "lockedUntilDispatch": "वहन होईपर्यंत कुलूपबंद",
+    "manifestAutoDesc": "गुणवत्ता आणि वेष्टन विभागाकडून मॅनिफेस्ट आपोआप तयार केला गेला.",
+    "manifestSummary": "मॅनिफेस्ट सारांश",
+    "verifying": "पडताळणी करत आहे..."
   }
 }

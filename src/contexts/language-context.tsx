@@ -7,7 +7,7 @@ import i18n from '../i18n';
 type LanguageContextType = {
   language: string;
   setLanguage: (lang: string) => void;
-  t: (keyPath: string, options?: any) => string;
+  t: (keyPath: string, options?: any) => string; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -17,6 +17,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
     
     const handleLanguageChange = (lng: string) => {

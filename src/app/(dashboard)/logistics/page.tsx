@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from 'react';
+
+import React, { useState, useCallback } from 'react';
 import { Truck, CheckCircle2 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import LogisticsWorkflowHeader from '@/components/logistics/LogisticsWorkflowHeader';
@@ -17,17 +18,20 @@ export default function LogisticsPage() {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [orderArchived, setOrderArchived] = useState(false);
 
-  const handleStepComplete = (stepId: number) => {
-    if (!completedSteps.includes(stepId)) {
-      setCompletedSteps(prev => [...prev, stepId]);
-    }
+  const handleStepComplete = useCallback((stepId: number) => {
+    setCompletedSteps(prev => {
+      if (!prev.includes(stepId)) {
+        return [...prev, stepId];
+      }
+      return prev;
+    });
     // Auto advance to next step if not the last one
     if (stepId < 6) {
       setCurrentStep(stepId + 1);
     } else {
       setOrderArchived(true);
     }
-  };
+  }, []);
 
   const renderActiveSection = () => {
     switch (currentStep) {
@@ -55,11 +59,11 @@ export default function LogisticsPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
             <Truck className="h-6 w-6 text-indigo-600" />
             {t('logistics.title') || 'Logistics Management'}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">{t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}</p>
         </div>
       </div>
 
@@ -69,7 +73,7 @@ export default function LogisticsPage() {
       />
 
       {orderArchived ? (
-        <div className="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden mt-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-emerald-200 overflow-hidden mt-6">
           <div className="border-b border-emerald-100 px-6 py-5 bg-emerald-50/50 flex flex-col items-center text-center">
             <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />

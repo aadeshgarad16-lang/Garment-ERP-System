@@ -1,8 +1,10 @@
 {
   "appName": "Sasons ERP",
   "sidebar": {
+    "mainMenu": "Main Menu",
     "dashboard": "Dashboard",
     "orderInitiation": "Order Initiation",
+    "stockCalculation": "Stock Check",
     "bomCalculation": "BOM Calculation",
     "inventoryCheck": "Inventory Check",
     "procurement": "Procurement",
@@ -10,7 +12,8 @@
     "qualityPacking": "Quality & Packing",
     "logistics": "Logistics",
     "accounts": "Accounts",
-    "settings": "Settings"
+    "settings": "Settings",
+    "store": "Store"
   },
   "languageSelection": {
     "title": "Select Your Language",
@@ -18,6 +21,11 @@
     "changeLater": "You can change this later in Settings."
   },
   "dashboard": {
+    "sidebar": {
+      "accounts": "Accounts",
+      "settings": "Settings",
+      "underDevelopment": "This module is currently under development."
+    },
     "welcome": "Welcome back. Here's what's happening across the facility today.",
     "metrics": {
       "totalOrders": "Total Orders",
@@ -87,32 +95,56 @@
   "orderInitiation": {
     "tracker": {
       "orderInitiation": "Order Initiation",
+      "stockCheck": "Stock Check",
       "bomCalculation": "BOM Calculation",
       "inventoryCheck": "Inventory Check",
       "procurement": "Procurement",
       "materialAllocation": "Material Allocation",
       "materialRelease": "Material Release",
-      "production": "Production"
+      "production": "Production",
+      "verification": "Packing & Verification",
+      "approval": "Approval",
+      "cutting": "Cutting",
+      "stitching": "Stitching",
+      "fusing": "Fusing",
+      "kaj-button": "Kaj Button",
+      "finishing": "Finishing",
+      "qc": "Quality Control",
+      "packing": "Packing",
+      "quality": "Quality Control",
+      "inventory": "Inventory",
+      "fabric": "Fabric",
+      "thread": "Thread",
+      "zippers": "Zippers",
+      "buttons": "Buttons",
+      "collar/cuff": "Collar/Cuff",
+      "hooks": "Hooks"
     },
     "header": {
       "title": "Order Initiation",
-      "description": "Create a new purchase order and garment specification",
-      "cancel": "Cancel",
-      "saveOrder": "Save Order"
+      "description": "Create and manage purchase orders"
     },
     "purchaseOrderInfo": {
       "title": "Purchase Order Information",
       "poNumber": "PO Number",
       "customerName": "Customer Name",
-      "officeAddress": "Office Address",
-      "officeAddressPlaceholder": "Headquarters or billing address",
-      "deliveryAddress": "Delivery Address",
-      "deliveryAddressPlaceholder": "Where should the garments be delivered?",
       "poDate": "PO Date",
       "deliveryDate": "Delivery Date",
+      "contactPerson": "Contact Person Name",
+      "phoneNumber": "Phone Number",
+      "emailId": "Email ID",
+      "deliveryAddress": "Delivery Address",
+      "deliveryAddressPin": "Delivery Address (PIN)",
+      "billTo": "Bill / Invoice To",
+      "billingAddressPin": "Billing Address (PIN)",
+      "billingAddress": "Billing Address",
+      "gstRegNo": "GST Reg No",
+      "cin": "CIN",
+      "testCertificate": "Test Certificate Required",
+      "transportCost": "Transport Cost",
+      "poFile": "PO File",
       "uploadPoFile": "Upload PO File",
-      "uploadInstructions": "Upload a file or drag and drop",
-      "uploadConstraints": "PDF, DOCX, JPG up to 10MB"
+      "uploadConstraints": "PDF, DOCX, XLS, PNG, JPG up to 10MB"
     },
     "paymentDetails": {
       "title": "Payment Details",
@@ -121,26 +153,20 @@
       "poAmount": "PO Amount",
       "advanceAmount": "Advance Amount",
       "subtotal": "Subtotal",
-      "tax": "Tax (5%)",
+      "tax": "Tax (0%)",
       "totalAmount": "Total Amount"
     },
     "garmentSpecifications": {
       "title": "Garment Specifications",
       "addRow": "Add Row",
       "table": {
-        "sku": "SKU",
-        "size": "SIZE",
-        "design": "DESIGN",
-        "quantity": "QUANTITY",
-        "stockAvail": "STOCK AVAIL",
-        "useStock": "USE STOCK",
-        "prodReq": "PROD. REQ.",
-        "actions": "ACTIONS"
-      },
-      "summary": {
-        "totalItems": "Total Items",
-        "totalQuantity": "Total Quantity",
-        "formula": "Production Qty = Order Qty - Existing Stock Used"
+        "itemDescription": "Item Description",
+        "size": "Size",
+        "quantity": "Quantity",
+        "unitPrice": "Unit Price",
+        "pattern": "Pattern",
+        "uploadPhoto": "Upload Photo",
+        "action": "Action"
       }
     },
     "stockCalculation": {
@@ -151,6 +177,12 @@
       "newProduction": "New Production Requirement",
       "unitsToBeManufactured": "units to be manufactured",
       "calculateBom": "Calculate BOM"
+    },
+    "footer": {
+      "saveDraft": "Save as Draft",
+      "viewDrafts": "View Drafts",
+      "submitOrder": "Submit Order",
+      "goToStockCalculation": "Go to Stock Calculation →"
     }
   },
   "actions": {
@@ -160,7 +192,8 @@
     "viewProfile": "View Profile",
     "deleteAccount": "Delete Account",
     "search": "Search...",
-    "logout": "Logout"
+    "logout": "Logout",
+    "actions": "Actions"
   },
   "bom": {
     "title": "BOM Calculation",
@@ -189,7 +222,57 @@
     "criticalShortages": "Critical Shortages",
     "readiness": "Readiness Status",
     "materialsHeader": "Materials Inventory",
-    "searchPlaceholder": "Search materials..."
+    "searchPlaceholder": "Search materials...",
+    "noMaterialsFound": "No materials found matching your criteria.",
+    "showing": "Showing",
+    "to": "to",
+    "of": "of",
+    "status": {
+      "sufficient": "Sufficient",
+      "lowstock": "Low Stock",
+      "critical": "Critical",
+      "procurementrequired": "Procurement Required",
+      "readyforallocation": "Ready for Allocation"
+    }
+  },
+  "inventory": {
+    "materials": {
+      "table": {
+        "headers": {
+          "name": "Material Name",
+          "category": "Category",
+          "qty": "Available Qty"
+        }
+      },
+      "items": {
+        "MAT-001": "Cotton Fabric (White)",
+        "MAT-002": "Polyester Thread (Navy)",
+        "MAT-003": "Metal Zippers 15cm",
+        "MAT-004": "Plastic Buttons (Black)",
+        "MAT-005": "Denim Fabric (Blue)",
+        "MAT-006": "Standard Collar (White)",
+        "MAT-007": "Metal Hooks (Silver)",
+        "MAT-008": "Linen Fabric (Beige)",
+        "PR-2026-101": "Denim Fabric (Blue)",
+        "PR-2026-102": "Polyester Thread (Navy)",
+        "PR-2026-103": "Metal Hooks (Silver)"
+      }
+    },
+    "categories": {
+      "allcategories": "All Categories",
+      "fabric": "Fabric",
+      "thread": "Thread",
+      "zippers": "Zippers",
+      "buttons": "Buttons",
+      "collar/cuff": "Collar/Cuff",
+      "hooks": "Hooks"
+    },
+    "units": {
+      "meters": "meters",
+      "spools": "spools",
+      "pieces": "pieces",
+      "units": "units"
+    }
   },
   "procurement": {
     "title": "Procurement & Shortage Resolution",
@@ -202,31 +285,209 @@
     "fulfillment": "Fulfillment Status",
     "requestsHeader": "Procurement Requests",
     "supplierSummary": "Supplier Directory Summary",
-    "procCompletion": "Procurement Completion"
+    "procCompletion": "Procurement Completion",
+    "allPriorities": "All Priorities",
+    "allStatuses": "All Statuses",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "pending": "Pending",
+    "vendorAssigned": "Vendor Assigned",
+    "ordered": "Ordered",
+    "awaitingDelivery": "Awaiting Delivery",
+    "reservationAllocation": "Reservation & Allocation",
+    "materialAllocation": "Material Allocation",
+    "materialAllocationDesc": "Reserve and freeze warehouse inventory for production",
+    "allocateMaterials": "Allocate Materials",
+    "freezeSelected": "Freeze Selected",
+    "proceedToRelease": "Proceed to Release",
+    "totalMaterialsSelected": "Total Materials Selected",
+    "allocatedMaterials": "Allocated Materials",
+    "frozenMaterials": "Frozen Materials",
+    "productionReadiness": "Production Readiness",
+    "linkedPO": "Linked PO",
+    "allocationQty": "Allocation Qty",
+    "freezeStatus": "Freeze Status",
+    "status": "Status",
+    "exceedsAvailable": "Exceeds available",
+    "req": "Req",
+    "reserved": "Reserved",
+    "unlocked": "Unlocked",
+    "frozen": "Frozen",
+    "allocated": "Allocated",
+    "available": "Available",
+    "allocatedSuccess": "Selected materials allocated successfully. Proceed to freeze inventory.",
+    "frozenSuccess": "Selected materials frozen successfully and ready for production release.",
+    "awaitingAllocation": "Awaiting Allocation",
+    "fullyReady": "Fully Ready for Release",
+    "partiallyReady": "Partially Ready",
+    "materialRelease": "Material Release",
+    "materialReleaseDesc": "Issue frozen warehouse inventory to the production floor",
+    "releaseToProduction": "Release to Production",
+    "trackProduction": "Track Production",
+    "releaseId": "Release ID",
+    "releaseDate": "Release Date",
+    "releaseTime": "Release Time",
+    "storeManager": "Store Manager",
+    "managerName": "Manager Name",
+    "floorSupervisor": "Floor Supervisor",
+    "supervisorName": "Supervisor Name",
+    "selectSupervisor": "Select Supervisor",
+    "productionFloor": "Production Floor",
+    "selectProductionFloor": "Select Production Floor",
+    "floor1": "Floor 1 - Cutting",
+    "floor2": "Floor 2 - Stitching",
+    "floor3": "Floor 3 - Finishing",
+    "floor4": "Floor 4 - Quality Control",
+    "notesOptional": "Notes (Optional)",
+    "specialInstructions": "Any special instructions or comments for the production floor",
+    "totalFrozenMaterials": "Total Frozen Items",
+    "releasedMaterials": "Released Items",
+    "pendingRelease": "Pending Release",
+    "releaseStatus": "Release Status",
+    "releasedSuccessTitle": "Materials Released Successfully",
+    "releasedSuccessDesc": "Inventory has been issued to the production floor.",
+    "releaseSummary": "Release Summary",
+    "releasedQty": "Released Qty",
+    "issueInventory": "Issue Inventory to Production",
+    "frozenQty": "Frozen Qty",
+    "destination": "Destination",
+    "destinations": {
+      "line_1_-_stitching": "Line 1 - Stitching",
+      "line_2_-_assembly": "Line 2 - Assembly"
+    },
+    "exceedsFrozen": "Exceeds frozen",
+    "readyForRelease": "Ready for Release",
+    "released": "Released",
+    "releaseSuccess": "Materials released successfully and sent to production.",
+    "awaitingRelease": "Awaiting Release",
+    "fullyReleased": "Fully Released",
+    "partiallyReleased": "Partially Released",
+    "floor_floor_1_-_cutting": "Floor 1 - Cutting",
+    "floor_floor_2_-_stitching": "Floor 2 - Stitching",
+    "floor_floor_3_-_finishing": "Floor 3 - Finishing",
+    "floor_floor_4_-_quality_control": "Floor 4 - Quality Control",
+    "materials": {
+      "MAT-001": {
+        "name": "Cotton Fabric (White)"
+      },
+      "MAT-002": {
+        "name": "Polyester Thread (Navy)"
+      },
+      "MAT-003": {
+        "name": "Metal Zippers 15cm"
+      },
+      "MAT-004": {
+        "name": "Plastic Buttons (Black)"
+      },
+      "MAT-005": {
+        "name": "Denim Fabric (Blue)"
+      },
+      "MAT-006": {
+        "name": "Standard Collar (White)"
+      },
+      "MAT-007": {
+        "name": "Metal Hooks (Silver)"
+      },
+      "MAT-008": {
+        "name": "Linen Fabric (Beige)"
+      }
+    }
   },
   "production": {
     "title": "Production Tracking",
     "subtitle": "Track production stages for",
     "progress": "Overall Progress",
+    "overallProgress": "Overall Progress",
+    "stagesCompleted": "Stages Completed",
     "total": "TOTAL PIECES",
     "cutting": "Cutting",
     "stitching": "Stitching",
     "fusing": "Fusing",
     "kajButton": "Kaj Button",
+    "kaj-button": "Kaj Button",
     "finishing": "Finishing",
-    "status": "Awaiting Production"
+    "status": "Awaiting Production",
+    "proceedQuality": "Proceed to Quality & Packing",
+    "proceedToRelease": "Proceed to Release",
+    "unitsProcessed": "units processed",
+    "update": "Update",
+    "supervisor": "Supervisor Name",
+    "supervisorPlaceholder": "Enter supervisor name",
+    "completedQty": "Completed Quantity",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "remarksPlaceholder": "Any stage-specific notes",
+    "startStage": "Start Stage",
+    "completeStage": "Complete Stage",
+    "stageLocked": "Stage locked (Action completed)",
+    "stages": {
+      "cutting": {
+        "desc": "Fabric cutting as per pattern"
+      },
+      "stitching": {
+        "desc": "Sewing and assembling pieces"
+      },
+      "fusing": {
+        "desc": "Apply fusible interlining"
+      },
+      "kaj-button": {
+        "desc": "Button hole & button attachment"
+      },
+      "finishing": {
+        "desc": "Final touches & pressing"
+      }
+    }
   },
   "quality": {
     "title": "Quality & Packing",
     "subtitle": "Post-production validation and dispatch preparation for",
     "progress": "Overall Progress",
+    "overallProgress": "Overall Progress",
+    "stagesCompleted": "Stages Completed",
     "total": "TOTAL PIECES",
     "passed": "QC PASSED",
     "failed": "QC FAILED",
     "check": "Quality Check",
+    "qc": "Quality Check",
     "packing": "Packing",
     "verification": "Packing & Verification",
-    "approval": "Approval"
+    "approval": "Approval",
+    "stageComplete": "Stage complete",
+    "actionRequired": "Action required",
+    "pendingValidation": "Pending validation",
+    "dataEntry": "Data Entry",
+    "verificationSupervisor": "Verification Supervisor",
+    "itemsChecked": "Items Checked",
+    "qcRequired": "Quality Check Required",
+    "qcDesc": "Please inspect garments against quality standards. Failed items will be flagged for rework.",
+    "qcStatus": "QC Status",
+    "pass": "Pass (Meets standards)",
+    "fail": "Fail (Requires rework)",
+    "defectNotes": "Defect Notes",
+    "defectNotesPlaceholder": "Specific defect details if any",
+    "stages": {
+      "qc": {
+        "desc": "Inspect for defects & standards"
+      },
+      "packing": {
+        "desc": "Pack finished products"
+      },
+      "verification": {
+        "desc": "Verify packed quantities against shipping manifest before final approval."
+      },
+      "approval": {
+        "name": "Final Dispatch Approval",
+        "desc": "Authorized sign-off required before generating compliance documents."
+      }
+    },
+    "approvedBy": "Authorized Approver",
+    "dispatchNotes": "Approval Conditions & Notes",
+    "dispatchNotesPlaceholder": "Any specific conditions for this shipment...",
+    "grantApproval": "Grant Approval",
+    "verifiedQty": "Verified Quantity",
+    "verifiedQtyPlaceholder": "Enter physical count"
   },
   "logistics": {
     "title": "Logistics Management",
@@ -247,6 +508,37 @@
     "targetQty": "Target Quantity",
     "cartonCount": "Carton Count",
     "destination": "Destination",
-    "confirmButton": "Confirm & Verify Packing"
+    "confirmButton": "Confirm & Verify Packing",
+    "complianceDocs": "Compliance & Shipping Documents",
+    "complianceDocsDesc": "Upload required customs, packing lists, and commercial invoices.",
+    "uploadedDocs": "Uploaded Documents",
+    "noDocs": "No documents uploaded yet",
+    "confirmDocs": "Confirm Documents & Proceed",
+    "dispatchDetails": "Dispatch Details",
+    "dispatchDetailsDesc": "Assign courier and initialize physical transit.",
+    "courierPartner": "Courier / Freight Partner",
+    "selectPartner": "Select Partner...",
+    "trackingNumber": "Tracking / AWB Number",
+    "eta": "Estimated Time of Arrival (ETA)",
+    "dispatching": "Dispatching...",
+    "markDispatched": "Mark as Dispatched",
+    "pod": "Proof of Delivery (POD)",
+    "podDesc": "Upload delivery confirmation and receiver signature.",
+    "podSuccess": "POD Uploaded Successfully",
+    "uploadPod": "Upload POD Document",
+    "processingDoc": "Processing document...",
+    "confirmDelivery": "Confirm Delivery",
+    "financialClosure": "Financial Closure",
+    "financialClosureDesc": "Log final shipping costs and archive the completed order.",
+    "freightCost": "Total Freight Cost ($)",
+    "customsDuties": "Customs & Duties ($)",
+    "archiving": "Archiving Order...",
+    "closeOrder": "Close Order & Archive",
+    "fulfilled": "Order Fulfilled & Archived",
+    "fulfilledDesc": "PO-2026-004 has been successfully delivered and closed.",
+    "lockedUntilDispatch": "Locked until Dispatch",
+    "manifestAutoDesc": "Manifest generated automatically from Quality & Packing module.",
+    "manifestSummary": "Manifest Summary",
+    "verifying": "Verifying..."
   }
 }

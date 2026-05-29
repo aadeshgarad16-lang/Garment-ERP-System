@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
-import { 
-  Package, 
-  AlertTriangle, 
-  Truck, 
-  DollarSign,
+import React, { useState, useMemo } from 'react';
+import {
+  Truck,
   Search,
   Filter,
   Eye,
   CheckCircle2,
+  AlertTriangle,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
@@ -21,7 +19,16 @@ import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 
-const mockInventory = [
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  available: number;
+  required: number;
+  unit: string;
+}
+
+const mockInventory: InventoryItem[] = [
   { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', available: 1250, required: 1000, unit: 'meters' },
   { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', available: 120, required: 200, unit: 'spools' },
   { id: 'MAT-003', name: 'Metal Zippers 15cm', category: 'Zippers', available: 45, required: 0, unit: 'units' },
@@ -34,79 +41,115 @@ const mockInventory = [
 
 const categories = ['All Categories', 'Fabric', 'Thread', 'Buttons', 'Zippers', 'Collar/Cuff', 'Hooks'];
 
+const getStatusStyle = (status: string) => {
+  switch (status) {
+    case 'Sufficient': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60';
+    case 'Low Stock': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60';
+    case 'Critical': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60';
+    default: return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
+  }
+};
+
 export default function InventoryPage() {
   const router = useRouter();
+
+  const advanceStage = (nextPath: string, nextStage: string) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const po = params.get('poNumber');
+    if (po) {
+      const ordersStr = localStorage.getItem('savedOrders');
+      if (ordersStr) {
+        let orders = JSON.parse(ordersStr);
+        orders = orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+        localStorage.setItem('savedOrders', JSON.stringify(orders));
+        window.dispatchEvent(new Event('storage'));
+      }
+      router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
+    } else {
+      router.push(nextPath);
+    }
+  };
+
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
-  // BOM-driven validation logic
-  const validationData = mockInventory.map(item => {
-    const shortage = Math.max(0, item.required - item.available);
-    let status = 'Sufficient';
-    if (shortage > 0) {
-      status = item.available === 0 ? 'Critical' : 'Low Stock';
-    }
-    return { ...item, shortage, status };
-  });
+  // Memoized calculations to prevent performance lag on search input keystrokes
+  const { validationData, summary } = useMemo(() => {
+    let fullyAvailableCount = 0;
+    let partiallyAvailableCount = 0;
+    let criticalCount = 0;
 
-  const requiredItems = validationData.filter(item => item.required > 0);
-  const fullyAvailableCount = requiredItems.filter(item => item.status === 'Sufficient').length;
-  const partiallyAvailableCount = requiredItems.filter(item => item.status === 'Low Stock').length;
-  const criticalCount = requiredItems.filter(item => item.status === 'Critical').length;
-  
-  const hasShortage = partiallyAvailableCount > 0 || criticalCount > 0;
-  const readinessStatus = hasShortage ? 'Procurement Required' : 'Ready for Allocation';
+    const computedData = mockInventory.map(item => {
+      const shortage = Math.max(0, item.required - item.available);
+      let status = 'Sufficient';
 
-  const getStatusStyle = (status: string) => {
-    switch(status) {
-      case 'Sufficient': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'Low Stock': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'Critical': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-neutral-100 text-neutral-800 border-neutral-200';
-    }
-  };
+      if (shortage > 0) {
+        status = item.available === 0 ? 'Critical' : 'Low Stock';
+      }
 
-  const filteredInventory = validationData.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+      // Populate summary analytics parameters concurrently
+      if (item.required > 0) {
+        if (status === 'Sufficient') fullyAvailableCount++;
+        else if (status === 'Low Stock') partiallyAvailableCount++;
+        else if (status === 'Critical') criticalCount++;
+      }
+
+      return { ...item, shortage, status };
+    });
+
+    return {
+      validationData: computedData,
+      summary: { fullyAvailableCount, partiallyAvailableCount, criticalCount }
+    };
+  }, []);
+
+  const hasShortage = summary.partiallyAvailableCount > 0 || summary.criticalCount > 0;
+
+  // Memoized filtered array items
+  const filteredInventory = useMemo(() => {
+    const cleanSearch = searchTerm.toLowerCase().trim();
+    return validationData.filter(item => {
+      const matchesSearch = !cleanSearch ||
+        item.name.toLowerCase().includes(cleanSearch) ||
+        item.id.toLowerCase().includes(cleanSearch);
+      const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchTerm, categoryFilter, validationData]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
       <WorkflowIndicator currentStep="Inventory Check" />
-      
+
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <Box className="h-6 w-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <Box className="h-6 w-6 text-blue-600 dark:text-blue-500" />
             {t('inventoryVal.title')}
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">{t('inventoryVal.subtitle')}</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('inventoryVal.subtitle')}</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-          <button 
-            onClick={() => router.push('/material-allocation')}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
-              hasShortage 
-                ? 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50' 
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasShortage
+                ? 'bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+              }`}
           >
             <ListChecks className="h-4 w-4" />
             {t('inventoryVal.allocate')} {hasShortage && `(${t('orderInitiation.stockCalculation.partialFulfillment') || 'Partial'})`}
           </button>
-          <button 
-            onClick={() => router.push('/procurement')}
+          <button
+            onClick={() => advanceStage('/procurement/create', 'Procurement')}
             disabled={!hasShortage}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
-              !hasShortage 
-                ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${!hasShortage
+                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 dark:text-slate-500 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600'
+              }`}
           >
             <Truck className="h-4 w-4" />
             {t('inventoryVal.purchaseRequest')}
@@ -114,61 +157,61 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Allocation Preview Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+      {/* Allocation Preview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-950/50">
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.fullyAvailable')}</p>
-            <p className="text-2xl font-bold text-neutral-900">{fullyAvailableCount}</p>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100">
-            <AlertTriangle className="h-6 w-6 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.partiallyAvailable')}</p>
-            <p className="text-2xl font-bold text-neutral-900">{partiallyAvailableCount}</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('inventoryVal.fullyAvailable')}</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{summary.fullyAvailableCount}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100">
-            <AlertCircle className="h-6 w-6 text-red-600" />
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-950/50">
+            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.criticalShortages')}</p>
-            <p className="text-2xl font-bold text-neutral-900">{criticalCount}</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('inventoryVal.partiallyAvailable')}</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{summary.partiallyAvailableCount}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 flex items-center gap-4">
-          <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${hasShortage ? 'bg-indigo-100' : 'bg-emerald-100'}`}>
-            <Layers className={`h-6 w-6 ${hasShortage ? 'text-indigo-600' : 'text-emerald-600'}`} />
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-950/50">
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500">{t('inventoryVal.readiness')}</p>
-            <p className={`text-sm font-bold mt-1 ${hasShortage ? 'text-indigo-600' : 'text-emerald-600'}`}>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('inventoryVal.criticalShortages')}</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{summary.criticalCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+          <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${hasShortage ? 'bg-indigo-100 dark:bg-indigo-950/50' : 'bg-emerald-100 dark:bg-emerald-950/50'}`}>
+            <Layers className={`h-6 w-6 ${hasShortage ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('inventoryVal.readiness')}</p>
+            <p className={`text-sm font-bold mt-1 ${hasShortage ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {hasShortage ? (t('procurement.procCompletion') || 'Procurement Required') : (t('orderInitiation.tracker.materialAllocation') || 'Ready for Allocation')}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Inventory Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        
+      {/* Main Inventory Table Component Container */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+
         {/* Table Header & Controls */}
-        <div className="border-b border-neutral-200 px-6 py-5">
+        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-neutral-800">{t('inventoryVal.materialsHeader')}</h2>
-            
+            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('inventoryVal.materialsHeader')}</h2>
+
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search */}
+              {/* Search input field */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-neutral-400" />
@@ -178,11 +221,11 @@ export default function InventoryPage() {
                   placeholder={t('inventoryVal.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900"
+                  className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm text-neutral-900 dark:text-neutral-100 bg-transparent"
                 />
               </div>
-              
-              {/* Category Filter */}
+
+              {/* Category Dropdown Filter */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Filter className="h-4 w-4 text-neutral-400" />
@@ -190,10 +233,12 @@ export default function InventoryPage() {
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2 border border-neutral-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-neutral-900 appearance-none bg-white cursor-pointer"
+                  className="block w-full pl-10 pr-10 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm text-neutral-900 dark:text-neutral-100 appearance-none bg-white dark:bg-slate-900 cursor-pointer"
                 >
                   {categories.map(cat => (
-                    <option key={cat} value={cat}>{t(`orderInitiation.tracker.${cat.toLowerCase()}`) || cat}</option>
+                    <option key={cat} value={cat}>
+                      {cat === 'All Categories' ? (t('inventory.categories.allcategories') || 'All Categories') : (t(`inventory.categories.${cat.toLowerCase()}`) || cat)}
+                    </option>
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -206,45 +251,64 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Responsive Table Layout */}
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200 text-xs uppercase tracking-wider text-neutral-500 font-medium">
-                <th className="px-6 py-4">{t('inventoryVal.materialsHeader')}</th>
-                <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.sku') || 'Category'}</th>
-                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.quantity') || 'Required Qty'}</th>
-                <th className="px-6 py-4 text-right">{t('orderInitiation.garmentSpecifications.table.stockAvail') || 'Available Qty'}</th>
-                <th className="px-6 py-4 text-right">{t('bom.shortages') || 'Shortage Qty'}</th>
-                <th className="px-6 py-4">{t('orderInitiation.garmentSpecifications.table.unit') || 'Unit'}</th>
-                <th className="px-6 py-4">{t('dashboard.recentOrders.headers.status') || 'Status'}</th>
-                <th className="px-6 py-4 text-center">Actions</th>
+              <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+                <th scope="col" className="px-6 py-3">{t('inventoryVal.materialsHeader')}</th>
+                <th scope="col" className="px-4 py-3">Category</th>
+                <th scope="col" className="px-4 py-3 text-right">Required Qty</th>
+                <th scope="col" className="px-4 py-3 text-right">Available Qty</th>
+                <th scope="col" className="px-4 py-3 text-right">Shortage Qty</th>
+                <th scope="col" className="px-4 py-3">Unit</th>
+                <th scope="col" className="px-4 py-3">{t('dashboard.recentOrders.headers.status') || 'Status'}</th>
+                <th scope="col" className="px-6 py-3 text-center">{t('actions.actions') || 'Actions'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
               {filteredInventory.length > 0 ? (
                 filteredInventory.map((item) => {
+                  const isShortage = item.shortage > 0;
                   return (
-                    <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-6 py-3">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-900">{t(`dashboard.stockAlerts.items.${item.id}`) || item.name}</span>
-                          <span className="text-xs text-neutral-500">{item.id}</span>
+                          <span className={`text-sm font-semibold ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>
+                            {t(`inventory.materials.items.${item.id}`) || item.name}
+                          </span>
+                          <span className={`text-xs ${isShortage ? 'text-red-500/80 dark:text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                            {item.id}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{t(`orderInitiation.tracker.${item.category.toLowerCase()}`) || item.category}</td>
-                      <td className="px-6 py-4 text-right text-sm font-medium text-neutral-900">{item.required.toLocaleString()}</td>
-                      <td className="px-6 py-4 text-right text-sm text-neutral-600">{item.available.toLocaleString()}</td>
-                      <td className="px-6 py-4 text-right text-sm font-bold text-red-600">{item.shortage > 0 ? item.shortage.toLocaleString() : '-'}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-500">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">
+                        {t(`inventory.categories.${item.category.toLowerCase()}`) || item.category}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                        {item.required.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-neutral-600 dark:text-neutral-400">
+                        {item.available.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-bold text-red-600 dark:text-red-400">
+                        {isShortage ? item.shortage.toLocaleString() : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-[13px] text-neutral-500 dark:text-neutral-400">
+                        {item.unit === 'meters'
+                          ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters')
+                          : item.unit === 'spools'
+                            ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools')
+                            : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                          {item.status === 'Sufficient' ? (t('orderInitiation.stockCalculation.title') || 'Sufficient') : item.status === 'Low Stock' ? (t('dashboard.stockAlerts.severity.low') || 'Low Stock') : (t('dashboard.stockAlerts.severity.critical') || 'Critical')}
+                          {item.status === 'Sufficient' ? (t('inventoryVal.status.sufficient') || 'Sufficient') : item.status === 'Low Stock' ? (t('inventoryVal.status.lowstock') || 'Low Stock') : (t('inventoryVal.status.critical') || 'Critical')}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title={t('actions.viewProfile')}>
+                      <td className="px-6 py-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <button className="p-1.5 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-md transition-colors" title={t('actions.viewProfile')}>
                             <Eye className="h-4 w-4" />
                           </button>
                         </div>
@@ -254,10 +318,10 @@ export default function InventoryPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
                     <div className="flex flex-col items-center justify-center">
-                      <Search className="h-8 w-8 text-neutral-300 mb-2" />
-                      <p>{t('dashboard.recentOrders.headers.poNumber') || 'No materials found matching your criteria.'}</p>
+                      <Search className="h-8 w-8 text-neutral-300 dark:text-neutral-700 mb-2" />
+                      <p>{t('inventoryVal.noMaterialsFound') || 'No materials found matching your criteria.'}</p>
                     </div>
                   </td>
                 </tr>
@@ -266,21 +330,43 @@ export default function InventoryPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-200 flex items-center justify-between">
-          <p className="text-sm text-neutral-500">
-            {t('dashboard.recentOrders.viewAll') || 'Showing'} <span className="font-medium text-neutral-900">1</span> {t('dashboard.recentOrders.headers.deliveryDate') || 'to'} <span className="font-medium text-neutral-900">{filteredInventory.length}</span> {t('dashboard.recentOrders.headers.customer') || 'of'} <span className="font-medium text-neutral-900">{mockInventory.length}</span>
+        {/* Pagination Controls */}
+        <div className="bg-neutral-50 dark:bg-slate-900 px-6 py-3 border-t border-neutral-200 dark:border-slate-700 flex items-center justify-between">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t('inventoryVal.showing') || 'Showing'}{' '}
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">
+              {filteredInventory.length === 0 ? 0 : 1}
+            </span>{' '}
+            {t('inventoryVal.to') || 'to'}{' '}
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">
+              {filteredInventory.length}
+            </span>{' '}
+            {t('inventoryVal.of') || 'of'}{' '}
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">
+              {mockInventory.length}
+            </span>
           </p>
           <div className="flex items-center gap-2">
-            <button className="p-2 border border-neutral-300 rounded-md bg-white text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+            <button className="p-2 border border-neutral-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-neutral-400 dark:text-slate-600 cursor-not-allowed opacity-50" disabled>
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button className="p-2 border border-neutral-300 rounded-md bg-white text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 transition-colors">
+            <button className="p-2 border border-neutral-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
-        
+
+      </div>
+
+      {/* Bottom Actions Row */}
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={() => advanceStage('/procurement/create', 'Procurement')}
+          className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+        >
+          <Truck className="h-4 w-4" />
+          {t('inventoryVal.purchaseRequest') || 'Create Purchase Request'}
+        </button>
       </div>
 
     </div>

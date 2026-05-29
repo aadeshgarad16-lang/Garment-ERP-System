@@ -1,36 +1,98 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #020617;
+  /* Deeper slate for a more premium dark mode */
+  --foreground: #f8fafc;
+}
+
+html {
+  font-size: 14px;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer base {
-  input, textarea, select {
-    @apply text-gray-900 placeholder:text-gray-400 disabled:text-gray-700 read-only:text-gray-700;
+
+  input,
+  textarea,
+  select {
+    color: #0f172a;
+    /* text-slate-900 */
+    transition: box-shadow 0.2s;
   }
-  
+
+  input::placeholder,
+  textarea::placeholder,
+  select::placeholder {
+    color: #94a3b8;
+    /* text-slate-400 */
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    color: #64748b;
+    /* text-slate-500 */
+  }
+
+  input:read-only,
+  textarea:read-only,
+  select:read-only {
+    color: #475569;
+    /* text-slate-600 */
+  }
+
+  /* Dark mode */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: #f1f5f9;
+    /* text-slate-100 */
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder,
+  .dark select::placeholder {
+    color: #64748b;
+    /* text-slate-500 */
+  }
+
+  .dark input:disabled,
+  .dark textarea:disabled,
+  .dark select:disabled {
+    color: #475569;
+    /* text-slate-600 */
+  }
+
   option {
-    @apply text-gray-900;
+    color: #0f172a;
+    background-color: #ffffff;
+    /* text-slate-900 */
+  }
+
+  .dark option {
+    color: #f1f5f9;
+    background-color: #0f172a;
+    /* text-slate-100 */
   }
 }

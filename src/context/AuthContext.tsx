@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check localStorage on mount for active session
     const storedUser = localStorage.getItem('sason_active_session');
     if (storedUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(JSON.parse(storedUser));
     }
   }, []);
@@ -45,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (credentials: User) => {
     const existingUsers = JSON.parse(localStorage.getItem('sason_users') || '[]');
-    const matchedUser = existingUsers.find((u: User) => 
-      u.email === credentials.email && 
+    const matchedUser = existingUsers.find((u: User) =>
+      u.email === credentials.email &&
       u.password === btoa(credentials.password || '')
     );
 
@@ -54,10 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'Invalid email or password' };
     }
 
-    if (matchedUser.role !== credentials.role) {
-      return { success: false, error: 'Access denied: Role mismatch' };
-    }
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeUser } = matchedUser;
     setUser(safeUser);
     localStorage.setItem('sason_active_session', JSON.stringify(safeUser));

@@ -25,14 +25,14 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-neutral-200 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
         <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
           <Camera className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800">{t('logistics.pod') || 'Proof of Delivery (POD)'}</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">{t('logistics.podDesc') || 'Upload delivery confirmation and receiver signature.'}</p>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('logistics.pod') || 'Proof of Delivery (POD)'}</h2>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t('logistics.podDesc') || 'Upload delivery confirmation and receiver signature.'}</p>
         </div>
       </div>
       
@@ -41,7 +41,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
           
           <div 
             className={`border-2 border-dashed rounded-xl transition-colors flex flex-col items-center justify-center p-10 text-center cursor-pointer group ${
-              podImage ? 'border-emerald-300 bg-emerald-50' : 'border-neutral-300 bg-neutral-50 hover:bg-neutral-100'
+              podImage ? 'border-emerald-300 bg-emerald-50' : 'border-neutral-300 dark:border-slate-600 bg-neutral-50 dark:bg-slate-900 hover:bg-neutral-100 dark:hover:bg-slate-700'
             }`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -63,11 +63,11 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
               </>
             ) : (
               <>
-                <div className="h-14 w-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-neutral-200 mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-14 w-14 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-sm border border-neutral-200 dark:border-slate-700 mb-4 group-hover:scale-110 transition-transform">
                   <UploadCloud className="h-7 w-7 text-blue-500" />
                 </div>
-                <h3 className="text-sm font-semibold text-neutral-800 mb-1">{t('logistics.uploadPod') || 'Upload POD Document'}</h3>
-                <p className="text-xs text-neutral-500">{t('orderInitiation.orderForm.maxSize') || 'Supports JPG, PNG, PDF (Max 5MB)'}</p>
+                <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-1">{t('logistics.uploadPod') || 'Upload POD Document'}</h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('orderInitiation.orderForm.maxSize') || 'Supports JPG, PNG, PDF (Max 5MB)'}</p>
               </>
             )}
             
