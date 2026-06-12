@@ -15,6 +15,8 @@ import {
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 // Mock Data representing required materials for an order that have sufficient stock
 const mockMaterials = [
@@ -42,35 +44,65 @@ const getStatusStyle = (status: string) => {
 export default function MaterialAllocationPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user } = useAuth();
 
   const advanceStage = (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
     if (po) {
-      const ordersStr = localStorage.getItem('savedOrders');
-      if (ordersStr) {
-        let orders = JSON.parse(ordersStr);
-        orders = orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
-        localStorage.setItem('savedOrders', JSON.stringify(orders));
-        window.dispatchEvent(new Event('storage'));
-      }
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+      });
       router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
     } else {
       router.push(nextPath);
     }
   };
 
-  const [allocations, setAllocations] = useState<Record<string, AllocationState>>(
-    mockMaterials.reduce((acc, mat) => {
-      const isSelected = mat.required > 0;
-      const allocatedQty = isSelected ? Math.min(mat.required, mat.available) : 0;
-      acc[mat.id] = { isSelected, allocatedQty, status: 'Available' };
-      return acc;
-    }, {} as Record<string, AllocationState>)
-  );
-
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [allocations, setAllocations] = useState<Record<string, AllocationState>>({});
   const [globalMessage, setGlobalMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const po = params.get('poNumber');
+      if (po) {
+        const ordersStr = localStorage.getItem('savedOrders');
+        if (ordersStr) {
+          const orders = JSON.parse(ordersStr);
+          const found = orders.find((o: any) => o.poNumber === po);
+          if (found) setCurrentOrder(found);
+        }
+      }
+    }
+  }, []);
+
+  const orderMaterials = React.useMemo(() => {
+    if (!currentOrder || !currentOrder.specs) return mockMaterials;
+    return currentOrder.specs.map((spec: any) => ({
+      id: spec.id || `MAT-${Math.floor(Math.random()*1000)}`,
+      name: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
+      category: 'Fabric',
+      available: spec.stockAvailable || 0,
+      required: spec.quantity || 0,
+      linkedPO: currentOrder.poNumber,
+      unit: 'pieces'
+    }));
+  }, [currentOrder]);
+
+  React.useEffect(() => {
+    if (orderMaterials.length > 0 && Object.keys(allocations).length === 0) {
+      const init = orderMaterials.reduce((acc: any, mat: any) => {
+        const isSelected = mat.required > 0 && mat.available > 0;
+        const allocatedQty = isSelected ? Math.min(mat.required, mat.available) : 0;
+        acc[mat.id] = { isSelected, allocatedQty, status: 'Available' };
+        return acc;
+      }, {} as Record<string, AllocationState>);
+      setAllocations(init);
+    }
+  }, [orderMaterials, allocations]);
 
   const handleAllocationChange = useCallback((id: string, value: string) => {
     const qty = parseInt(value, 10) || 0;
@@ -113,15 +145,15 @@ export default function MaterialAllocationPage() {
   }, [t]);
 
   // State Logic Variables
-  const totalMaterials = mockMaterials.length;
+  const totalMaterials = orderMaterials.length;
 
-  const hasValidAllocationsToSave = mockMaterials.some(mat => {
+  const hasValidAllocationsToSave = orderMaterials.some((mat: any) => {
     const alloc = allocations[mat.id];
-    return alloc.isSelected && alloc.status === 'Available' && alloc.allocatedQty > 0 && alloc.allocatedQty <= mat.available;
+    return alloc && alloc.isSelected && alloc.status === 'Available' && alloc.allocatedQty > 0 && alloc.allocatedQty <= mat.available;
   });
 
   const hasAnyFrozen = Object.values(allocations).some(a => a.status === 'Frozen');
-  const allFrozen = Object.values(allocations).every(a => a.status === 'Frozen');
+  const allFrozen = Object.keys(allocations).length > 0 && Object.values(allocations).every(a => a.status === 'Frozen');
 
   const allocatedCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
   const frozenCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
@@ -130,8 +162,8 @@ export default function MaterialAllocationPage() {
   if (allFrozen) readinessStatus = t('procurement.fullyReady') || 'Fully Ready for Release';
   else if (frozenCount > 0) readinessStatus = t('procurement.partiallyReady') || 'Partially Ready';
 
-  const isAllSelectableChecked = mockMaterials.filter(m => allocations[m.id].status !== 'Frozen').every(m => allocations[m.id].isSelected);
-  const hasSelectable = mockMaterials.some(m => allocations[m.id].status !== 'Frozen');
+  const isAllSelectableChecked = orderMaterials.filter((m:any) => allocations[m.id]?.status !== 'Frozen').every((m:any) => allocations[m.id]?.isSelected);
+  const hasSelectable = orderMaterials.some((m:any) => allocations[m.id]?.status !== 'Frozen');
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
       <WorkflowIndicator currentStep="Material Allocation" />
@@ -251,8 +283,8 @@ export default function MaterialAllocationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-              {mockMaterials.map((item) => {
-                const alloc = allocations[item.id];
+              {orderMaterials.map((item: any) => {
+                const alloc = allocations[item.id] || { isSelected: false, allocatedQty: 0, status: 'Available' };
                 const isError = alloc.allocatedQty > item.available;
                 const isShortage = item.required > 0 && item.available < item.required;
 
@@ -262,7 +294,7 @@ export default function MaterialAllocationPage() {
                       <input
                         type="checkbox"
                         className="rounded border-neutral-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
-                        checked={alloc.isSelected}
+                        checked={alloc.isSelected ?? false}
                         disabled={alloc.status === 'Frozen'}
                         onChange={(e) => handleSelectionChange(item.id, e.target.checked)}
                       />
@@ -287,7 +319,7 @@ export default function MaterialAllocationPage() {
                           type="number"
                           min="0"
                           max={item.available}
-                          value={alloc.allocatedQty}
+                          value={alloc.allocatedQty ?? ""}
                           onChange={(e) => handleAllocationChange(item.id, e.target.value)}
                           disabled={alloc.status === 'Frozen' || !alloc.isSelected}
                           className={`w-24 px-3 py-1.5 border rounded-lg text-sm text-right transition-colors ${alloc.status === 'Frozen' || !alloc.isSelected

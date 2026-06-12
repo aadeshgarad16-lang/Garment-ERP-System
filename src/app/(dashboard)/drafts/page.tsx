@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { FileEdit, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getDraftsAPI, deleteOrderAPI } from '@/lib/api';
 
 export interface DraftOrder {
   id: string;
@@ -17,30 +18,28 @@ export interface DraftOrder {
 export default function DraftsPage() {
   const router = useRouter();
   const [drafts, setDrafts] = useState<DraftOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchDrafts = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getDraftsAPI();
+    setDrafts(data);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    const savedDrafts = localStorage.getItem('draftOrders');
-    if (savedDrafts) {
-      try {
-        setDrafts(JSON.parse(savedDrafts));
-      } catch (e) { }
-    }
-  }, []);
+    fetchDrafts();
+  }, [fetchDrafts]);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this draft?')) {
-      setDrafts(prevDrafts => {
-        const newDrafts = prevDrafts.filter(draft => draft.id !== id);
-        localStorage.setItem('draftOrders', JSON.stringify(newDrafts));
-        return newDrafts;
-      });
+      await deleteOrderAPI(id);
+      fetchDrafts();
     }
-  }, []);
+  }, [fetchDrafts]);
 
   const handleResume = useCallback((draft: DraftOrder) => {
-    // Populate the draft to order initiation draft so it loads when opening orders page
-    localStorage.setItem('orderInitiationDraft', JSON.stringify(draft));
-    router.push('/orders');
+    router.push(`/orders?resumeId=${draft.id}`);
   }, [router]);
 
   return (
@@ -81,7 +80,13 @@ export default function DraftsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-slate-700">
-              {drafts.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                    Loading drafts...
+                  </td>
+                </tr>
+              ) : drafts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
                     No draft orders found.

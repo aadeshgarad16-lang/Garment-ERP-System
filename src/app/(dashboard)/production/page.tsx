@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 type StageName = 'Cutting' | 'Stitching' | 'Fusing' | 'Kaj Button' | 'Finishing';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
@@ -47,19 +49,16 @@ export default function ProductionPage() {
   ]);
 
   const router = useRouter();
+  const { user } = useAuth();
 
-  const advanceStage = (nextPath, nextStage) => {
+  const advanceStage = (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
     if (po) {
-      const ordersStr = localStorage.getItem('savedOrders');
-      if (ordersStr) {
-        let orders = JSON.parse(ordersStr);
-        orders = orders.map((o) => o.poNumber === po ? { ...o, stage: nextStage } : o);
-        localStorage.setItem('savedOrders', JSON.stringify(orders));
-        window.dispatchEvent(new Event('storage'));
-      }
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+      });
       router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
     } else {
       router.push(nextPath);

@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Calculator,
   Box,
+  Layers,
   Package,
   Truck,
   Factory,
@@ -27,21 +28,25 @@ import {
   LogOut,
   Sun,
   Moon,
-  Calendar
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 
 const navItems = [
   { tKey: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
   { tKey: 'orderInitiation', href: '/orders', icon: ShoppingCart },
+  { tKey: 'orderSpecifications', href: '/order-specifications', icon: ClipboardList },
   { tKey: 'stockCalculation', href: '/stock-calculation', icon: Package },
   { tKey: 'bomCalculation', href: '/bom-calculation', icon: Calculator },
   { tKey: 'inventoryCheck', href: '/inventory', icon: Box },
+  { tKey: 'materialallocation', href: '/material-allocation', icon: Layers },
   { tKey: 'procurement', href: '/procurement', icon: Truck },
   { tKey: 'production', href: '/production', icon: Factory },
   { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck },
   { tKey: 'logistics', href: '/logistics', icon: Map },
   { tKey: 'accounts', href: '/accounts', icon: PieChart },
   { tKey: 'store', href: 'http://localhost:5173', icon: ShoppingCart },
+  { tKey: 'logs', href: '/logs', icon: ClipboardList },
   { tKey: 'settings', href: '/settings', icon: Settings },
 ];
 
@@ -70,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="fixed inset-0 flex bg-neutral-100 font-sans">
+    <div className="fixed inset-0 flex bg-neutral-100 dark:bg-slate-950 font-sans">
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -110,8 +115,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
                   onClick={() => setSidebarOpen(false)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
                     }`}
                 >
                   <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
@@ -147,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-4">
-            <div 
+            <div
               className="relative flex items-center hidden md:flex mr-2 cursor-pointer"
               onClick={() => {
                 try {
@@ -157,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }
               }}
             >
-              <input 
+              <input
                 type="date"
                 ref={dateInputRef}
                 value={currentDate}
@@ -182,9 +187,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <LanguageSwitcher />
             <div className="h-8 w-px bg-neutral-200 dark:bg-slate-700 hidden sm:block"></div>
-            
+
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
               >
@@ -200,20 +205,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {profileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-slate-700 z-50 overflow-hidden">
-                  <Link 
-                    href="/profile" 
-                    onClick={() => setProfileDropdownOpen(false)} 
+                  <Link
+                    href="/profile"
+                    onClick={() => setProfileDropdownOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     <User className="h-4 w-4 text-neutral-400" />
                     {t('actions.viewProfile')}
                   </Link>
                   <div className="border-t border-neutral-100 dark:border-slate-800 my-1"></div>
-                  <button 
+                  <button
                     onClick={() => {
                       logout();
                       router.push('/login');
-                    }} 
+                    }}
                     className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <LogOut className="h-4 w-4 text-red-500 dark:text-red-400" />

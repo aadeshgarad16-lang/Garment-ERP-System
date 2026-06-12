@@ -9,6 +9,7 @@ import {
   ArrowRight,
   AlertCircle,
   FileSignature,
+
   Clock,
   User,
   MapPin,
@@ -18,6 +19,8 @@ import {
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 // Mock Data representing Frozen materials from Material Allocation
 const mockFrozenMaterials = [
@@ -51,19 +54,16 @@ const getStatusStyle = (status: string) => {
 export default function MaterialReleasePage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user } = useAuth();
 
   const advanceStage = (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
     if (po) {
-      const ordersStr = localStorage.getItem('savedOrders');
-      if (ordersStr) {
-        let orders = JSON.parse(ordersStr);
-        orders = orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
-        localStorage.setItem('savedOrders', JSON.stringify(orders));
-        window.dispatchEvent(new Event('storage'));
-      }
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+      });
       router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
     } else {
       router.push(nextPath);
@@ -81,8 +81,6 @@ export default function MaterialReleasePage() {
   const [releaseInfo, setReleaseInfo] = useState({
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().substring(0, 5),
-    storeManager: '',
-    floorSupervisor: '',
     productionFloor: '',
     notes: ''
   });
@@ -90,15 +88,12 @@ export default function MaterialReleasePage() {
   const [globalMessage, setGlobalMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [releaseCompleted, setReleaseCompleted] = useState(false);
 
-  const availableSupervisors = releaseInfo.productionFloor
-    ? floorSupervisorsMap[releaseInfo.productionFloor] || []
-    : [];
+
 
   const handleFloorChange = useCallback((floor: string) => {
     setReleaseInfo(prev => ({
       ...prev,
-      productionFloor: floor,
-      floorSupervisor: ''
+      productionFloor: floor
     }));
   }, []);
 
@@ -136,9 +131,7 @@ export default function MaterialReleasePage() {
   // State Logic Variables
   const totalFrozen = mockFrozenMaterials.length;
 
-  const isFormValid = releaseInfo.storeManager.trim() !== '' &&
-    releaseInfo.floorSupervisor.trim() !== '' &&
-    releaseInfo.productionFloor !== '';
+  const isFormValid = releaseInfo.productionFloor !== '';
 
   const hasValidReleasesToProcess = isFormValid && mockFrozenMaterials.some(mat => {
     const st = releaseStates[mat.id];
@@ -172,8 +165,8 @@ export default function MaterialReleasePage() {
             onClick={handleReleaseToProduction}
             disabled={!hasValidReleasesToProcess}
             className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasValidReleasesToProcess
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
               }`}
           >
             <FileSignature className="h-4 w-4" />
@@ -203,10 +196,7 @@ export default function MaterialReleasePage() {
 
       {/* Release Details Section */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div>
-          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><FileText className="h-3.5 w-3.5" /> {t('procurement.releaseId') || 'Release ID'}</span>
-          <p className="text-sm font-semibold text-indigo-900 py-1.5">REL-2026-042</p>
-        </div>
+
         <div>
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><FileText className="h-3.5 w-3.5" /> {t('procurement.linkedPO') || 'Linked PO'}</span>
           <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 py-1.5">PO-2026-004</p>
@@ -219,37 +209,16 @@ export default function MaterialReleasePage() {
           <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><Clock className="h-3.5 w-3.5" /> {t('procurement.releaseTime') || 'Release Time'}</label>
           <input type="time" className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500" value={releaseInfo.time} onChange={e => setReleaseInfo({ ...releaseInfo, time: e.target.value })} disabled={releaseCompleted} />
         </div>
+
         <div>
-          <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><User className="h-3.5 w-3.5" /> {t('procurement.storeManager') || 'Store Manager'}</label>
-          <input type="text" placeholder={t('procurement.managerName') || "Manager Name"} className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500" value={releaseInfo.storeManager} onChange={e => setReleaseInfo({ ...releaseInfo, storeManager: e.target.value })} disabled={releaseCompleted} />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><Building2 className="h-3.5 w-3.5" /> {t('procurement.productionFloor') || 'Production Floor'}</label>
+          <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><Building2 className="h-3.5 w-3.5" /> Allocate Material</label>
           <select className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-slate-900" value={releaseInfo.productionFloor} onChange={e => handleFloorChange(e.target.value)} disabled={releaseCompleted}>
-            <option value="">{t('procurement.selectProductionFloor') || 'Select Production Floor'}</option>
-            <option value="Floor 1 - Cutting">{t('procurement.floor1') || 'Floor 1 - Cutting'}</option>
-            <option value="Floor 2 - Stitching">{t('procurement.floor2') || 'Floor 2 - Stitching'}</option>
-            <option value="Floor 3 - Finishing">{t('procurement.floor3') || 'Floor 3 - Finishing'}</option>
-            <option value="Floor 4 - Quality Control">{t('procurement.floor4') || 'Floor 4 - Quality Control'}</option>
+            <option value="">Select Allocate material</option>
+            <option value="Person 1">Person 1</option>
+            <option value="Person 2">Person 2</option>
           </select>
         </div>
-        <div>
-          <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><User className="h-3.5 w-3.5" /> {t('procurement.floorSupervisor') || 'Floor Supervisor'}</label>
-          <select
-            className={`w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-slate-900 ${!releaseInfo.productionFloor
-                ? 'bg-neutral-50 dark:bg-slate-900 border-neutral-200 dark:border-slate-700 text-neutral-400 cursor-not-allowed'
-                : 'border-neutral-300 dark:border-slate-600 text-neutral-800 dark:text-neutral-200'
-              }`}
-            value={releaseInfo.floorSupervisor}
-            onChange={e => setReleaseInfo({ ...releaseInfo, floorSupervisor: e.target.value })}
-            disabled={releaseCompleted || !releaseInfo.productionFloor}
-          >
-            <option value="">{t('procurement.selectSupervisor') || "Select Supervisor"}</option>
-            {availableSupervisors.map(sup => (
-              <option key={sup} value={sup}>{sup}</option>
-            ))}
-          </select>
-        </div>
+
         <div className="md:col-span-2 lg:col-span-4">
           <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><FileText className="h-3.5 w-3.5" /> {t('procurement.notesOptional') || 'Notes (Optional)'}</label>
           <input type="text" placeholder={t('procurement.specialInstructions') || "Any special instructions or comments for the production floor"} className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500" value={releaseInfo.notes} onChange={e => setReleaseInfo({ ...releaseInfo, notes: e.target.value })} disabled={releaseCompleted} />
@@ -321,13 +290,10 @@ export default function MaterialReleasePage() {
                 <p className="font-semibold text-neutral-900 dark:text-neutral-100">PO-2026-004</p>
               </div>
               <div className="p-4 bg-neutral-50 dark:bg-slate-900 rounded-lg border border-neutral-100 dark:border-slate-800">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t('procurement.productionFloor') || 'Production Floor'}</p>
-                <p className="font-semibold text-neutral-900 dark:text-neutral-100">{t(`procurement.floor_${releaseInfo.productionFloor.toLowerCase().replace(/ /g, '_')}`) || releaseInfo.productionFloor || 'Floor 1 - Cutting'}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Allocate material</p>
+                <p className="font-semibold text-neutral-900 dark:text-neutral-100">{releaseInfo.productionFloor || 'Allocate to Person 1'}</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-slate-900 rounded-lg border border-neutral-100 dark:border-slate-800">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t('procurement.floorSupervisor') || 'Supervisor'}</p>
-                <p className="font-semibold text-neutral-900 dark:text-neutral-100">{releaseInfo.floorSupervisor}</p>
-              </div>
+
             </div>
 
             <h3 className="text-md font-bold text-neutral-800 dark:text-neutral-200 mb-4">{t('procurement.releasedMaterials') || 'Released Materials'}</h3>
@@ -417,10 +383,10 @@ export default function MaterialReleasePage() {
                               onChange={(e) => handleReleaseChange(item.id, e.target.value)}
                               disabled={st.status === 'Released to Production'}
                               className={`w-24 px-3 py-1.5 border rounded-lg text-sm text-right ${st.status === 'Released to Production'
-                                  ? 'bg-neutral-100 dark:bg-slate-800 border-neutral-200 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
-                                  : isError
-                                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-900'
-                                    : 'border-neutral-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400'
+                                ? 'bg-neutral-100 dark:bg-slate-800 border-neutral-200 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
+                                : isError
+                                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-900'
+                                  : 'border-neutral-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400'
                                 }`}
                             />
                             <span className="text-xs text-neutral-500 dark:text-neutral-400 w-12">{t(`inventory.units.${item.unit}`) || item.unit}</span>
@@ -446,8 +412,8 @@ export default function MaterialReleasePage() {
               onClick={handleReleaseToProduction}
               disabled={!hasValidReleasesToProcess}
               className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasValidReleasesToProcess
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
                 }`}
             >
               <FileSignature className="h-4 w-4" />

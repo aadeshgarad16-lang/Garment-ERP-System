@@ -27,9 +27,32 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState(roles[0]);
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
+
+  const validateName = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return "Required";
+    if (!/^[a-zA-Z\s'.]{2,100}$/.test(trimmed) || /^(abcd|aaaa|xyz|12345|test|asdf|qwer)$/i.test(trimmed) || /^(.)\1{2,}$/.test(trimmed)) {
+      return "Please enter a valid name. Placeholder text like 'ABCD' or numbers are not allowed.";
+    }
+    return "";
+  };
+
+  const handleNameBlur = () => {
+    const trimmed = name.trim();
+    if (trimmed !== name) setName(trimmed);
+    setNameError(validateName(trimmed));
+  };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const nError = validateName(name);
+    if (nError) {
+      setNameError(nError);
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -81,17 +104,28 @@ export default function RegisterPage() {
               </label>
               <div className="mt-1 relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-neutral-400" />
+                  <User className={`h-5 w-5 ${nameError ? 'text-red-400' : 'text-neutral-400'}`} />
                 </div>
                 <input
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors text-neutral-900 dark:text-neutral-100"
+                  onBlur={handleNameBlur}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError("");
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg sm:text-sm transition-colors text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 ${
+                    nameError 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-neutral-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="John Doe"
                 />
               </div>
+              {nameError && (
+                <p className="text-red-500 text-xs mt-1">{nameError}</p>
+              )}
             </div>
 
             {/* Email Field */}

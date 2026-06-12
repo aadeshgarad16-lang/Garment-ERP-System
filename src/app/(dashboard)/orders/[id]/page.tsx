@@ -68,22 +68,26 @@ export default function OrderDetailsPage() {
         {/* Payment Info Card */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6 space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2 border-b border-neutral-200 dark:border-slate-700 pb-3 text-neutral-800 dark:text-neutral-200"><CreditCard className="h-5 w-5 text-green-600" /> Payment Details</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-neutral-500 dark:text-neutral-400">Payment Term</p>
               <p className="font-medium text-neutral-900 dark:text-neutral-100">{order.paymentTerm || '-'}</p>
-            </div>
-            <div>
-              <p className="text-neutral-500 dark:text-neutral-400">Advance Amount</p>
-              <p className="font-medium text-neutral-900 dark:text-neutral-100">₹{order.advanceAmount || '0.00'}</p>
             </div>
             <div>
               <p className="text-neutral-500 dark:text-neutral-400">Subtotal</p>
               <p className="font-medium text-neutral-900 dark:text-neutral-100">₹{order.poAmount || '0.00'}</p>
             </div>
             <div>
+              <p className="text-neutral-500 dark:text-neutral-400">Advance Amount</p>
+              <p className="font-medium text-neutral-900 dark:text-neutral-100">₹{order.advanceAmount || '0.00'}</p>
+            </div>
+            <div>
               <p className="text-neutral-500 dark:text-neutral-400">Total Amount</p>
               <p className="font-medium text-neutral-900 dark:text-neutral-100 font-bold text-blue-600">₹{order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</p>
+            </div>
+            <div>
+              <p className="text-neutral-500 dark:text-neutral-400">Remaining Amount</p>
+              <p className="font-medium text-neutral-900 dark:text-neutral-100 font-bold text-blue-600">₹{order.totalAmount ? Math.max(0, order.totalAmount - (order.advanceAmount || 0)).toFixed(2) : '0.00'}</p>
             </div>
           </div>
         </div>
@@ -113,9 +117,9 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        {/* Garment Specifications */}
+        {/* Order Specifications */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6 space-y-4 md:col-span-2 overflow-x-auto">
-          <h2 className="text-lg font-semibold flex items-center gap-2 border-b border-neutral-200 dark:border-slate-700 pb-3 text-neutral-800 dark:text-neutral-200"><Package className="h-5 w-5 text-purple-600" /> Garment Specifications</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2 border-b border-neutral-200 dark:border-slate-700 pb-3 text-neutral-800 dark:text-neutral-200"><Package className="h-5 w-5 text-purple-600" /> Order Specifications</h2>
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-neutral-50 dark:bg-slate-800 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400">

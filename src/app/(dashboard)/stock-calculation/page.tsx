@@ -1,21 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/language-context';
 import {
   Package,
-  Plus,
-  Save,
-  Trash2,
-  FileText,
-  CheckCircle2,
   Box,
   AlertCircle,
+  CheckCircle2,
   Calculator,
   ChevronDown
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 interface GarmentSpec {
   id: string;
@@ -77,9 +75,10 @@ function SearchableDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [value]);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredOptions = useMemo(() => {
+    const query = search.toLowerCase();
+    return options.filter((opt) => opt.toLowerCase().includes(query));
+  }, [options, search]);
 
   return (
     <div className="relative" ref={wrapperRef}>
@@ -100,21 +99,21 @@ function SearchableDropdown({
           onFocus={() => setIsOpen(true)}
           disabled={disabled}
           placeholder={placeholder}
-          className="w-full px-3 py-2 pr-10 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-3 py-2 pr-10 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
           <ChevronDown className="h-4 w-4" />
         </div>
       </div>
       {isOpen && !disabled && (
-        <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1">
+        <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1 border-t-0">
           {filteredOptions.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-neutral-500">No options found</li>
+            <li className="px-3 py-2 text-sm text-neutral-500 italic">No options found</li>
           ) : (
             filteredOptions.map((opt, idx) => (
               <li
                 key={idx}
-                className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-blue-50 dark:hover:bg-blue-900/50 cursor-pointer"
+                className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer transition-colors"
                 onClick={() => {
                   onChange(opt);
                   setSearch(opt);
@@ -135,19 +134,17 @@ function StockCalculationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
 
+  // Synchronize component dropdown selections with search parameters safely
   useEffect(() => {
-    const custParam = searchParams.get('customerName');
-    const poParam = searchParams.get('poNumber');
-    if (custParam) setSelectedCustomer(custParam);
-    else setSelectedCustomer('');
-    
-    if (poParam) setSelectedPONumber(poParam);
-    else setSelectedPONumber('');
+    setSelectedCustomer(searchParams.get('customerName') || '');
+    setSelectedPONumber(searchParams.get('poNumber') || '');
   }, [searchParams]);
 
   useEffect(() => {
@@ -156,72 +153,108 @@ function StockCalculationContent() {
       if (ordersStr) {
         try {
           setSavedOrders(JSON.parse(ordersStr));
-        } catch (e) { }
+        } catch (e) {
+          console.error("Failed parsing localStorage logs", e);
+        }
       }
+      setIsLoaded(true);
     };
     loadOrders();
     window.addEventListener('storage', loadOrders);
     return () => window.removeEventListener('storage', loadOrders);
   }, []);
 
-  const activeOrders = savedOrders.filter(o => o.stage === 'Stock Check' && o.status === 'Submitted');
+  // Compute active tracking datasets inside a isolated block
+  const activeOrders = useMemo(() => {
+    return savedOrders.filter(
+      (o) => o.stage === 'Stock Check' && (o.status === 'Submitted' || o.status === 'SUBMITTED')
+    );
+  }, [savedOrders]);
 
+  // Track layout boundaries and clear data parameters if an assignment shifts status metrics
   useEffect(() => {
-    // If the currently selected PO is no longer active in this stage, reset the form.
-    if (selectedPONumber && !activeOrders.find(o => o.poNumber === selectedPONumber)) {
+    if (!isLoaded) return;
+    if (selectedPONumber && !activeOrders.some((o) => o.poNumber === selectedPONumber)) {
       setSelectedCustomer('');
       setSelectedPONumber('');
     }
-  }, [activeOrders, selectedPONumber]);
+  }, [activeOrders, selectedPONumber, isLoaded]);
 
-  const customers = Array.from(new Set(activeOrders.map(o => o.customerName))).filter(Boolean) as string[];
+  // Unique lists derived directly from active states
+  const customers = useMemo(() => {
+    return Array.from(new Set(activeOrders.map((o) => o.customerName))).filter(Boolean);
+  }, [activeOrders]);
 
-  // Filter POs by customer
-  const filteredOrders = activeOrders.filter(o => o.customerName === selectedCustomer);
+  const poNumbers = useMemo(() => {
+    if (!selectedCustomer) return [];
+    return Array.from(
+      new Set(activeOrders.filter((o) => o.customerName === selectedCustomer).map((o) => o.poNumber))
+    ).filter(Boolean);
+  }, [activeOrders, selectedCustomer]);
 
-  const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
+  const selectedOrder = useMemo(() => {
+    return activeOrders.find(
+      (o) => o.customerName === selectedCustomer && o.poNumber === selectedPONumber
+    );
+  }, [activeOrders, selectedCustomer, selectedPONumber]);
 
-  const selectedOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
-  const derivedPODate = selectedOrder ? selectedOrder.poDate : '';
-  const activeSpecs = selectedOrder ? (selectedOrder.specs || []) : [];
+  // Structural metric processing updates
+  const orderAnalysis = useMemo(() => {
+    const specs = selectedOrder?.specs || [];
+    if (specs.length === 0) {
+      return { isFormValid: false, totalQuantity: 0, totalProductionRequired: 0, derivedPODate: '' };
+    }
 
-  const isValidRow = (spec: GarmentSpec) => {
-    return (spec.useExistingStock || 0) <= (spec.stockAvailable || 0) && (spec.useExistingStock || 0) <= spec.quantity;
-  };
+    let totalQuantity = 0;
+    let totalProductionRequired = 0;
+    let isFormValid = true;
 
-  const isFormValid = activeSpecs.every(isValidRow);
-  const totalQuantity = activeSpecs.reduce((sum, spec) => sum + (spec.quantity || 0), 0);
-  const totalProductionRequired = activeSpecs.reduce((sum, spec) => sum + Math.max(0, (spec.quantity || 0) - (spec.useExistingStock || 0)), 0);
+    for (let i = 0; i < specs.length; i++) {
+      const spec = specs[i];
+      const allocation = spec.useExistingStock || 0;
+      const stock = spec.stockAvailable || 0;
+
+      if (allocation > stock || allocation > spec.quantity) {
+        isFormValid = false;
+      }
+      totalQuantity += spec.quantity || 0;
+      totalProductionRequired += Math.max(0, (spec.quantity || 0) - allocation);
+    }
+
+    return {
+      isFormValid,
+      totalQuantity,
+      totalProductionRequired,
+      derivedPODate: selectedOrder?.poDate || '',
+    };
+  }, [selectedOrder]);
 
   const handleCalculateBOM = () => {
     if (selectedOrder) {
       localStorage.setItem('bomCalculationDraft', JSON.stringify({
         selectedCustomer,
-        selectedPODate: derivedPODate,
+        selectedPODate: orderAnalysis.derivedPODate,
         selectedPONumber
       }));
 
-      // Pipeline Tracking: Update order stage to BOM Calculation
-      const updatedOrders = savedOrders.map(o => 
-        o.id === selectedOrder.id ? { ...o, stage: 'BOM Calculation' } : o
-      );
-      localStorage.setItem('savedOrders', JSON.stringify(updatedOrders));
-      window.dispatchEvent(new Event('storage'));
+      updateOrderAndLog(selectedOrder.poNumber, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o) =>
+          o.id === selectedOrder.id ? { ...o, stage: 'BOM Calculation' } : o
+        );
+      });
 
-      // RESET FORM STATE UPON SUCCESSFUL STAGE COMPLETION
       setSelectedCustomer('');
       setSelectedPONumber('');
 
-      // Wipe query parameters from history so navigating back shows a clean form
       window.history.replaceState(null, '', window.location.pathname);
       router.push('/bom-calculation');
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans pb-8">
+    <div className="max-w-7xl mx-auto space-y-6 font-sans pb-8 px-4 sm:px-6">
       <WorkflowIndicator currentStep="Stock Check" />
-      
+
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
           <Package className="h-6 w-6 text-blue-600" />
@@ -233,16 +266,16 @@ function StockCalculationContent() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-6">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-4 py-3 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
             <Box className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
             Stock Calculation
           </h2>
         </div>
-        <div className="p-4 sm:p-6">
+        <div className="p-6">
 
-          {/* Dropdowns */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Configuration Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <SearchableDropdown
               label="Customer Name"
               options={customers}
@@ -264,41 +297,41 @@ function StockCalculationContent() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">PO Date</label>
               <div
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center"
+                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-800/40 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner"
               >
-                {derivedPODate || "—"}
+                {orderAnalysis.derivedPODate || "—"}
               </div>
             </div>
           </div>
 
-          {/* Dynamic Table */}
+          {/* Table Tracking Views */}
           <div className="mb-6">
             {!selectedOrder ? (
-              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-slate-700 rounded-xl bg-neutral-50 dark:bg-slate-800/50 text-neutral-500 dark:text-neutral-400 text-sm">
+              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-slate-700 rounded-xl bg-neutral-50 dark:bg-slate-800/30 text-neutral-500 dark:text-neutral-400 text-sm italic">
                 Please select a customer and PO Number to view details.
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-slate-700">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-slate-700 shadow-sm">
+                <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
-                    <tr className="bg-neutral-50 dark:bg-slate-800/80 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                      <th className="px-4 py-3">PO Number</th>
-                      <th className="px-4 py-3">PO Date</th>
-                      <th className="px-4 py-3">Delivery Date</th>
-                      <th className="px-4 py-3 min-w-[250px]">Garment Specifications</th>
+                    <tr className="bg-neutral-50 dark:bg-slate-800/70 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                      <th className="px-6 py-3.5">PO Number</th>
+                      <th className="px-6 py-3.5">PO Date</th>
+                      <th className="px-6 py-3.5">Delivery Date</th>
+                      <th className="px-6 py-3.5 min-w-[280px]">Order Specifications</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                    <tr className="text-sm text-neutral-800 dark:text-neutral-200">
-                      <td className="px-4 py-3 font-medium">{selectedOrder.poNumber}</td>
-                      <td className="px-4 py-3">{selectedOrder.poDate}</td>
-                      <td className="px-4 py-3">{selectedOrder.deliveryDate}</td>
-                      <td className="px-4 py-3 text-xs text-neutral-600 dark:text-neutral-400 space-y-1">
+                    <tr className="text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50/30 transition-colors">
+                      <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400">{selectedOrder.poNumber}</td>
+                      <td className="px-6 py-4">{selectedOrder.poDate}</td>
+                      <td className="px-6 py-4">{selectedOrder.deliveryDate}</td>
+                      <td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400 space-y-2">
                         {selectedOrder.specs && selectedOrder.specs.length > 0 ? (
-                          selectedOrder.specs.map((spec, idx) => (
-                            <div key={idx} className="flex justify-between border-b border-neutral-100 dark:border-slate-800 last:border-0 pb-1 last:pb-0">
-                              <span>{spec.itemDescription} ({spec.size}) - {spec.pattern}</span>
-                              <span className="font-medium text-neutral-900 dark:text-neutral-100">Qty: {spec.quantity}</span>
+                          selectedOrder.specs.map((spec) => (
+                            <div key={spec.id} className="flex justify-between border-b border-neutral-100 dark:border-slate-800 last:border-0 pb-1.5 last:pb-0">
+                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{spec.itemDescription} ({spec.size}) - {spec.pattern}</span>
+                              <span className="font-semibold bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded text-neutral-900 dark:text-neutral-100">Qty: {spec.quantity}</span>
                             </div>
                           ))
                         ) : (
@@ -312,21 +345,27 @@ function StockCalculationContent() {
             )}
           </div>
 
+          {/* Action Row Elements */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
             <div className="flex-1">
-              {selectedOrder && !isFormValid && (
-                <p className="text-sm text-red-600 font-medium flex items-center gap-1.5"><AlertCircle className="h-4 w-4" /> Please resolve stock allocation errors in Order Initiation before proceeding.</p>
+              {selectedOrder && !orderAnalysis.isFormValid && (
+                <p className="text-sm text-red-600 dark:text-red-400 font-semibold flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> Please resolve stock allocation errors in Order Initiation before proceeding.
+                </p>
               )}
-              {selectedOrder && isFormValid && totalProductionRequired === 0 && totalQuantity > 0 && (
-                <p className="text-sm text-emerald-600 font-medium flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Order can be fulfilled entirely using existing stock.</p>
+              {selectedOrder && orderAnalysis.isFormValid && orderAnalysis.totalProductionRequired === 0 && orderAnalysis.totalQuantity > 0 && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" /> Order can be fulfilled entirely using existing stock.
+                </p>
               )}
             </div>
+
             <button
               onClick={handleCalculateBOM}
-              disabled={!selectedOrder || !isFormValid || totalProductionRequired === 0 || totalQuantity === 0}
-              className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${!selectedOrder || !isFormValid || totalProductionRequired === 0 || totalQuantity === 0
-                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              disabled={!selectedOrder || !orderAnalysis.isFormValid || orderAnalysis.totalProductionRequired === 0 || orderAnalysis.totalQuantity === 0}
+              className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || !orderAnalysis.isFormValid || orderAnalysis.totalProductionRequired === 0 || orderAnalysis.totalQuantity === 0
+                  ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
                 }`}
             >
               {t('orderInitiation.stockCalculation.calculateBom')}
@@ -341,7 +380,7 @@ function StockCalculationContent() {
 
 export default function StockCalculationPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-neutral-500">Loading...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 animate-pulse">Loading stock verification system...</div>}>
       <StockCalculationContent />
     </Suspense>
   );

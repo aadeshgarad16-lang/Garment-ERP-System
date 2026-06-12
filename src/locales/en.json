@@ -4,16 +4,19 @@
     "mainMenu": "Main Menu",
     "dashboard": "Dashboard",
     "orderInitiation": "Order Initiation",
+    "orderSpecifications": "Specifications",
     "stockCalculation": "Stock Check",
     "bomCalculation": "BOM Calculation",
     "inventoryCheck": "Inventory Check",
+    "materialallocation": "Material Allocation",
     "procurement": "Procurement",
     "production": "Production",
     "qualityPacking": "Quality & Packing",
     "logistics": "Logistics",
     "accounts": "Accounts",
     "settings": "Settings",
-    "store": "Store"
+    "store": "Store",
+    "logs": "System Logs"
   },
   "languageSelection": {
     "title": "Select Your Language",
@@ -95,6 +98,7 @@
   "orderInitiation": {
     "tracker": {
       "orderInitiation": "Order Initiation",
+      "orderSpecifications": "Specifications",
       "stockCheck": "Stock Check",
       "bomCalculation": "BOM Calculation",
       "inventoryCheck": "Inventory Check",
@@ -156,8 +160,8 @@
       "tax": "Tax (0%)",
       "totalAmount": "Total Amount"
     },
-    "garmentSpecifications": {
-      "title": "Garment Specifications",
+    "orderSpecifications": {
+      "title": "Order Specifications",
       "addRow": "Add Row",
       "table": {
         "itemDescription": "Item Description",

@@ -1,14 +1,21 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Factory,
+  Mail,
+  Lock,
+  UserCog,
+  ArrowRight,
+  Sun,
+  Moon,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "next-themes";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Factory, Mail, Lock, UserCog, ArrowRight, Sun, Moon } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useTheme } from 'next-themes';
-
-const roles = [
+const ROLES = [
   "Super Admin",
   "Director",
   "Production Head",
@@ -16,233 +23,277 @@ const roles = [
   "Production Supervisor",
   "Store Manager",
   "Cutting Master",
-  "Accounts Manager"
-];
+  "Accounts Manager",
+] as const;
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(roles[0]);
-  const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState("");
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    role: ROLES[0] as string,
+    rememberMe: false,
+  });
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   useEffect(() => {
     setMounted(true);
 
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    const savedPassword = localStorage.getItem('rememberedPassword');
-    const savedRole = localStorage.getItem('rememberedRole');
+    try {
+      const email = localStorage.getItem("rememberedEmail");
+      const role = localStorage.getItem("rememberedRole");
 
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-      if (savedPassword) setPassword(savedPassword);
-      if (savedRole) setRole(savedRole);
+      if (email) {
+        setFormData((prev) => ({
+          ...prev,
+          email,
+          role: role || ROLES[0],
+          rememberMe: true,
+        }));
+      }
+    } catch (err) {
+      console.error("Local storage error:", err);
     }
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
 
-    if (rememberMe) {
-      localStorage.setItem('rememberedEmail', email);
-      localStorage.setItem('rememberedPassword', password);
-      localStorage.setItem('rememberedRole', role);
-    } else {
-      localStorage.removeItem('rememberedEmail');
-      localStorage.removeItem('rememberedPassword');
-      localStorage.removeItem('rememberedRole');
-    }
+    setError("");
 
-    const result = login({ name: "", email, role, password });
-
-    if (!result.success) {
-      setError(result.error || "Login failed");
-      return;
-    }
-
-    setError('');
-    router.push('/language');
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : value,
+    }));
   };
 
-  const isDark = mounted && resolvedTheme === 'dark';
+  const validateForm = () => {
+    if (!formData.email.trim()) {
+      return "Email is required";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(formData.email)) {
+      return "Please enter a valid email";
+    }
+
+    if (!formData.password.trim()) {
+      return "Password is required";
+    }
+
+    if (formData.password.length < 8) {
+      return "Password must be at least 8 characters";
+    }
+
+    return null;
+  };
+
+  const handleLogin = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+
+      const validationError = validateForm();
+
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      try {
+        if (formData.rememberMe) {
+          localStorage.setItem(
+            "rememberedEmail",
+            formData.email
+          );
+          localStorage.setItem(
+            "rememberedRole",
+            formData.role
+          );
+        } else {
+          localStorage.removeItem("rememberedEmail");
+          localStorage.removeItem("rememberedRole");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      const result = login({
+        name: "",
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      });
+
+      if (!result.success) {
+        setError(result.error || "Login failed");
+        return;
+      }
+
+      router.push("/language");
+    },
+    [formData, login, router]
+  );
+
+  if (!mounted) return null;
 
   return (
-    <div className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans transition-colors duration-300 ${isDark ? 'bg-neutral-900' : 'bg-neutral-100 dark:bg-slate-800'}`}>
-
-      {/* Theme Toggle Button */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-8">
+    <div
+      className={`min-h-screen flex items-center justify-center p-6 ${isDark
+          ? "bg-neutral-900"
+          : "bg-neutral-100"
+        }`}
+    >
+      <div className="absolute top-5 right-5">
         <button
-          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          className={`p-2 rounded-full shadow-sm transition-colors ${isDark
-              ? 'bg-neutral-800 text-yellow-400 hover:bg-neutral-700'
-              : 'bg-white dark:bg-slate-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-slate-800'
-            }`}
-          aria-label="Toggle theme"
+          onClick={() =>
+            setTheme(
+              isDark ? "light" : "dark"
+            )
+          }
+          className="p-2 rounded-full"
         >
-          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {isDark ? (
+            <Sun size={20} />
+          ) : (
+            <Moon size={20} />
+          )}
         </button>
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="h-14 w-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <Factory className="h-8 w-8 text-white" />
+      <div
+        className={`w-full max-w-md rounded-2xl shadow-xl border p-8 ${isDark
+            ? "bg-neutral-800 border-neutral-700"
+            : "bg-white border-neutral-200"
+          }`}
+      >
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
+            <Factory className="text-white" />
           </div>
+
+          <h1 className="text-3xl font-bold mt-4">
+            Sason ERP
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-2">
+            Sign in to your account
+          </p>
         </div>
-        <h2 className={`mt-6 text-center text-3xl font-extrabold tracking-tight transition-colors ${isDark ? 'text-white' : 'text-neutral-900 dark:text-neutral-100'}`}>
-          Sason ERP
-        </h2>
-        <p className={`mt-2 text-center text-sm transition-colors ${isDark ? 'text-neutral-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
-          Sign in to your account
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className={`py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border transition-colors duration-300 ${isDark
-            ? 'bg-neutral-800 border-neutral-700 shadow-black/50'
-            : 'bg-white dark:bg-slate-900 border-neutral-100 dark:border-slate-800 shadow-neutral-200/50'
-          }`}>
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm text-center font-medium">
-              {error}
-            </div>
-          )}
-          <form className="space-y-6" onSubmit={handleLogin}>
-
-            {/* Email Field */}
-            <div>
-              <label className={`block text-sm font-medium transition-colors ${isDark ? 'text-neutral-300' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                Email address
-              </label>
-              <div className="mt-1 relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className={`h-5 w-5 transition-colors ${isDark ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-400'}`} />
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors ${isDark
-                      ? 'bg-neutral-900 border-neutral-600 text-white placeholder-neutral-500'
-                      : 'bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400'
-                    }`}
-                  placeholder="admin@sason.com"
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label className={`block text-sm font-medium transition-colors ${isDark ? 'text-neutral-300' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                Password
-              </label>
-              <div className="mt-1 relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className={`h-5 w-5 transition-colors ${isDark ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-400'}`} />
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors ${isDark
-                      ? 'bg-neutral-900 border-neutral-600 text-white placeholder-neutral-500'
-                      : 'bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400'
-                    }`}
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            {/* Role Selector */}
-            <div>
-              <label className={`block text-sm font-medium transition-colors ${isDark ? 'text-neutral-300' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                Sign in as
-              </label>
-              <div className="mt-1 relative rounded-lg shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserCog className={`h-5 w-5 transition-colors ${isDark ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-400'}`} />
-                </div>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors appearance-none cursor-pointer ${isDark
-                      ? 'bg-neutral-900 border-neutral-600 text-white'
-                      : 'bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100'
-                    }`}
-                >
-                  {roles.map((r) => (
-                    <option key={r} value={r} className={isDark ? 'bg-neutral-900 text-white' : 'bg-white dark:bg-slate-900 text-neutral-900 dark:text-neutral-100'}>{r}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className={`h-5 w-5 transition-colors ${isDark ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className={`h-4 w-4 text-blue-600 focus:ring-blue-500 rounded cursor-pointer transition-colors ${isDark ? 'bg-neutral-900 border-neutral-600' : 'border-neutral-300 dark:border-slate-600'}`}
-                />
-                <label htmlFor="remember-me" className={`ml-2 block text-sm cursor-pointer transition-colors ${isDark ? 'text-neutral-300' : 'text-neutral-700 dark:text-neutral-300'}`}>
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
-                  Forgot your password?
-                </a>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
-                Sign in to Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </button>
-            </div>
-          </form>
-
-          <div className={`mt-6 text-center text-sm transition-colors ${isDark ? 'text-neutral-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="font-medium text-blue-500 hover:text-blue-400">
-              Sign up
-            </Link>
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-100 text-red-600 text-sm">
+            {error}
           </div>
+        )}
 
-          <div className="mt-6">
+        <form
+          onSubmit={handleLogin}
+          className="space-y-5"
+        >
+          <div>
+            <label className="block mb-2 text-sm font-medium">
+              Email
+            </label>
+
             <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className={`w-full border-t transition-colors ${isDark ? 'border-neutral-700' : 'border-neutral-200 dark:border-slate-700'}`} />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className={`px-2 transition-colors ${isDark ? 'bg-neutral-800 text-neutral-500 dark:text-neutral-400' : 'bg-white dark:bg-slate-900 text-neutral-500 dark:text-neutral-400'}`}>
-                  Secure Enterprise Authentication
-                </span>
-              </div>
+              <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                placeholder="admin@sason.com"
+              />
             </div>
           </div>
+
+          <div>
+            <label className="block mb-2 text-sm font-medium">
+              Password
+            </label>
+
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                placeholder="********"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block mb-2 text-sm font-medium">
+              Role
+            </label>
+
+            <div className="relative">
+              <UserCog className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              >
+                {ROLES.map((role) => (
+                  <option
+                    key={role}
+                    value={role}
+                  >
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
+            />
+            Remember Me
+          </label>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg flex items-center justify-center gap-2"
+          >
+            Sign In
+            <ArrowRight size={18} />
+          </button>
+        </form>
+
+        <div className="text-center mt-6 text-sm">
+          Don't have an account?{" "}
+          <Link
+            href="/register"
+            className="text-blue-600 font-medium"
+          >
+            Sign Up
+          </Link>
         </div>
       </div>
     </div>
