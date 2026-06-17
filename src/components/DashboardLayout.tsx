@@ -47,7 +47,7 @@ const navItems = [
   { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck },
   { tKey: 'logistics', href: '/logistics', icon: Map },
   { tKey: 'accounts', href: '/accounts', icon: PieChart },
-  { tKey: 'store', href: 'http://localhost:5173', icon: ShoppingCart },
+  { tKey: 'store', href: '/store', icon: ShoppingCart },
   { tKey: 'logs', href: '/logs', icon: ClipboardList },
   { tKey: 'settings', href: '/settings', icon: Settings },
 ];
