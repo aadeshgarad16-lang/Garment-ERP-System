@@ -14,6 +14,7 @@ import {
   Box,
   Layers,
   Package,
+  PackageCheck,
   Truck,
   Factory,
   PieChart,
@@ -40,6 +41,7 @@ const navItems = [
   { tKey: 'bomCalculation', href: '/bom-calculation', icon: Calculator },
   { tKey: 'inventoryCheck', href: '/inventory', icon: Box },
   { tKey: 'materialallocation', href: '/material-allocation', icon: Layers },
+  { tKey: 'outSource', href: '/out-source', icon: PackageCheck },
   { tKey: 'procurement', href: '/procurement', icon: Truck },
   { tKey: 'production', href: '/production', icon: Factory },
   { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck },
@@ -87,10 +89,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-56 bg-[#1e293b] text-neutral-300 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#1e293b] text-neutral-300 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 bg-[#0f172a]">
+        <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 w-full">
           <Link href="/" onClick={() => setSidebarOpen(false)} className="text-xl font-bold text-white flex items-center gap-2">
             <Factory className="h-6 w-6 text-blue-500" />
             {t('appName') || 'Sasons ERP'}
@@ -100,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="px-4 mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">{t('sidebar.mainMenu')}</div>
           <nav className="space-y-1 px-3">
             {navItems.map((item) => {

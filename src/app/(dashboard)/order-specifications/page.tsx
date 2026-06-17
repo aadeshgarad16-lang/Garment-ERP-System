@@ -24,7 +24,7 @@ interface GarmentSpec {
   stockAvailable: number;
   unitPrice: number;
   photoName: string | null;
-  productionType: "In House" | "Outsource";
+  productionType: "In House" | "Outsource" | "Both";
 }
 
 interface DeliveryAddress {
@@ -40,6 +40,7 @@ interface DetailedAllocation {
   itemId: string;
   color?: string;
   size: string;
+  deliveryMethod?: string;
   quantity: number;
 }
 
@@ -759,7 +760,7 @@ function GarmentSpecsContent() {
                   {/* Row 1: Primary Selects, Size & Color */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Select Category</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
                       <select
                         value={spec.category || ""}
                         onChange={(e) => updateRow(spec.id, "category", e.target.value)}
@@ -774,7 +775,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Gender</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Gender <span className="text-red-500">*</span></label>
                       <select
                         value={spec.gender || ""}
                         onChange={(e) => updateRow(spec.id, "gender", e.target.value)}
@@ -787,7 +788,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Size (Multi-Select)</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Size (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={SIZE_OPTIONS}
                         selectedValues={spec.size ? spec.size.split(',').map(s => s.trim()).filter(Boolean) : []}
@@ -797,7 +798,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Color (Multi-Select)</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Color (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={COLOR_OPTIONS}
                         selectedValues={spec.color ? spec.color.split(',').map(c => c.trim()).filter(Boolean) : []}
@@ -812,7 +813,7 @@ function GarmentSpecsContent() {
                   {/* Row 2: Symmetrical Small Metrics & Action Panel */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">HSN Code</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">HSN Code <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         value={spec.hsnCode || ""}
@@ -822,7 +823,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Quantity</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Quantity <span className="text-red-500">*</span></label>
                       <input
                         type="number"
                         value={spec.quantity || ""}
@@ -832,7 +833,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Unit Price</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Unit Price <span className="text-red-500">*</span></label>
                       <input
                         type="number"
                         value={spec.unitPrice || ""}
@@ -842,14 +843,15 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Action</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Action <span className="text-red-500">*</span></label>
                       <select
                         value={spec.productionType || "In House"}
-                        onChange={(e) => updateRow(spec.id, "productionType", e.target.value)}
+                        onChange={(e) => updateRow(spec.id, "productionType", e.target.value as any)}
                         className={`w-full ${INPUT_STYLE} h-[44px] text-sm shadow-sm`}
                       >
                         <option value="In House">In House</option>
                         <option value="Outsource">Outsource</option>
+                        <option value="Both">Both</option>
                       </select>
                     </div>
                   </div>
@@ -857,7 +859,7 @@ function GarmentSpecsContent() {
                   {/* Row 3: Large Textareas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Item Description</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Item Description <span className="text-red-500">*</span></label>
                       <textarea
                         value={spec.itemDescription}
                         onChange={(e) => updateRow(spec.id, "itemDescription", e.target.value)}
@@ -866,7 +868,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Pattern</label>
+                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Pattern <span className="text-red-500">*</span></label>
                       <textarea
                         value={spec.pattern || ""}
                         onChange={(e) => updateRow(spec.id, "pattern", e.target.value)}
@@ -878,7 +880,7 @@ function GarmentSpecsContent() {
 
                   {/* Row 4: Grand Upload Photo Box */}
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Upload Photo</label>
+                    <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Upload Photo <span className="text-red-500">*</span></label>
                     <label className="cursor-pointer flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition shadow-sm group">
                       <div className="bg-blue-100 dark:bg-blue-900/60 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
                         <Upload className="h-6 w-6" />
@@ -954,13 +956,16 @@ function GarmentSpecsContent() {
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead className="bg-neutral-50 dark:bg-slate-800">
               <tr className="text-xs uppercase text-neutral-500 dark:text-neutral-400 font-semibold tracking-wider">
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 w-16">#</th>
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 w-1/3">Address</th>
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700">Item</th>
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 w-32">Size</th>
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 w-32">Color</th>
-                <th className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 w-48">Quantity</th>
-                <th className="px-4 py-4 border-b border-neutral-200 dark:border-slate-700 text-center w-24">Action</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-10 text-center">#</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[20%]">Address</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Item</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Size</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Color</th>
+                {deliveryType === "multi" && (
+                  <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Delivery Type</th>
+                )}
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Quantity</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 text-center w-[13%]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-700">
@@ -981,10 +986,10 @@ function GarmentSpecsContent() {
 
                   return (
                     <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
-                      <td className="px-6 py-5 font-medium text-neutral-900 dark:text-neutral-100">
+                      <td className="px-2 py-3 font-medium text-neutral-900 dark:text-neutral-100 text-center">
                         {index + 1}.
                       </td>
-                      <td className="px-4 py-4 align-top">
+                      <td className="px-2 py-3 align-top">
                         <div className="relative">
                           <textarea
                             rows={2}
@@ -1024,7 +1029,7 @@ function GarmentSpecsContent() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-2 py-3">
                         <div className="relative">
                           <select
                             value={alloc.itemId}
@@ -1041,7 +1046,7 @@ function GarmentSpecsContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-2 py-3">
                         <div className="relative">
                           <select
                             value={alloc.size}
@@ -1062,7 +1067,7 @@ function GarmentSpecsContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-2 py-3">
                         <div className="relative">
                           <select
                             value={alloc.color || ""}
@@ -1083,7 +1088,25 @@ function GarmentSpecsContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      {deliveryType === "multi" && (
+                        <td className="px-2 py-3">
+                          <div className="relative">
+                            <select
+                              value={alloc.deliveryMethod || ""}
+                              onChange={(e) => updateAllocationRow(alloc.id, "deliveryMethod", e.target.value)}
+                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm font-semibold bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
+                            >
+                              <option value="">Select Type</option>
+                              <option value="Door Delivery">Door Delivery</option>
+                              <option value="Godown Delivery">Godown Delivery</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                            </div>
+                          </div>
+                        </td>
+                      )}
+                      <td className="px-2 py-3">
                         <input
                           type="number"
                           min="0"
@@ -1104,7 +1127,7 @@ function GarmentSpecsContent() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 py-3 text-center">
                         {deliveryType === "multi" && (
                           <button
                             type="button"

@@ -6,6 +6,8 @@
     "stockCalculation": "साठा गणना",
     "bomCalculation": "साहित्य सूची (BOM) गणना",
     "inventoryCheck": "मालसाठा तपासणी",
+    "materialallocation": "साहित्य वाटप",
+    "outSource": "आउटसोर्स",
     "procurement": "खरेदी",
     "production": "उत्पादन",
     "qualityPacking": "गुणवत्ता आणि वेष्टन",

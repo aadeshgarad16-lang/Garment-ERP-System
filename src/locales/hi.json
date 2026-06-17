@@ -6,6 +6,8 @@
     "stockCalculation": "स्टॉक गणना",
     "bomCalculation": "सामग्री सूची (BOM) गणना",
     "inventoryCheck": "भंडार जांच",
+    "materialallocation": "सामग्री आवंटन",
+    "outSource": "आउटसोर्स",
     "procurement": "खरीद",
     "production": "उत्पादन",
     "qualityPacking": "गुणवत्ता और पैकिंग",
