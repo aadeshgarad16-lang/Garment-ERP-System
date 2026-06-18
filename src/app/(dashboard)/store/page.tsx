@@ -2,8 +2,21 @@
 
 import { useState } from "react";
 import {
-  Store, Layers, AlertCircle, CheckCircle2, AlertTriangle,
-  Box, Package, Eye, Edit, Trash2, Plus, X, Search, Filter
+  Store,
+  Layers,
+  AlertCircle,
+  CheckCircle2,
+  AlertTriangle,
+  Box,
+  Package,
+  Eye,
+  Edit,
+  Trash2,
+  Plus,
+  X,
+  Search,
+  Filter,
+  ChevronDown,
 } from "lucide-react";
 
 // ==========================================
@@ -32,8 +45,8 @@ export default function StorePage() {
         <button
           onClick={() => setActiveTab("raw")}
           className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+            : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
             }`}
         >
           Raw Material
@@ -42,8 +55,8 @@ export default function StorePage() {
         <button
           onClick={() => setActiveTab("pre")}
           className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
-              ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+            : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
             }`}
         >
           Pre-Stitched
@@ -66,6 +79,10 @@ function RawMaterialModule() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [rawColumnFilters, setRawColumnFilters] = useState({
+    hsnCode: "all",
+    materialName: "all",
+  });
 
   const [materials, setMaterials] = useState([
     {
@@ -133,11 +150,25 @@ function RawMaterialModule() {
 
     const matchesFilter = statusFilter === "all" || status === statusFilter;
     const matchesCard = selectedCard === "all" || status === selectedCard;
+    const matchesHsn = rawColumnFilters.hsnCode === "all" || item.hsnCode === rawColumnFilters.hsnCode;
+    const matchesMaterial = rawColumnFilters.materialName === "all" || item.materialName === rawColumnFilters.materialName;
 
-    return matchesSearch && matchesFilter && matchesCard;
+    return matchesSearch && matchesFilter && matchesCard && matchesHsn && matchesMaterial;
   });
 
   const handleSave = () => {
+    if (
+      !formData.hsnCode ||
+      !formData.materialName ||
+      !formData.description ||
+      !formData.unit ||
+      !formData.availableQty ||
+      !formData.unitPrice ||
+      !formData.minimumRequired
+    ) {
+      alert("Please fill all mandatory fields");
+      return;
+    }
     const payload = {
       id: editingId ?? Date.now(),
       hsnCode: formData.hsnCode,
@@ -146,7 +177,7 @@ function RawMaterialModule() {
       unit: formData.unit,
       rate: Number(formData.rate || formData.unitPrice),
       availableQty: Number(formData.availableQty),
-      blockedQty: Number(formData.blockedQty),
+      blockedQty: Number(formData.blockedQty || 0),
       unitPrice: Number(formData.unitPrice),
       minimumRequired: Number(formData.minimumRequired),
     };
@@ -179,15 +210,17 @@ function RawMaterialModule() {
         <div
           onClick={() => setSelectedCard("all")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "all"
-              ? "border-blue-500 dark:border-blue-500 ring-1 ring-blue-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700"
+            ? "border-blue-500 dark:border-blue-500 ring-1 ring-blue-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Total Materials</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Total Materials
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {materials.length}
@@ -197,15 +230,17 @@ function RawMaterialModule() {
         <div
           onClick={() => setSelectedCard("available")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "available"
-              ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+            ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Available</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Available
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {materials.filter((m) => getStatus(m) === "available").length}
@@ -215,15 +250,17 @@ function RawMaterialModule() {
         <div
           onClick={() => setSelectedCard("low")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "low"
-              ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
+            ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Low Stock</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Low Stock
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {materials.filter((m) => getStatus(m) === "low").length}
@@ -233,15 +270,17 @@ function RawMaterialModule() {
         <div
           onClick={() => setSelectedCard("out")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "out"
-              ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
+            ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
               <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Out Of Stock</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Out Of Stock
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {materials.filter((m) => getStatus(m) === "out").length}
@@ -305,17 +344,61 @@ function RawMaterialModule() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                <th className="px-4 py-3">HSN Code</th>
-                <th className="px-4 py-3">Material Name</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3">Available Qty</th>
-                <th className="px-4 py-3">Blocked Qty</th>
-                <th className="px-4 py-3">Unit Price</th>
-                <th className="px-4 py-3">Total Price</th>
-                <th className="px-4 py-3">Minimum Required</th>
-                <th className="px-4 py-3 text-center">Action</th>
+              <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
+                    <select
+                      value={rawColumnFilters.hsnCode}
+                      onChange={(e) => setRawColumnFilters({ ...rawColumnFilters, hsnCode: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">HSN Code</option>
+                      {Array.from(new Set(materials.map(m => m.hsnCode))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        HSN Code:
+                      </span>
+                      <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
+                        {rawColumnFilters.hsnCode === "all" ? "All" : rawColumnFilters.hsnCode}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-neutral-400" />
+                  </div>
+                </th>
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
+                    <select
+                      value={rawColumnFilters.materialName}
+                      onChange={(e) => setRawColumnFilters({ ...rawColumnFilters, materialName: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">Material Name</option>
+                      {Array.from(new Set(materials.map(m => m.materialName))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        Material Name:
+                      </span>
+                      <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
+                        {rawColumnFilters.materialName === "all" ? "All" : rawColumnFilters.materialName}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-neutral-400" />
+                  </div>
+                </th>
+                <th className="px-2 py-3">Description</th>
+                <th className="px-2 py-3">Unit</th>
+                <th className="px-2 py-3">Available Qty</th>
+                <th className="px-2 py-3">Blocked Qty</th>
+                <th className="px-2 py-3">Unit Price</th>
+                <th className="px-2 py-3">Total Price</th>
+                <th className="px-2 py-3">Minimum Required</th>
+                <th className="px-2 py-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -323,32 +406,57 @@ function RawMaterialModule() {
                 const totalPrice = item.availableQty * item.unitPrice;
                 const status = getStatus(item);
                 return (
-                  <tr key={item.id} className="hover:bg-muted/60 transition-colors">
-                    <td className="px-4 py-4 font-bold text-foreground">{item.hsnCode}</td>
-                    <td className="px-4 py-4 text-sm text-foreground">{item.materialName}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground truncate max-w-[250px]">{item.description}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.unit || "Nos"}</td>
-                    <td className="px-4 py-4">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-muted/60 transition-colors"
+                  >
+                    <td className="px-2 py-3 font-bold text-foreground">
+                      {item.hsnCode}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-foreground">
+                      {item.materialName}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-muted-foreground truncate max-w-[250px]">
+                      {item.description}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.unit || "Nos"}
+                    </td>
+                    <td className="px-2 py-3">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className="text-sm font-bold text-foreground">{item.availableQty}</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {item.availableQty}
+                        </span>
                         {status === "available" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">Available</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Available
+                          </span>
                         )}
                         {status === "low" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">Low Stock</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Low Stock
+                          </span>
                         )}
                         {status === "out" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">Out Of Stock</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Out Of Stock
+                          </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.blockedQty || 0}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">₹{item.unitPrice}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-primary">
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.blockedQty || 0}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      ₹{item.unitPrice}
+                    </td>
+                    <td className="px-2 py-3 text-sm font-semibold text-primary">
                       ₹{totalPrice.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.minimumRequired}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.minimumRequired}
+                    </td>
+                    <td className="px-2 py-3">
                       <div className="flex justify-center gap-1">
                         <button
                           onClick={() => {
@@ -358,7 +466,9 @@ function RawMaterialModule() {
                               materialName: item.materialName,
                               description: item.description,
                               unit: item.unit,
-                              rate: item.rate ? item.rate.toString() : item.unitPrice.toString(),
+                              rate: item.rate
+                                ? item.rate.toString()
+                                : item.unitPrice.toString(),
                               availableQty: item.availableQty.toString(),
                               blockedQty: item.blockedQty?.toString() || "",
                               unitPrice: item.unitPrice.toString(),
@@ -372,7 +482,11 @@ function RawMaterialModule() {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => setMaterials(materials.filter((m) => m.id !== item.id))}
+                          onClick={() =>
+                            setMaterials(
+                              materials.filter((m) => m.id !== item.id),
+                            )
+                          }
                           className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="Delete"
                         >
@@ -396,44 +510,63 @@ function RawMaterialModule() {
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                 {editingId ? "Edit Material" : "Add Material"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">HSN Code</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  HSN Code <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="HSN Code"
                   value={formData.hsnCode}
-                  onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hsnCode: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Material Name</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Material Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Material Name"
                   value={formData.materialName}
-                  onChange={(e) => setFormData({ ...formData, materialName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, materialName: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Description</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Unit</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Unit <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unit: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="">Select Unit</option>
@@ -448,42 +581,61 @@ function RawMaterialModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Available Qty</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Available Qty <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Quantity"
                   type="number"
                   value={formData.availableQty}
-                  onChange={(e) => setFormData({ ...formData, availableQty: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, availableQty: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Blocked Qty</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Blocked Qty
+                </label>
                 <input
                   placeholder="Blocked Quantity"
                   type="number"
                   value={formData.blockedQty}
-                  onChange={(e) => setFormData({ ...formData, blockedQty: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, blockedQty: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Unit Price (₹)</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Unit Price (₹) <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Unit Price"
                   type="number"
                   value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unitPrice: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Min Required</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Min Required <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Minimum Required"
                   type="number"
                   value={formData.minimumRequired}
-                  onChange={(e) => setFormData({ ...formData, minimumRequired: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      minimumRequired: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
@@ -521,6 +673,12 @@ function PreStitchedModule() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedGarment, setSelectedGarment] = useState<any>(null);
+  const [columnFilters, setColumnFilters] = useState({
+    category: "all",
+    gender: "all",
+    size: "all",
+    colour: "all",
+  });
 
   const [garments, setGarments] = useState([
     {
@@ -602,10 +760,31 @@ function PreStitchedModule() {
     const matchesFilter = statusFilter === "all" || status === statusFilter;
     const matchesCard = selectedCard === "all" || status === selectedCard;
 
-    return matchesSearch && matchesFilter && matchesCard;
+    const matchesCategory = columnFilters.category === "all" || item.category === columnFilters.category;
+    const matchesGender = columnFilters.gender === "all" || item.gender === columnFilters.gender;
+    const matchesSize = columnFilters.size === "all" || item.size === columnFilters.size;
+    const matchesColour = columnFilters.colour === "all" || item.colour === columnFilters.colour;
+
+    return matchesSearch && matchesFilter && matchesCard && matchesCategory && matchesGender && matchesSize && matchesColour;
   });
 
   const handleSave = () => {
+    if (
+      !formData.skuNo ||
+      !formData.hsnCode ||
+      !formData.description ||
+      !formData.pattern ||
+      !formData.category ||
+      !formData.gender ||
+      !formData.size ||
+      !formData.colour ||
+      !formData.availableQty ||
+      !formData.unitPrice ||
+      (!formData.image && !editingId)
+    ) {
+      alert("Please fill all mandatory fields");
+      return;
+    }
     const payload = {
       id: editingId ?? Date.now(),
       skuNo: formData.skuNo,
@@ -639,15 +818,17 @@ function PreStitchedModule() {
         <div
           onClick={() => setSelectedCard("all")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "all"
-              ? "border-purple-500 dark:border-purple-500 ring-1 ring-purple-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700"
+            ? "border-purple-500 dark:border-purple-500 ring-1 ring-purple-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
               <Package className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Total Garments</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Total Garments
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {garments.length}
@@ -657,15 +838,17 @@ function PreStitchedModule() {
         <div
           onClick={() => setSelectedCard("available")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "available"
-              ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+            ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Available</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Available
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {garments.filter((g) => getStatus(g) === "available").length}
@@ -675,15 +858,17 @@ function PreStitchedModule() {
         <div
           onClick={() => setSelectedCard("low")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "low"
-              ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
+            ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Low Stock</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Low Stock
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {garments.filter((g) => getStatus(g) === "low").length}
@@ -693,15 +878,17 @@ function PreStitchedModule() {
         <div
           onClick={() => setSelectedCard("out")}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "out"
-              ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
-              : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
+            ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
+            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
             }`}
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
               <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
             </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">Out Of Stock</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
+              Out Of Stock
+            </p>
           </div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
             {garments.filter((g) => getStatus(g) === "out").length}
@@ -768,20 +955,104 @@ function PreStitchedModule() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                <th className="px-4 py-3">SKU No</th>
-                <th className="px-4 py-3">HSN Code</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Gender</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Colour</th>
-                <th className="px-4 py-3 text-center">Image</th>
-                <th className="px-4 py-3">Available Qty</th>
-                <th className="px-4 py-3">Blocked Qty</th>
-                <th className="px-4 py-3">Unit Price</th>
-                <th className="px-4 py-3">Total Price</th>
-                <th className="px-4 py-3 text-center">More</th>
-                <th className="px-4 py-3 text-center">Action</th>
+              <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
+                    <select
+                      value={columnFilters.category}
+                      onChange={(e) => setColumnFilters({ ...columnFilters, category: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">Category</option>
+                      {Array.from(new Set(garments.map(g => g.category))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        Category:
+                      </span>
+                      <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
+                        {columnFilters.category === "all" ? "All" : columnFilters.category}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-purple-500" />
+                  </div>
+                </th>
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
+                    <select
+                      value={columnFilters.gender}
+                      onChange={(e) => setColumnFilters({ ...columnFilters, gender: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">Gender</option>
+                      {Array.from(new Set(garments.map(g => g.gender))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        Gender:
+                      </span>
+                      <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
+                        {columnFilters.gender === "all" ? "All" : columnFilters.gender}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-purple-500" />
+                  </div>
+                </th>
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
+                    <select
+                      value={columnFilters.size}
+                      onChange={(e) => setColumnFilters({ ...columnFilters, size: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">Size</option>
+                      {Array.from(new Set(garments.map(g => g.size))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        Size:
+                      </span>
+                      <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
+                        {columnFilters.size === "all" ? "All" : columnFilters.size}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-purple-500" />
+                  </div>
+                </th>
+                <th className="px-2 py-3">
+                  <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
+                    <select
+                      value={columnFilters.colour}
+                      onChange={(e) => setColumnFilters({ ...columnFilters, colour: e.target.value })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    >
+                      <option value="all">Colour</option>
+                      {Array.from(new Set(garments.map(g => g.colour))).map(c => (
+                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
+                        Colour:
+                      </span>
+                      <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
+                        {columnFilters.colour === "all" ? "All" : columnFilters.colour}
+                      </span>
+                    </div>
+                  </div>
+                </th>
+                <th className="px-2 py-3">Available Qty</th>
+                <th className="px-2 py-3">Blocked Qty</th>
+                <th className="px-2 py-3">Unit Price</th>
+                <th className="px-2 py-3">Total Price</th>
+                <th className="px-2 py-3 text-center">More</th>
+                <th className="px-2 py-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -789,46 +1060,54 @@ function PreStitchedModule() {
                 const totalPrice = item.availableQty * item.unitPrice;
                 const status = getStatus(item);
                 return (
-                  <tr key={item.id} className="hover:bg-muted/60 transition-colors">
-                    <td className="px-4 py-4 font-bold text-foreground">{item.skuNo}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.hsnCode}</td>
-                    <td className="px-4 py-4 text-sm text-foreground">{item.category}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.gender}</td>
-                    <td className="px-4 py-4 text-sm font-medium text-foreground">{item.size}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.colour}</td>
-                    <td className="px-4 py-4 flex justify-center">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.description}
-                          className="w-10 h-10 object-cover rounded-md border border-neutral-200 dark:border-slate-700"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-muted rounded-md border border-border flex items-center justify-center text-[10px] text-muted-foreground">
-                          No Img
-                        </div>
-                      )}
+                  <tr
+                    key={item.id}
+                    className="hover:bg-muted/60 transition-colors"
+                  >
+                    <td className="px-2 py-3 text-sm text-foreground">
+                      {item.category}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.gender}
+                    </td>
+                    <td className="px-2 py-3 text-sm font-medium text-foreground">
+                      {item.size}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.colour}
+                    </td>
+                    <td className="px-2 py-3">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className="text-sm font-bold text-foreground">{item.availableQty}</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {item.availableQty}
+                        </span>
                         {status === "available" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">Available</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Available
+                          </span>
                         )}
                         {status === "low" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">Low Stock</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Low Stock
+                          </span>
                         )}
                         {status === "out" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">Out Of Stock</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
+                            Out Of Stock
+                          </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">{item.blockedQty || 0}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground">₹{item.unitPrice}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-primary">
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      {item.blockedQty || 0}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                      ₹{item.unitPrice}
+                    </td>
+                    <td className="px-2 py-3 text-sm font-semibold text-primary">
                       ₹{totalPrice.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-2 py-3 text-center">
                       <button
                         onClick={() => {
                           setSelectedGarment(item);
@@ -840,7 +1119,7 @@ function PreStitchedModule() {
                         <Eye className="h-4 w-4" />
                       </button>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-2 py-3 text-center">
                       <div className="flex justify-center gap-1">
                         <button
                           onClick={() => {
@@ -867,7 +1146,11 @@ function PreStitchedModule() {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => setGarments(garments.filter((g) => g.id !== item.id))}
+                          onClick={() =>
+                            setGarments(
+                              garments.filter((g) => g.id !== item.id),
+                            )
+                          }
                           className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="Delete"
                         >
@@ -891,53 +1174,76 @@ function PreStitchedModule() {
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                 {editingId ? "Edit Garment" : "Add Garment"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">SKU No</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  SKU No <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="SKU No"
                   value={formData.skuNo}
-                  onChange={(e) => setFormData({ ...formData, skuNo: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, skuNo: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">HSN Code</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  HSN Code <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="HSN Code"
                   value={formData.hsnCode}
-                  onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hsnCode: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2 lg:col-span-1">
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Pattern</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Pattern <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Pattern"
                   value={formData.pattern}
-                  onChange={(e) => setFormData({ ...formData, pattern: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pattern: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Description</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Category</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Category <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>Shirt</option>
@@ -948,10 +1254,14 @@ function PreStitchedModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Gender</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Gender <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gender: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>Male</option>
@@ -959,10 +1269,14 @@ function PreStitchedModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Size</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Size <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, size: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>XS</option>
@@ -974,10 +1288,14 @@ function PreStitchedModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Colour</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Color <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.colour}
-                  onChange={(e) => setFormData({ ...formData, colour: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, colour: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option value="">Select Colour</option>
@@ -994,37 +1312,52 @@ function PreStitchedModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Available Qty</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Available Qty <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Quantity"
                   type="number"
                   value={formData.availableQty}
-                  onChange={(e) => setFormData({ ...formData, availableQty: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, availableQty: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Blocked Qty</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Blocked Qty
+                </label>
                 <input
                   placeholder="Blocked Quantity"
                   type="number"
                   value={formData.blockedQty}
-                  onChange={(e) => setFormData({ ...formData, blockedQty: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, blockedQty: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Unit Price (₹)</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Unit Price (₹) <span className="text-red-500">*</span>
+                </label>
                 <input
                   placeholder="Unit Price"
                   type="number"
                   value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unitPrice: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2 lg:col-span-2">
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Image</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Image
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <div className="flex items-center gap-4">
                   <input
                     type="file"
@@ -1034,7 +1367,10 @@ function PreStitchedModule() {
                       if (!file) return;
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        setFormData({ ...formData, image: reader.result as string });
+                        setFormData({
+                          ...formData,
+                          image: reader.result as string,
+                        });
                       };
                       reader.readAsDataURL(file);
                     }}
@@ -1078,7 +1414,10 @@ function PreStitchedModule() {
                 <Eye className="h-6 w-6 text-purple-600" />
                 Garment Details
               </h2>
-              <button onClick={() => setShowViewModal(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              >
                 <X className="h-6 w-6" />
               </button>
             </div>
@@ -1101,36 +1440,32 @@ function PreStitchedModule() {
               <div className="space-y-4 text-sm text-neutral-700 dark:text-neutral-300 flex-1">
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2">
                   <div className="col-span-2">
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">SKU No</span>
-                    <span className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{selectedGarment.skuNo}</span>
+                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                      SKU No
+                    </span>
+                    <span className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                      {selectedGarment.skuNo}
+                    </span>
                   </div>
                   <div className="col-span-2">
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Description</span>
-                    <span className="text-base">{selectedGarment.description}</span>
+                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                      Description
+                    </span>
+                    <span className="text-base">
+                      {selectedGarment.description}
+                    </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">HSN Code</span>
+                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                      HSN Code
+                    </span>
                     <span>{selectedGarment.hsnCode}</span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Pattern</span>
+                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                      Pattern
+                    </span>
                     <span>{selectedGarment.pattern || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Category</span>
-                    <span>{selectedGarment.category}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Attributes</span>
-                    <span>{selectedGarment.size} / {selectedGarment.colour} / {selectedGarment.gender}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Available Qty</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedGarment.availableQty}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Unit Price</span>
-                    <span className="font-bold text-purple-600 dark:text-purple-400">₹{selectedGarment.unitPrice}</span>
                   </div>
                 </div>
               </div>
