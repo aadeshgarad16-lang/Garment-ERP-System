@@ -288,7 +288,7 @@ export default function InventoryPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                <th scope="col" className="px-6 py-3">{t('inventoryVal.materialsHeader')}</th>
+                <th scope="col" className="px-6 py-3 min-w-[200px]">{t('inventoryVal.materialsHeader')}</th>
                 <th scope="col" className="px-4 py-3">Category</th>
                 <th scope="col" className="px-4 py-3 text-right">Required Qty</th>
                 <th scope="col" className="px-4 py-3 text-right">Available Qty</th>
@@ -304,7 +304,7 @@ export default function InventoryPage() {
                   const isShortage = item.shortage > 0;
                   return (
                     <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-3">
+                      <td className="px-6 py-3 min-w-[200px]">
                         <div className="flex flex-col">
                           <span className={`text-sm font-semibold ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>
                             {t(`inventory.materials.items.${item.id}`) || item.name}
@@ -400,7 +400,7 @@ export default function InventoryPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                  <th scope="col" className="px-6 py-3">Material Name</th>
+                  <th scope="col" className="px-6 py-3 min-w-[200px]">Material Name</th>
                   <th scope="col" className="px-4 py-3 text-right">Required Qty</th>
                   <th scope="col" className="px-4 py-3 text-right">Available Qty</th>
                   <th scope="col" className="px-4 py-3 text-right">Allocatable Qty</th>
@@ -410,7 +410,7 @@ export default function InventoryPage() {
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
                 {availableMaterials.map((item: any) => (
                   <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-3">
+                    <td className="px-6 py-3 min-w-[200px]">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.name}</span>
                         <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.id}</span>

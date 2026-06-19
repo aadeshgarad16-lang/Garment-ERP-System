@@ -11,6 +11,7 @@ import {
   Upload,
   ShoppingBag,
   X,
+  Eye,
 } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 
@@ -91,6 +92,7 @@ function OrdersPageContent() {
   const [orderId, setOrderId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; base64: string } | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [specs, setSpecs] = useState<GarmentSpec[]>([
     { id: "1", itemDescription: "", size: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null },
   ]);
@@ -125,8 +127,8 @@ function OrdersPageContent() {
 
   const totalParentPages = Math.ceil(filteredParentPOs.length / PARENT_PAGE_SIZE);
 
-  const validateField = useCallback((field: keyof InitialFormState, value: string | number, currentState?: InitialFormState): string | undefined => {
-    const strVal = String(value).trim();
+  const validateField = useCallback((field: keyof InitialFormState, value: string | number | undefined, currentState?: InitialFormState): string | undefined => {
+    const strVal = value !== undefined ? String(value).trim() : "";
     const activeState = currentState || formState;
 
     switch (field) {
@@ -457,10 +459,11 @@ function OrdersPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 <div>
                   <label htmlFor="poNumber" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    PO Order Number <span className="text-red-500">*</span>
+                    PO Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="poNumber"
+
                     type="text"
                     value={formState.poNumber}
                     readOnly
@@ -882,9 +885,24 @@ function OrdersPageContent() {
                 ) : (
                   <div className="mt-3 flex items-center justify-between border border-neutral-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-800">
                     <p className="font-medium text-neutral-900 dark:text-neutral-100 text-sm truncate">{uploadedFile.name}</p>
-                    <button type="button" onClick={() => setUploadedFile(null)} className="text-red-500 hover:text-red-700">
-                      <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPreviewModal(true)}
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-md transition"
+                        title="View PO File"
+                      >
+                        <Eye className="h-4.5 w-4.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedFile(null)}
+                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-md transition"
+                        title="Delete PO File"
+                      >
+                        <X className="h-4.5 w-4.5" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1011,6 +1029,51 @@ function OrdersPageContent() {
           </div>
         </div>
       </div>
+
+      {/* PREVIEW MODAL */}
+      {showPreviewModal && uploadedFile && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-4xl shadow-2xl border border-neutral-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-neutral-200 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 truncate pr-4">
+                Preview: {uploadedFile.name}
+              </h3>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 p-1 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-md transition"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-neutral-50 dark:bg-slate-950 rounded-lg min-h-[300px]">
+              {uploadedFile.base64.startsWith("data:image/") ? (
+                <img
+                  src={uploadedFile.base64}
+                  alt={uploadedFile.name}
+                  className="max-w-full max-h-[65vh] object-contain rounded-md"
+                />
+              ) : (
+                <embed
+                  src={uploadedFile.base64}
+                  type={uploadedFile.base64.split(";")[0].split(":")[1]}
+                  className="w-full h-[65vh] rounded-md"
+                />
+              )}
+            </div>
+
+            <div className="flex justify-end mt-4 pt-2 border-t border-neutral-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

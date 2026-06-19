@@ -126,6 +126,7 @@ body {
     width: 100%;
     text-align: left;
     border-collapse: collapse;
+    table-layout: fixed;
   }
 
   thead tr {

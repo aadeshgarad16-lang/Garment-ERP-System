@@ -38,29 +38,29 @@ export default function StorePage() {
             Manage inventory and stock availability
           </p>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => setActiveTab("raw")}
-          className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
-            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-            : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-            }`}
-        >
-          Raw Material
-        </button>
+        {/* Tabs */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setActiveTab("raw")}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              }`}
+          >
+            Raw Material
+          </button>
 
-        <button
-          onClick={() => setActiveTab("pre")}
-          className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
-            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-            : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-            }`}
-        >
-          Pre-Stitched
-        </button>
+          <button
+            onClick={() => setActiveTab("pre")}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
+              ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              }`}
+          >
+            Pre-Stitched
+          </button>
+        </div>
       </div>
 
       {/* Dynamic Module Rendering */}
@@ -206,85 +206,85 @@ function RawMaterialModule() {
   return (
     <div className="space-y-6">
       {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
           onClick={() => setSelectedCard("all")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "all"
-            ? "border-blue-500 dark:border-blue-500 ring-1 ring-blue-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "all"
+              ? "border-blue-400 dark:border-blue-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Total Materials
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/40">
+            <Layers className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {materials.length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Materials</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.length === 1 ? 'Material' : 'Materials'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("available")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "available"
-            ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "available"
+              ? "border-emerald-400 dark:border-emerald-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Available
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/40">
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {materials.filter((m) => getStatus(m) === "available").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Available</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "available").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "available").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("low")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "low"
-            ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "low"
+              ? "border-amber-400 dark:border-amber-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Low Stock
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/40">
+            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {materials.filter((m) => getStatus(m) === "low").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Low Stock</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "low").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "low").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("out")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "out"
-            ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "out"
+              ? "border-red-400 dark:border-red-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Out Of Stock
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-900/40">
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {materials.filter((m) => getStatus(m) === "out").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Out of Stock</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "out").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "out").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -345,7 +345,7 @@ function RawMaterialModule() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={rawColumnFilters.hsnCode}
@@ -357,7 +357,7 @@ function RawMaterialModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         HSN Code:
                       </span>
@@ -368,7 +368,7 @@ function RawMaterialModule() {
                     <ChevronDown className="h-4 w-4 text-neutral-400" />
                   </div>
                 </th>
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={rawColumnFilters.materialName}
@@ -380,7 +380,7 @@ function RawMaterialModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Material Name:
                       </span>
@@ -391,13 +391,13 @@ function RawMaterialModule() {
                     <ChevronDown className="h-4 w-4 text-neutral-400" />
                   </div>
                 </th>
-                <th className="px-2 py-3">Description</th>
-                <th className="px-2 py-3">Unit</th>
-                <th className="px-2 py-3">Available Qty</th>
-                <th className="px-2 py-3">Blocked Qty</th>
-                <th className="px-2 py-3">Unit Price</th>
-                <th className="px-2 py-3">Total Price</th>
-                <th className="px-2 py-3">Minimum Required</th>
+                <th className="px-2 pr-6 py-3 text-right">Description</th>
+                <th className="px-2 pr-6 py-3 text-right">Unit</th>
+                <th className="px-2 pr-6 py-3 text-right">Available Qty</th>
+                <th className="px-2 pr-6 py-3 text-right">Blocked Qty</th>
+                <th className="px-2 pr-6 py-3 text-right">Unit Price</th>
+                <th className="px-2 pr-6 py-3 text-right">Total Price</th>
+                <th className="px-2 pr-6 py-3 text-right">Minimum Required</th>
                 <th className="px-2 py-3 text-center">Action</th>
               </tr>
             </thead>
@@ -410,20 +410,20 @@ function RawMaterialModule() {
                     key={item.id}
                     className="hover:bg-muted/60 transition-colors"
                   >
-                    <td className="px-2 py-3 font-bold text-foreground">
+                    <td className="px-2 pr-6 py-3 font-bold text-foreground text-right">
                       {item.hsnCode}
                     </td>
-                    <td className="px-2 py-3 text-sm text-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-foreground text-right">
                       {item.materialName}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground truncate max-w-[250px]">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground truncate max-w-[250px] text-right">
                       {item.description}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.unit || "Nos"}
                     </td>
-                    <td className="px-2 py-3">
-                      <div className="flex flex-col items-start gap-1.5">
+                    <td className="px-2 pr-6 py-3 text-right">
+                      <div className="flex flex-col items-end gap-1.5">
                         <span className="text-sm font-bold text-foreground">
                           {item.availableQty}
                         </span>
@@ -444,16 +444,16 @@ function RawMaterialModule() {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.blockedQty || 0}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       ₹{item.unitPrice}
                     </td>
-                    <td className="px-2 py-3 text-sm font-semibold text-primary">
+                    <td className="px-2 pr-6 py-3 text-sm font-semibold text-primary text-right">
                       ₹{totalPrice.toLocaleString()}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.minimumRequired}
                     </td>
                     <td className="px-2 py-3">
@@ -814,85 +814,85 @@ function PreStitchedModule() {
   return (
     <div className="space-y-6">
       {/* Cards Setup */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
           onClick={() => setSelectedCard("all")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "all"
-            ? "border-purple-500 dark:border-purple-500 ring-1 ring-purple-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "all"
+              ? "border-purple-400 dark:border-purple-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Package className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Total Garments
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-purple-100 dark:bg-purple-900/40">
+            <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {garments.length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Garments</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.length === 1 ? 'Garment' : 'Garments'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("available")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "available"
-            ? "border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "available"
+              ? "border-emerald-400 dark:border-emerald-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Available
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/40">
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {garments.filter((g) => getStatus(g) === "available").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Available</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "available").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "available").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("low")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "low"
-            ? "border-amber-500 dark:border-amber-500 ring-1 ring-amber-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "low"
+              ? "border-amber-400 dark:border-amber-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Low Stock
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/40">
+            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {garments.filter((g) => getStatus(g) === "low").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Low Stock</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "low").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "low").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
 
         <div
           onClick={() => setSelectedCard("out")}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4 transition-colors ${selectedCard === "out"
-            ? "border-red-500 dark:border-red-500 ring-1 ring-red-500"
-            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700"
-            }`}
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${
+            selectedCard === "out"
+              ? "border-red-400 dark:border-red-700"
+              : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
+          }`}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
-              Out Of Stock
-            </p>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-900/40">
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            {garments.filter((g) => getStatus(g) === "out").length}
-          </h2>
+          <div>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Out of Stock</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "out").length}</span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "out").length === 1 ? 'Item' : 'Items'}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -956,7 +956,7 @@ function PreStitchedModule() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.category}
@@ -968,7 +968,7 @@ function PreStitchedModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Category:
                       </span>
@@ -979,7 +979,7 @@ function PreStitchedModule() {
                     <ChevronDown className="h-4 w-4 text-purple-500" />
                   </div>
                 </th>
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.gender}
@@ -991,7 +991,7 @@ function PreStitchedModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Gender:
                       </span>
@@ -1002,7 +1002,7 @@ function PreStitchedModule() {
                     <ChevronDown className="h-4 w-4 text-purple-500" />
                   </div>
                 </th>
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.size}
@@ -1014,7 +1014,7 @@ function PreStitchedModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Size:
                       </span>
@@ -1025,7 +1025,7 @@ function PreStitchedModule() {
                     <ChevronDown className="h-4 w-4 text-purple-500" />
                   </div>
                 </th>
-                <th className="px-2 py-3">
+                <th className="px-2 pr-6 py-3 text-right">
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={columnFilters.colour}
@@ -1037,7 +1037,7 @@ function PreStitchedModule() {
                         <option key={String(c)} value={String(c)}>{String(c)}</option>
                       ))}
                     </select>
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Colour:
                       </span>
@@ -1047,10 +1047,10 @@ function PreStitchedModule() {
                     </div>
                   </div>
                 </th>
-                <th className="px-2 py-3">Available Qty</th>
-                <th className="px-2 py-3">Blocked Qty</th>
-                <th className="px-2 py-3">Unit Price</th>
-                <th className="px-2 py-3">Total Price</th>
+                <th className="px-2 pr-6 py-3 text-right">Available Qty</th>
+                <th className="px-2 pr-6 py-3 text-right">Blocked Qty</th>
+                <th className="px-2 pr-6 py-3 text-right">Unit Price</th>
+                <th className="px-2 pr-6 py-3 text-right">Total Price</th>
                 <th className="px-2 py-3 text-center">More</th>
                 <th className="px-2 py-3 text-center">Action</th>
               </tr>
@@ -1064,20 +1064,20 @@ function PreStitchedModule() {
                     key={item.id}
                     className="hover:bg-muted/60 transition-colors"
                   >
-                    <td className="px-2 py-3 text-sm text-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-foreground text-right">
                       {item.category}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.gender}
                     </td>
-                    <td className="px-2 py-3 text-sm font-medium text-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm font-medium text-foreground text-right">
                       {item.size}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.colour}
                     </td>
-                    <td className="px-2 py-3">
-                      <div className="flex flex-col items-start gap-1.5">
+                    <td className="px-2 pr-6 py-3 text-right">
+                      <div className="flex flex-col items-end gap-1.5">
                         <span className="text-sm font-bold text-foreground">
                           {item.availableQty}
                         </span>
@@ -1098,13 +1098,13 @@ function PreStitchedModule() {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       {item.blockedQty || 0}
                     </td>
-                    <td className="px-2 py-3 text-sm text-muted-foreground">
+                    <td className="px-2 pr-6 py-3 text-sm text-muted-foreground text-right">
                       ₹{item.unitPrice}
                     </td>
-                    <td className="px-2 py-3 text-sm font-semibold text-primary">
+                    <td className="px-2 pr-6 py-3 text-sm font-semibold text-primary text-right">
                       ₹{totalPrice.toLocaleString()}
                     </td>
                     <td className="px-2 py-3 text-center">

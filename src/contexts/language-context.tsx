@@ -41,7 +41,21 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <LanguageContext.Provider value={{ language, setLanguage, t: (key, options) => i18n.t(key, options) as string }}>
+      <LanguageContext.Provider value={{ 
+        language, 
+        setLanguage, 
+        t: (key, options) => {
+          if (!i18n.exists(key)) {
+            if (typeof options === 'string') return options;
+            if (options && typeof options === 'object' && 'defaultValue' in options) return options.defaultValue;
+            if (key.startsWith('inventory.materials.items.')) {
+              return '';
+            }
+            return key;
+          }
+          return i18n.t(key, options) as string;
+        }
+      }}>
         {children}
       </LanguageContext.Provider>
     </I18nextProvider>
