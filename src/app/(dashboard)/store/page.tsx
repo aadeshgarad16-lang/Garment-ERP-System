@@ -43,20 +43,22 @@ export default function StorePage() {
         <div className="flex gap-3">
           <button
             onClick={() => setActiveTab("raw")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-              }`}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${
+              activeTab === "raw"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+            }`}
           >
             Raw Material
           </button>
 
           <button
             onClick={() => setActiveTab("pre")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
-              ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-              }`}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${
+              activeTab === "pre"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+            }`}
           >
             Pre-Stitched
           </button>
@@ -150,10 +152,20 @@ function RawMaterialModule() {
 
     const matchesFilter = statusFilter === "all" || status === statusFilter;
     const matchesCard = selectedCard === "all" || status === selectedCard;
-    const matchesHsn = rawColumnFilters.hsnCode === "all" || item.hsnCode === rawColumnFilters.hsnCode;
-    const matchesMaterial = rawColumnFilters.materialName === "all" || item.materialName === rawColumnFilters.materialName;
+    const matchesHsn =
+      rawColumnFilters.hsnCode === "all" ||
+      item.hsnCode === rawColumnFilters.hsnCode;
+    const matchesMaterial =
+      rawColumnFilters.materialName === "all" ||
+      item.materialName === rawColumnFilters.materialName;
 
-    return matchesSearch && matchesFilter && matchesCard && matchesHsn && matchesMaterial;
+    return (
+      matchesSearch &&
+      matchesFilter &&
+      matchesCard &&
+      matchesHsn &&
+      matchesMaterial
+    );
   });
 
   const handleSave = () => {
@@ -219,10 +231,16 @@ function RawMaterialModule() {
             <Layers className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Materials</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Total Materials
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.length === 1 ? 'Material' : 'Materials'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {materials.length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {materials.length === 1 ? "Material" : "Materials"}
+              </span>
             </div>
           </div>
         </div>
@@ -239,10 +257,19 @@ function RawMaterialModule() {
             <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Available</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Available
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "available").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "available").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {materials.filter((m) => getStatus(m) === "available").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {materials.filter((m) => getStatus(m) === "available")
+                  .length === 1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -259,10 +286,18 @@ function RawMaterialModule() {
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Low Stock</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Low Stock
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "low").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "low").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {materials.filter((m) => getStatus(m) === "low").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {materials.filter((m) => getStatus(m) === "low").length === 1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -279,10 +314,18 @@ function RawMaterialModule() {
             <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Out of Stock</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Out of Stock
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{materials.filter((m) => getStatus(m) === "out").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{materials.filter((m) => getStatus(m) === "out").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {materials.filter((m) => getStatus(m) === "out").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {materials.filter((m) => getStatus(m) === "out").length === 1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -349,20 +392,31 @@ function RawMaterialModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={rawColumnFilters.hsnCode}
-                      onChange={(e) => setRawColumnFilters({ ...rawColumnFilters, hsnCode: e.target.value })}
+                      onChange={(e) =>
+                        setRawColumnFilters({
+                          ...rawColumnFilters,
+                          hsnCode: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">HSN Code</option>
-                      {Array.from(new Set(materials.map(m => m.hsnCode))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
-                      ))}
+                      {Array.from(new Set(materials.map((m) => m.hsnCode))).map(
+                        (c) => (
+                          <option key={String(c)} value={String(c)}>
+                            {String(c)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         HSN Code:
                       </span>
                       <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
-                        {rawColumnFilters.hsnCode === "all" ? "All" : rawColumnFilters.hsnCode}
+                        {rawColumnFilters.hsnCode === "all"
+                          ? "All"
+                          : rawColumnFilters.hsnCode}
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-neutral-400" />
@@ -372,12 +426,21 @@ function RawMaterialModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={rawColumnFilters.materialName}
-                      onChange={(e) => setRawColumnFilters({ ...rawColumnFilters, materialName: e.target.value })}
+                      onChange={(e) =>
+                        setRawColumnFilters({
+                          ...rawColumnFilters,
+                          materialName: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">Material Name</option>
-                      {Array.from(new Set(materials.map(m => m.materialName))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
+                      {Array.from(
+                        new Set(materials.map((m) => m.materialName)),
+                      ).map((c) => (
+                        <option key={String(c)} value={String(c)}>
+                          {String(c)}
+                        </option>
                       ))}
                     </select>
                     <div className="flex flex-col items-end">
@@ -385,7 +448,9 @@ function RawMaterialModule() {
                         Material Name:
                       </span>
                       <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
-                        {rawColumnFilters.materialName === "all" ? "All" : rawColumnFilters.materialName}
+                        {rawColumnFilters.materialName === "all"
+                          ? "All"
+                          : rawColumnFilters.materialName}
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-neutral-400" />
@@ -760,12 +825,25 @@ function PreStitchedModule() {
     const matchesFilter = statusFilter === "all" || status === statusFilter;
     const matchesCard = selectedCard === "all" || status === selectedCard;
 
-    const matchesCategory = columnFilters.category === "all" || item.category === columnFilters.category;
-    const matchesGender = columnFilters.gender === "all" || item.gender === columnFilters.gender;
-    const matchesSize = columnFilters.size === "all" || item.size === columnFilters.size;
-    const matchesColour = columnFilters.colour === "all" || item.colour === columnFilters.colour;
+    const matchesCategory =
+      columnFilters.category === "all" ||
+      item.category === columnFilters.category;
+    const matchesGender =
+      columnFilters.gender === "all" || item.gender === columnFilters.gender;
+    const matchesSize =
+      columnFilters.size === "all" || item.size === columnFilters.size;
+    const matchesColour =
+      columnFilters.colour === "all" || item.colour === columnFilters.colour;
 
-    return matchesSearch && matchesFilter && matchesCard && matchesCategory && matchesGender && matchesSize && matchesColour;
+    return (
+      matchesSearch &&
+      matchesFilter &&
+      matchesCard &&
+      matchesCategory &&
+      matchesGender &&
+      matchesSize &&
+      matchesColour
+    );
   });
 
   const handleSave = () => {
@@ -827,10 +905,16 @@ function PreStitchedModule() {
             <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Garments</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Total Garments
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.length === 1 ? 'Garment' : 'Garments'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {garments.length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {garments.length === 1 ? "Garment" : "Garments"}
+              </span>
             </div>
           </div>
         </div>
@@ -847,10 +931,19 @@ function PreStitchedModule() {
             <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Available</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Available
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "available").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "available").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {garments.filter((g) => getStatus(g) === "available").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {garments.filter((g) => getStatus(g) === "available").length ===
+                1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -867,10 +960,18 @@ function PreStitchedModule() {
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Low Stock</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Low Stock
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "low").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "low").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {garments.filter((g) => getStatus(g) === "low").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {garments.filter((g) => getStatus(g) === "low").length === 1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -887,10 +988,18 @@ function PreStitchedModule() {
             <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Out of Stock</p>
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+              Out of Stock
+            </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{garments.filter((g) => getStatus(g) === "out").length}</span>
-              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{garments.filter((g) => getStatus(g) === "out").length === 1 ? 'Item' : 'Items'}</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                {garments.filter((g) => getStatus(g) === "out").length}
+              </span>
+              <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                {garments.filter((g) => getStatus(g) === "out").length === 1
+                  ? "Item"
+                  : "Items"}
+              </span>
             </div>
           </div>
         </div>
@@ -942,7 +1051,7 @@ function PreStitchedModule() {
               });
               setShowModal(true);
             }}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm"
           >
             <Plus className="h-4 w-4" />
             Add Garment
@@ -960,20 +1069,31 @@ function PreStitchedModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.category}
-                      onChange={(e) => setColumnFilters({ ...columnFilters, category: e.target.value })}
+                      onChange={(e) =>
+                        setColumnFilters({
+                          ...columnFilters,
+                          category: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">Category</option>
-                      {Array.from(new Set(garments.map(g => g.category))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
-                      ))}
+                      {Array.from(new Set(garments.map((g) => g.category))).map(
+                        (c) => (
+                          <option key={String(c)} value={String(c)}>
+                            {String(c)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Category:
                       </span>
                       <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
-                        {columnFilters.category === "all" ? "All" : columnFilters.category}
+                        {columnFilters.category === "all"
+                          ? "All"
+                          : columnFilters.category}
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-purple-500" />
@@ -983,20 +1103,31 @@ function PreStitchedModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.gender}
-                      onChange={(e) => setColumnFilters({ ...columnFilters, gender: e.target.value })}
+                      onChange={(e) =>
+                        setColumnFilters({
+                          ...columnFilters,
+                          gender: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">Gender</option>
-                      {Array.from(new Set(garments.map(g => g.gender))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
-                      ))}
+                      {Array.from(new Set(garments.map((g) => g.gender))).map(
+                        (c) => (
+                          <option key={String(c)} value={String(c)}>
+                            {String(c)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Gender:
                       </span>
                       <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
-                        {columnFilters.gender === "all" ? "All" : columnFilters.gender}
+                        {columnFilters.gender === "all"
+                          ? "All"
+                          : columnFilters.gender}
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-purple-500" />
@@ -1006,20 +1137,31 @@ function PreStitchedModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-purple-300 bg-purple-50/50 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-900/10 transition-colors">
                     <select
                       value={columnFilters.size}
-                      onChange={(e) => setColumnFilters({ ...columnFilters, size: e.target.value })}
+                      onChange={(e) =>
+                        setColumnFilters({
+                          ...columnFilters,
+                          size: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">Size</option>
-                      {Array.from(new Set(garments.map(g => g.size))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
-                      ))}
+                      {Array.from(new Set(garments.map((g) => g.size))).map(
+                        (c) => (
+                          <option key={String(c)} value={String(c)}>
+                            {String(c)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Size:
                       </span>
                       <span className="text-[13px] font-semibold text-purple-700 dark:text-purple-400 normal-case leading-tight mt-0.5">
-                        {columnFilters.size === "all" ? "All" : columnFilters.size}
+                        {columnFilters.size === "all"
+                          ? "All"
+                          : columnFilters.size}
                       </span>
                     </div>
                     <ChevronDown className="h-4 w-4 text-purple-500" />
@@ -1029,20 +1171,31 @@ function PreStitchedModule() {
                   <div className="relative flex items-center justify-between min-w-[90px] xl:min-w-[100px] px-2 py-1.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-900 transition-colors">
                     <select
                       value={columnFilters.colour}
-                      onChange={(e) => setColumnFilters({ ...columnFilters, colour: e.target.value })}
+                      onChange={(e) =>
+                        setColumnFilters({
+                          ...columnFilters,
+                          colour: e.target.value,
+                        })
+                      }
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     >
                       <option value="all">Colour</option>
-                      {Array.from(new Set(garments.map(g => g.colour))).map(c => (
-                        <option key={String(c)} value={String(c)}>{String(c)}</option>
-                      ))}
+                      {Array.from(new Set(garments.map((g) => g.colour))).map(
+                        (c) => (
+                          <option key={String(c)} value={String(c)}>
+                            {String(c)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <div className="flex flex-col items-end">
                       <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 normal-case">
                         Colour:
                       </span>
                       <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 normal-case leading-tight mt-0.5">
-                        {columnFilters.colour === "all" ? "All" : columnFilters.colour}
+                        {columnFilters.colour === "all"
+                          ? "All"
+                          : columnFilters.colour}
                       </span>
                     </div>
                   </div>
