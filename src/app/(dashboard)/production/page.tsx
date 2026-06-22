@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Activity,
@@ -36,8 +36,6 @@ interface StageData {
   remarks: string;
 }
 
-const TOTAL_ORDER_QTY = 1000;
-
 export default function ProductionPage() {
   const { t } = useTranslation();
   const [stages, setStages] = useState<StageData[]>([
@@ -50,6 +48,53 @@ export default function ProductionPage() {
 
   const router = useRouter();
   const { user } = useAuth();
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const po = params.get('poNumber');
+      if (po) {
+        const ordersStr = localStorage.getItem('savedOrders');
+        if (ordersStr) {
+          try {
+            const orders = JSON.parse(ordersStr);
+            const found = orders.find((o: any) => o.poNumber === po);
+            if (found) {
+              setCurrentOrder(found);
+              if (found.productionStages && found.productionStages.length > 0) {
+                const remapped = found.productionStages.map((stage: any) => {
+                  let icon = Scissors;
+                  if (stage.id === 'stitching') icon = Layers;
+                  if (stage.id === 'fusing') icon = Activity;
+                  if (stage.id === 'kaj-button') icon = AlignEndHorizontal;
+                  if (stage.id === 'finishing') icon = PackageCheck;
+                  return { ...stage, icon };
+                });
+                setStages(remapped);
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    }
+  }, []);
+
+  const saveProductionStages = (updatedStages: StageData[]) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const po = params.get('poNumber');
+    if (po) {
+      const strippedStages = updatedStages.map(({ icon, ...rest }) => rest);
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, productionStages: strippedStages } : o);
+      });
+    }
+  };
+
+  const totalOrderQty = currentOrder?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
 
   const advanceStage = (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
@@ -64,7 +109,6 @@ export default function ProductionPage() {
       router.push(nextPath);
     }
   };
-
 
   const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
 
@@ -83,6 +127,7 @@ export default function ProductionPage() {
     setStages(prev => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: value };
+      saveProductionStages(next);
       return next;
     });
   };
@@ -91,6 +136,7 @@ export default function ProductionPage() {
     setStages(prev => {
       const next = [...prev];
       next[idx].status = 'In Progress';
+      saveProductionStages(next);
       return next;
     });
   };
@@ -99,8 +145,8 @@ export default function ProductionPage() {
     setStages(prev => {
       const next = [...prev];
       const stage = next[idx];
-
       stage.status = 'Completed';
+      saveProductionStages(next);
       return next;
     });
     setActiveStageIdx(null); // close form on complete
@@ -191,7 +237,7 @@ export default function ProductionPage() {
           <div className="flex gap-4 md:gap-8 flex-shrink-0 items-center">
             <div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">{t('production.total') || 'Total Pieces'}</p>
-              <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{TOTAL_ORDER_QTY}</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalOrderQty}</p>
             </div>
 
             {overallProductionStatus === 'Completed' && (
@@ -270,8 +316,8 @@ export default function ProductionPage() {
                 <input
                   type="number"
                   className="w-full px-3 py-2 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder={`Max: ${TOTAL_ORDER_QTY}`}
-                  max={TOTAL_ORDER_QTY}
+                  placeholder={`Max: ${totalOrderQty}`}
+                  max={totalOrderQty}
                   value={stages[activeStageIdx].completedQty || ''}
                   onChange={(e) => handleStageUpdate(activeStageIdx, 'completedQty', parseInt(e.target.value) || 0)}
                   disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
@@ -326,7 +372,7 @@ export default function ProductionPage() {
                 <button
                   onClick={() => handleCompleteStage(activeStageIdx)}
                   disabled={
-                    stages[activeStageIdx].completedQty > TOTAL_ORDER_QTY
+                    stages[activeStageIdx].completedQty > totalOrderQty
                   }
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

@@ -7,6 +7,7 @@ export interface GarmentSpec {
   stockAvailable: number;
   unitPrice: number;
   photoName: string | null;
+  useExistingStock?: number;
 }
 
 export interface Order {
@@ -43,7 +44,14 @@ export interface Order {
   specs: GarmentSpec[];
   status: "DRAFT" | "SUBMITTED";
   stage: string;
+  current_stage?: string;
+  currentStage?: number;
   date: string;
+  productionStages?: any[];
+  qualityStages?: any[];
+  logisticsStep?: number;
+  logisticsCompletedSteps?: number[];
+  orderArchived?: boolean;
 }
 
 import { generateOrderChangeDetails, addLog } from './logger';
@@ -68,7 +76,7 @@ export const saveOrderAPI = async (orderData: Partial<Order>): Promise<{ success
     // Create new
     savedOrder = {
       ...orderData,
-      id: orderData.id || Date.now().toString(),
+      id: orderData.id || "PO-" + Date.now(),
       date: new Date().toISOString(),
     } as Order;
     orders.push(savedOrder);

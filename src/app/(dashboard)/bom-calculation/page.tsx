@@ -23,6 +23,7 @@ import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { useOrders } from '@/contexts/order-context';
 
 function SearchableDropdown({
   options,
@@ -58,9 +59,14 @@ function SearchableDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [value]);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredOptions = React.useMemo(() => {
+    if (!search || search === value) {
+      return options;
+    }
+    return options.filter((opt) =>
+      opt.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search, value]);
 
   return (
     <div className="relative" ref={wrapperRef}>
@@ -88,7 +94,7 @@ function SearchableDropdown({
         </div>
       </div>
       {isOpen && !disabled && (
-        <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1">
+        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1">
           {filteredOptions.length === 0 ? (
             <li className="px-3 py-2 text-sm text-neutral-500">No options found</li>
           ) : (
@@ -96,7 +102,8 @@ function SearchableDropdown({
               <li
                 key={idx}
                 className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 cursor-pointer"
-                onClick={() => {
+                onMouseDown={(e) => {
+                  e.preventDefault();
                   onChange(opt);
                   setSearch(opt);
                   setIsOpen(false);
@@ -128,8 +135,9 @@ export default function BOMCalculationPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { orders } = useOrders();
 
-  const [savedOrders, setSavedOrders] = useState<any[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPODate, setSelectedPODate] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
@@ -142,7 +150,6 @@ export default function BOMCalculationPage() {
     if (ordersStr) {
       try {
         loadedOrders = JSON.parse(ordersStr);
-        setSavedOrders(loadedOrders);
       } catch (e) { }
     }
 
@@ -150,7 +157,7 @@ export default function BOMCalculationPage() {
     const urlPoNumber = params.get('poNumber');
 
     if (urlPoNumber) {
-      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && o.stage === 'BOM Calculation' && (o.status === 'Submitted' || o.status === 'SUBMITTED'));
+      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && o.stage === 'BOM Calculation' && o.status === 'SUBMITTED');
       if (targetOrder) {
         setSelectedCustomer(targetOrder.customerName || '');
         setSelectedPODate(targetOrder.poDate || '');
@@ -173,12 +180,23 @@ export default function BOMCalculationPage() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 800);
+    if (orders && orders.length > 0) {
+      setIsLoaded(true);
+    }
+    return () => clearTimeout(timer);
+  }, [orders]);
+
+  useEffect(() => {
     localStorage.setItem('bomCalculationDraft', JSON.stringify({ selectedCustomer, selectedPODate, selectedPONumber, wastage }));
   }, [selectedCustomer, selectedPODate, selectedPONumber, wastage]);
 
-  const activeOrders = savedOrders.filter(o => o.stage === 'BOM Calculation' && (o.status === 'Submitted' || o.status === 'SUBMITTED'));
+  const activeOrders = React.useMemo(() => {
+    return (orders || []).filter(o => o.stage === 'BOM Calculation' && o.status === 'SUBMITTED');
+  }, [orders]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     // If the currently selected PO is no longer active in this stage, reset the form.
     if (selectedPONumber && !activeOrders.find(o => o.poNumber === selectedPONumber)) {
       setSelectedCustomer('');
@@ -187,7 +205,7 @@ export default function BOMCalculationPage() {
       setWastage(5);
       localStorage.removeItem('bomCalculationDraft');
     }
-  }, [activeOrders, selectedPONumber]);
+  }, [activeOrders, selectedPONumber, isLoaded]);
 
   const customers = Array.from(new Set(activeOrders.map(o => o.customerName))).filter(Boolean) as string[];
   const dates = Array.from(new Set(activeOrders.filter(o => o.customerName === selectedCustomer).map(o => o.poDate))).filter(Boolean) as string[];
@@ -364,8 +382,8 @@ export default function BOMCalculationPage() {
         </div>
 
         {/* 2. Order Configuration (Horizontal Full-Width) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700">
+          <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30 rounded-t-xl">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
               <FileText className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               {t('bom.config')}
@@ -398,7 +416,7 @@ export default function BOMCalculationPage() {
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
               <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
-                {currentOrder ? currentOrder.poDate : "—"}
+                {currentOrder && currentOrder.poDate ? currentOrder.poDate.split('T')[0] : "—"}
               </div>
             </div>
             <div className="w-full">
@@ -489,16 +507,16 @@ export default function BOMCalculationPage() {
           </div>
 
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse whitespace-nowrap">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                  <th className="px-4 py-3">{t('inventoryVal.materialsHeader') || 'Material'}</th>
-                  <th className="px-4 py-3">Unit</th>
-                  <th className="px-4 py-3 text-right">Per Piece</th>
-                  <th className="px-4 py-3 text-right">Base Qty</th>
-                  <th className="px-4 py-3 text-right">{t('bom.wastage') || 'Wastage %'}</th>
-                  <th className="px-4 py-3 text-right">Final Qty</th>
-                  <th className="px-4 py-3">Stock Util.</th>
+                  <th className="px-4 py-3.5 w-[24%] text-left font-semibold">{t('inventoryVal.materialsHeader') || 'Material'}</th>
+                  <th className="px-4 py-3.5 w-[8%] text-left font-semibold whitespace-nowrap">Unit</th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold whitespace-nowrap">Per Piece</th>
+                  <th className="px-4 py-3.5 w-[11%] text-right font-semibold whitespace-nowrap">Base Qty</th>
+                  <th className="px-4 py-3.5 w-[18%] text-right font-semibold whitespace-nowrap">{t('bom.wastage') || 'Wastage %'}</th>
+                  <th className="px-4 py-3.5 w-[14%] text-right font-semibold whitespace-nowrap">Final Qty</th>
+                  <th className="px-4 py-3.5 w-[15%] text-right font-semibold whitespace-nowrap">Stock Util.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -506,31 +524,31 @@ export default function BOMCalculationPage() {
                   const isShortage = item.missing > 0;
                   return (
                     <tr key={idx} className={isShortage ? "bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" : "hover:bg-neutral-50/80 dark:hover:bg-slate-800/50 transition-colors"}>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-[18px] text-left w-[24%]">
                         <div className="flex flex-col">
                           <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.name}</span>
                           <span className={`text-xs ${isShortage ? 'text-red-600 dark:text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>{item.category}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-[18px] text-left whitespace-nowrap w-[8%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.unit}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[10%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.perPiece}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`text-sm font-medium ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.baseRequired.toLocaleString()}</span>
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[11%]">
+                        <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.baseRequired.toLocaleString()}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[18%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{wastage}% <span className={`text-xs ${isShortage ? 'text-red-400 dark:text-red-500' : 'text-neutral-400'}`}>(+{Math.ceil(item.wastageAmount)})</span></span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`text-sm font-bold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-indigo-700 dark:text-indigo-400'}`}>{item.finalQuantity.toLocaleString()}</span>
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[14%]">
+                        <span className={`text-sm font-bold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{item.finalQuantity.toLocaleString()}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="w-full min-w-[100px]">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className={`${item.stockRatio < 100 ? 'text-red-600' : 'text-emerald-600'} font-medium`}>{item.stockRatio}%</span>
+                      <td className="px-4 py-[18px] text-right w-[15%]">
+                        <div className="inline-block w-full max-w-[120px] text-left">
+                          <div className="flex justify-between text-[11px] mb-1">
+                            <span className={`${item.stockRatio < 100 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} font-medium`}>{item.stockRatio}%</span>
                           </div>
                           <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
                             <div

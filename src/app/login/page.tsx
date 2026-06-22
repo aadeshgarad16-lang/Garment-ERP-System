@@ -152,8 +152,8 @@ export default function LoginPage() {
   return (
     <div
       className={`min-h-screen flex items-center justify-center p-6 ${isDark
-          ? "bg-neutral-900"
-          : "bg-neutral-100"
+        ? "bg-neutral-900"
+        : "bg-neutral-100"
         }`}
     >
       <div className="absolute top-5 right-5">
@@ -175,8 +175,8 @@ export default function LoginPage() {
 
       <div
         className={`w-full max-w-md rounded-2xl shadow-xl border p-8 ${isDark
-            ? "bg-neutral-800 border-neutral-700"
-            : "bg-white border-neutral-200"
+          ? "bg-neutral-800 border-neutral-700"
+          : "bg-white border-neutral-200"
           }`}
       >
         <div className="text-center mb-8">

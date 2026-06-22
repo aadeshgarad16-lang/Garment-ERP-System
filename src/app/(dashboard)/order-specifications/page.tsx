@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown, Eye } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useAuth } from "@/context/AuthContext";
 import { updateOrderAndLog } from "@/lib/logger";
@@ -24,6 +24,7 @@ interface GarmentSpec {
   stockAvailable: number;
   unitPrice: number;
   photoName: string | null;
+  photoUrl?: string | null;
   productionType: "In House" | "Outsource" | "Both";
 }
 
@@ -314,6 +315,8 @@ function GarmentSpecsContent() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState<DraftOrder[]>([]);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   // --- INTERACTION HOOKS ---
   useEffect(() => {
@@ -739,11 +742,19 @@ function GarmentSpecsContent() {
         </div>
 
         <div className="p-6 bg-neutral-50/50 dark:bg-slate-800/30">
+          {/* View Selected PO Number */}
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+            <span>Selected PO Number:</span>
+            <span className="text-neutral-800 dark:text-neutral-200 bg-neutral-100 dark:bg-slate-800 px-3 py-1 rounded-md border border-neutral-200 dark:border-slate-700 font-mono">
+              {currentPoNumber}
+            </span>
+          </div>
+
           <div className="space-y-8">
             {specs.map((spec, index) => (
               <div key={spec.id} className="relative bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm mt-4">
                 <div className="absolute -top-3 left-6 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-sm">
-                  Item #{index + 1}
+                  Item 1
                 </div>
                 {specs.length > 1 && (
                   <button
@@ -886,13 +897,43 @@ function GarmentSpecsContent() {
                         <Upload className="h-6 w-6" />
                       </div>
                       <span className="text-sm font-semibold truncate max-w-[90%] px-2">
-                        {spec.photoName ? spec.photoName : "Drag & drop or click to select photo"}
+                        {spec.photoName ? (
+                          <span className="flex items-center gap-2 justify-center">
+                            <span className="truncate max-w-[200px]">{spec.photoName}</span>
+                            {spec.photoUrl && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setPreviewUrl(spec.photoUrl || "");
+                                  setIsPreviewOpen(true);
+                                }}
+                                className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline flex items-center gap-1 cursor-pointer font-semibold text-xs ml-2 bg-white dark:bg-slate-800 px-2 py-1 rounded-md border border-neutral-200 dark:border-slate-700 shadow-sm"
+                              >
+                                <Eye className="h-3.5 w-3.5" /> View
+                              </button>
+                            )}
+                          </span>
+                        ) : (
+                          "Drag & drop or click to select photo"
+                        )}
                       </span>
                       <input
                         type="file"
                         className="hidden"
                         accept="image/*"
-                        onChange={(e) => updateRow(spec.id, "photoName", e.target.files?.[0]?.name || "")}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = URL.createObjectURL(file);
+                            setSpecs((prev) =>
+                              prev.map((s) =>
+                                s.id === spec.id ? { ...s, photoName: file.name, photoUrl: url } : s
+                              )
+                            );
+                          }
+                        }}
                       />
                     </label>
                     <button
@@ -956,8 +997,8 @@ function GarmentSpecsContent() {
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead className="bg-neutral-50 dark:bg-slate-800">
               <tr className="text-xs uppercase text-neutral-500 dark:text-neutral-400 font-semibold tracking-wider">
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-10 text-center">#</th>
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[20%]">Address</th>
+                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[70px] text-center">Sr. No.</th>
+                <th className={`px-2 py-3 border-b border-neutral-200 dark:border-slate-700 ${deliveryType === "single" ? "w-[35%]" : "w-[22%]"}`}>Address</th>
                 <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Item</th>
                 <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Size</th>
                 <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Color</th>
@@ -986,7 +1027,7 @@ function GarmentSpecsContent() {
 
                   return (
                     <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
-                      <td className="px-2 py-3 font-medium text-neutral-900 dark:text-neutral-100 text-center">
+                      <td className="px-2 py-3 font-medium text-neutral-900 dark:text-neutral-100 text-center w-[70px]">
                         {index + 1}.
                       </td>
                       <td className="px-2 py-3 align-top">
@@ -1281,6 +1322,40 @@ function GarmentSpecsContent() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* IMAGE PREVIEW MODAL */}
+      {isPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setIsPreviewOpen(false)}
+        >
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate pr-4">
+                Image Preview
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 p-1 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-slate-800 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-neutral-100 dark:bg-slate-950 flex items-center justify-center min-h-[300px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Uploaded preview"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-md"
+              />
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Package,
@@ -13,6 +14,8 @@ import {
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 type StageName = 'Quality Check' | 'Packing' | 'Packing & Verification' | 'Approval';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
@@ -37,10 +40,12 @@ interface StageData {
   dispatchNotes?: string;
 }
 
-const TOTAL_ORDER_QTY = 1000;
-
 export default function QualityPackingPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
+
   const [stages, setStages] = useState<StageData[]>([
     { id: 'qc', name: 'Quality Check', description: 'Inspect for defects & standards', icon: ClipboardCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', qcStatus: null, qcRemarks: '' },
     { id: 'packing', name: 'Packing', description: 'Pack finished products', icon: Package, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', packedQty: 0 },
@@ -48,13 +53,73 @@ export default function QualityPackingPage() {
     { id: 'approval', name: 'Approval', description: 'Final approval for dispatch', icon: CheckCircle2, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', approvedBy: '', dispatchNotes: '' },
   ]);
 
-  const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const po = params.get('poNumber');
+      if (po) {
+        const ordersStr = localStorage.getItem('savedOrders');
+        if (ordersStr) {
+          try {
+            const orders = JSON.parse(ordersStr);
+            const found = orders.find((o: any) => o.poNumber === po);
+            if (found) {
+              setCurrentOrder(found);
+              if (found.qualityStages && found.qualityStages.length > 0) {
+                const remapped = found.qualityStages.map((stage: any) => {
+                  let icon = ClipboardCheck;
+                  if (stage.id === 'packing') icon = Package;
+                  if (stage.id === 'verification') icon = ListChecks;
+                  if (stage.id === 'approval') icon = CheckCircle2;
+                  return { ...stage, icon };
+                });
+                setStages(remapped);
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    }
+  }, []);
 
-  const [qcPassedCount, setQcPassedCount] = useState(0);
-  const [qcFailedCount, setQcFailedCount] = useState(0);
+  const saveQualityStages = (updatedStages: StageData[]) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const po = params.get('poNumber');
+    if (po) {
+      const strippedStages = updatedStages.map(({ icon, ...rest }) => rest);
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, qualityStages: strippedStages } : o);
+      });
+    }
+  };
+
+  const totalOrderQty = currentOrder?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
+
+  const advanceStage = (nextPath: string, nextStage: string) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const po = params.get('poNumber');
+    if (po) {
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+      });
+      router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
+    } else {
+      router.push(nextPath);
+    }
+  };
+
+  const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
 
   const completedStagesCount = stages.filter(s => s.status === 'Completed').length;
   const progressPercentage = Math.round((completedStagesCount / stages.length) * 100);
+
+  const qcStage = stages.find(s => s.id === 'qc');
+  const qcPassedCount = qcStage && qcStage.status === 'Completed' && qcStage.qcStatus === 'Pass' ? (qcStage.completedQty || totalOrderQty) : 0;
+  const qcFailedCount = qcStage && qcStage.status === 'Rework Required' && qcStage.qcStatus === 'Fail' ? (qcStage.completedQty || totalOrderQty) : 0;
 
   const overallStatus = stages.some(s => s.status === 'Rework Required')
     ? 'Rework Required'
@@ -68,6 +133,7 @@ export default function QualityPackingPage() {
     setStages(prev => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: value };
+      saveQualityStages(next);
       return next;
     });
   };
@@ -76,6 +142,7 @@ export default function QualityPackingPage() {
     setStages(prev => {
       const next = [...prev];
       next[idx].status = 'In Progress';
+      saveQualityStages(next);
       return next;
     });
   };
@@ -85,17 +152,16 @@ export default function QualityPackingPage() {
       const next = [...prev];
       const stage = next[idx];
 
-      if (stage.name === 'Quality Check') {
+      if (stage.id === 'qc') {
         if (stage.qcStatus === 'Pass') {
           stage.status = 'Completed';
-          setQcPassedCount(prev => prev + (stage.completedQty || TOTAL_ORDER_QTY));
         } else if (stage.qcStatus === 'Fail') {
           stage.status = 'Rework Required';
-          setQcFailedCount(prev => prev + (stage.completedQty || TOTAL_ORDER_QTY));
         }
       } else {
         stage.status = 'Completed';
       }
+      saveQualityStages(next);
       return next;
     });
     setActiveStageIdx(null);
@@ -183,10 +249,10 @@ export default function QualityPackingPage() {
             </div>
           </div>
 
-          <div className="flex gap-4 md:gap-8 flex-shrink-0">
+          <div className="flex gap-4 md:gap-8 flex-shrink-0 items-center">
             <div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">{t('pieces') || 'Total Pieces'}</p>
-              <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{TOTAL_ORDER_QTY}</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalOrderQty}</p>
             </div>
             <div>
               <p className="text-xs text-emerald-600 uppercase font-semibold">{t('quality.passed') || 'QC Passed'}</p>
@@ -196,6 +262,16 @@ export default function QualityPackingPage() {
               <p className="text-xs text-red-600 uppercase font-semibold">{t('quality.failed') || 'QC Failed'}</p>
               <p className="text-xl font-bold text-red-700">{qcFailedCount}</p>
             </div>
+
+            {overallStatus === 'Ready for Dispatch' && (
+              <button
+                onClick={() => advanceStage('/logistics', 'Logistics')}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2 group"
+              >
+                {t('quality.proceedLogistics') || 'Proceed to Logistics'}
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </div>

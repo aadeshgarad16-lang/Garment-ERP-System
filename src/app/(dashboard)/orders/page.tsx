@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
+import { useOrders } from "@/contexts/order-context";
 
 interface GarmentSpec {
   id: string;
@@ -47,8 +48,8 @@ interface InitialFormState {
   testCertificate: string;
   transportCost: string;
   paymentTerm: string;
-  poAmount: number;
-  advancedAmount: number;
+  poAmount: number | string;
+  advancedAmount: number | string;
 }
 
 const DEFAULT_FORM_STATE: InitialFormState = {
@@ -85,6 +86,7 @@ const inputStyle = getInputStyle();
 function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { reloadOrders } = useOrders();
   const resumeId = searchParams.get("resumeId");
 
   const [formState, setFormState] = useState<InitialFormState>(DEFAULT_FORM_STATE);
@@ -163,12 +165,12 @@ function OrdersPageContent() {
       case "deliveryPin":
         if (activeState.deliveryType === "single") {
           if (!strVal) return "Required";
-          if (!/^[1-9][0-9]{5}$/.test(strVal)) return "Please enter a valid 6-digit postal PIN code.";
+          if (!/^[1-9][0-9]{5}$/.test(strVal)) return "invalid Pin";
         }
         break;
       case "billingPin":
         if (!strVal) return "Required";
-        if (!/^[1-9][0-9]{5}$/.test(strVal)) return "Please enter a valid 6-digit postal PIN code.";
+        if (!/^[1-9][0-9]{5}$/.test(strVal)) return "invalid Pin";
         break;
       case "gstNumber": {
         if (!strVal) return "Required";
@@ -186,9 +188,11 @@ function OrdersPageContent() {
         }
         break;
       }
-      case "poAmount":
-        if (!strVal || Number(strVal) <= 0) return "Must be greater than 0";
+      case "poAmount": {
+        const cleanVal = strVal.replace(/[^0-9.]/g, "");
+        if (!cleanVal || Number(cleanVal) <= 0) return "Must be greater than 0";
         break;
+      }
     }
     return undefined;
   }, [formState]);
@@ -307,17 +311,29 @@ function OrdersPageContent() {
       // Auto-calculate 50% advanced amount if "50% Advanced, 50% on Delivery" is selected
       if (field === "poAmount" || field === "paymentTerm") {
         const currentPaymentTerm = field === "paymentTerm" ? value : prev.paymentTerm;
-        const currentPoAmount = field === "poAmount" ? Number(value) : (prev.poAmount || 0);
+        const rawPoAmount = field === "poAmount" ? String(value) : String(prev.poAmount || 0);
+        const currentPoAmount = Number(rawPoAmount.replace(/[^0-9.]/g, "")) || 0;
 
         if (currentPaymentTerm === "50% Advanced, 50% on Delivery") {
-          nextState.advancedAmount = parseFloat((currentPoAmount * 0.5).toFixed(2));
+          nextState.advancedAmount = parseFloat((currentPoAmount * 0.5).toFixed(2)).toString();
         }
       }
 
       return nextState;
     });
 
-    if (errors[field]) {
+    if (field === "deliveryPin" || field === "billingPin") {
+      const strVal = String(value).trim();
+      if (strVal.length > 6) {
+        setErrors((prev) => ({ ...prev, [field]: "invalid Pin" }));
+      } else {
+        setErrors((prev) => {
+          const nextErrors = { ...prev };
+          nextErrors[field] = undefined;
+          return nextErrors;
+        });
+      }
+    } else if (errors[field]) {
       setErrors((prev) => {
         const nextErrors = { ...prev };
         nextErrors[field] = undefined;
@@ -333,9 +349,50 @@ function OrdersPageContent() {
     }
   };
 
+  const formatIndianNumber = useCallback((val: string | number | undefined): string => {
+    if (val === undefined || val === null || val === "") return "";
+    const str = String(val).replace(/[^0-9.]/g, "");
+    const parts = str.split(".");
+    const integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? "." + parts.slice(1).join("").slice(0, 2) : "";
+    if (integerPart === "") return decimalPart;
+    const num = parseInt(integerPart, 10);
+    if (isNaN(num)) return decimalPart;
+    const formatter = new Intl.NumberFormat("en-IN");
+    return formatter.format(num) + decimalPart;
+  }, []);
+
+  const handleAmountChange = (field: "poAmount" | "advancedAmount", e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const rawVal = input.value;
+    const cursor = input.selectionStart || 0;
+    const leftDigitsCount = (rawVal.slice(0, cursor).match(/\d/g) || []).length;
+    let cleanVal = rawVal.replace(/[^0-9.]/g, "");
+    const parts = cleanVal.split(".");
+    if (parts.length > 2) {
+      cleanVal = parts[0] + "." + parts.slice(1).join("");
+    }
+    handleInputChange(field, cleanVal);
+    const formatted = formatIndianNumber(cleanVal);
+    let newCursor = 0;
+    let digitsFound = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/\d/.test(formatted[i])) {
+        digitsFound++;
+      }
+      newCursor = i + 1;
+      if (digitsFound === leftDigitsCount) {
+        break;
+      }
+    }
+    setTimeout(() => {
+      input.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
   const totalAmountCalculations = useMemo(() => {
-    const totalAmount = formState.poAmount || 0;
-    const remainingAmount = Math.max(0, totalAmount - (formState.advancedAmount || 0));
+    const totalAmount = Number(String(formState.poAmount || 0).replace(/[^0-9.]/g, "")) || 0;
+    const remainingAmount = Math.max(0, totalAmount - (Number(String(formState.advancedAmount || 0).replace(/[^0-9.]/g, "")) || 0));
     return { totalAmount, remainingAmount };
   }, [formState.poAmount, formState.advancedAmount]);
 
@@ -364,9 +421,11 @@ function OrdersPageContent() {
     }
   };
 
-  const getPayload = (status: "DRAFT" | "SUBMITTED", stage: "Order Initiation" | "Stock Check") => ({
+  const getPayload = (status: "DRAFT" | "SUBMITTED", stage: string) => ({
     ...formState,
-    id: orderId || Date.now().toString(),
+    poAmount: Number(String(formState.poAmount).replace(/[^0-9.]/g, "")) || 0,
+    advancedAmount: Number(String(formState.advancedAmount).replace(/[^0-9.]/g, "")) || 0,
+    id: orderId || "PO-" + Date.now(),
     poImageName: uploadedFile?.name || undefined,
     poImageBase64: uploadedFile?.base64 || undefined,
     totalAmount: totalAmountCalculations.totalAmount,
@@ -382,6 +441,7 @@ function OrdersPageContent() {
     try {
       const response = await saveOrderAPI(getPayload("DRAFT", "Order Initiation"));
       if (response.success) {
+        await reloadOrders();
         alert("Draft Saved Successfully");
         resetForm();
       }
@@ -408,10 +468,15 @@ function OrdersPageContent() {
       }
 
       setIsSaving(true);
-      const payload = getPayload("SUBMITTED", "Order Initiation");
+      const payload = {
+        ...getPayload("SUBMITTED", "Order Specifications"),
+        currentStage: 1,
+        current_stage: "Order Specifications"
+      };
       const response = await saveOrderAPI(payload);
 
       if (response.success) {
+        await reloadOrders();
         console.log("✅ Step 1 Saved Successfully. Redirecting to Specifications...");
         const targetPo = encodeURIComponent(formState.poNumber);
         const targetCust = encodeURIComponent(formState.customerName);
@@ -497,7 +562,7 @@ function OrdersPageContent() {
                   <input
                     id="poDate"
                     type="date"
-                    value={formState.poDate}
+                    value={formState.poDate ? formState.poDate.split("T")[0] : ""}
                     onBlur={() => handleBlur("poDate")}
                     onChange={(e) => handleInputChange("poDate", e.target.value)}
                     className={`${getInputStyle(errors.poDate)} h-[42px]`}
@@ -512,7 +577,7 @@ function OrdersPageContent() {
                   <input
                     id="deliveryDate"
                     type="date"
-                    value={formState.deliveryDate}
+                    value={formState.deliveryDate ? formState.deliveryDate.split("T")[0] : ""}
                     onBlur={() => handleBlur("deliveryDate")}
                     onChange={(e) => handleInputChange("deliveryDate", e.target.value)}
                     className={`${getInputStyle(errors.deliveryDate)} h-[42px]`}
@@ -580,7 +645,7 @@ function OrdersPageContent() {
                                 />
                               </td>
                               <td className="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{po.poNumber}</td>
-                              <td className="px-4 py-3">{po.poDate}</td>
+                              <td className="px-4 py-3">{po.poDate ? po.poDate.split("T")[0] : "—"}</td>
                               <td className="px-4 py-3">{po.customerName}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${po.status === 'SUBMITTED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
@@ -941,10 +1006,10 @@ function OrdersPageContent() {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 font-medium">₹</span>
                     <input
                       id="poAmount"
-                      type="number"
-                      value={formState.poAmount || ""}
+                      type="text"
+                      value={formState.poAmount ? formatIndianNumber(formState.poAmount) : ""}
                       onBlur={() => handleBlur("poAmount")}
-                      onChange={(e) => handleInputChange("poAmount", Number(e.target.value))}
+                      onChange={(e) => handleAmountChange("poAmount", e)}
                       className={`${getInputStyle(errors.poAmount)} pl-10`}
                       placeholder="0.00"
                     />
@@ -957,9 +1022,9 @@ function OrdersPageContent() {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 font-medium">₹</span>
                     <input
                       id="advancedAmount"
-                      type="number"
-                      value={formState.advancedAmount || ""}
-                      onChange={(e) => handleInputChange("advancedAmount", Number(e.target.value))}
+                      type="text"
+                      value={formState.advancedAmount ? formatIndianNumber(formState.advancedAmount) : ""}
+                      onChange={(e) => handleAmountChange("advancedAmount", e)}
                       className={`${inputStyle} pl-10`}
                       placeholder="0.00"
                     />
@@ -972,7 +1037,7 @@ function OrdersPageContent() {
                     <input
                       type="text"
                       readOnly
-                      value={totalAmountCalculations.remainingAmount.toFixed(2)}
+                      value={formatIndianNumber(totalAmountCalculations.remainingAmount.toFixed(2))}
                       className={`${inputStyle} pl-10 bg-neutral-100 dark:bg-slate-800 cursor-not-allowed font-medium`}
                       placeholder="0.00"
                     />
@@ -985,12 +1050,12 @@ function OrdersPageContent() {
                   <span className="w-max whitespace-nowrap block">
                     Total order amount
                   </span>
-                  <span className="font-bold text-neutral-800 dark:text-neutral-200">₹{totalAmountCalculations.totalAmount.toFixed(2)}</span>
+                  <span className="font-bold text-neutral-800 dark:text-neutral-200">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-6 pt-5 mt-2 border-t border-neutral-100 dark:border-slate-800">
                   <div className="text-xl font-bold ml-2">
-                    <span className="text-blue-600">₹{totalAmountCalculations.totalAmount.toFixed(2)}</span>
+                    <span className="text-blue-600">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                   </div>
                 </div>
               </div>

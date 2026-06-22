@@ -139,7 +139,7 @@ export default function DashboardHomePage() {
           <td className="px-4 py-[18px] whitespace-nowrap">
             <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{order.poDate}</span>
+              <span>{order.poDate ? order.poDate.split('T')[0] : '—'}</span>
             </div>
           </td>
           <td className="px-4 py-[18px] whitespace-nowrap">

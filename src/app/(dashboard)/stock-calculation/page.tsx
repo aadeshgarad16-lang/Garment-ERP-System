@@ -14,6 +14,7 @@ import {
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { useOrders } from '@/contexts/order-context';
 
 interface GarmentSpec {
   id: string;
@@ -76,9 +77,12 @@ function SearchableDropdown({
   }, [value]);
 
   const filteredOptions = useMemo(() => {
+    if (!search || search === value) {
+      return options;
+    }
     const query = search.toLowerCase();
     return options.filter((opt) => opt.toLowerCase().includes(query));
-  }, [options, search]);
+  }, [options, search, value]);
 
   return (
     <div className="relative" ref={wrapperRef}>
@@ -106,7 +110,7 @@ function SearchableDropdown({
         </div>
       </div>
       {isOpen && !disabled && (
-        <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1 border-t-0">
+        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1 border-t-0">
           {filteredOptions.length === 0 ? (
             <li className="px-3 py-2 text-sm text-neutral-500 italic">No options found</li>
           ) : (
@@ -114,7 +118,8 @@ function SearchableDropdown({
               <li
                 key={idx}
                 className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer transition-colors"
-                onClick={() => {
+                onMouseDown={(e) => {
+                  e.preventDefault();
                   onChange(opt);
                   setSearch(opt);
                   setIsOpen(false);
@@ -135,8 +140,8 @@ function StockCalculationContent() {
   const searchParams = useSearchParams();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { orders } = useOrders();
 
-  const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
@@ -148,28 +153,19 @@ function StockCalculationContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const loadOrders = () => {
-      const ordersStr = localStorage.getItem('savedOrders');
-      if (ordersStr) {
-        try {
-          setSavedOrders(JSON.parse(ordersStr));
-        } catch (e) {
-          console.error("Failed parsing localStorage logs", e);
-        }
-      }
+    const timer = setTimeout(() => setIsLoaded(true), 800);
+    if (orders && orders.length > 0) {
       setIsLoaded(true);
-    };
-    loadOrders();
-    window.addEventListener('storage', loadOrders);
-    return () => window.removeEventListener('storage', loadOrders);
-  }, []);
+    }
+    return () => clearTimeout(timer);
+  }, [orders]);
 
   // Compute active tracking datasets inside a isolated block
   const activeOrders = useMemo(() => {
-    return savedOrders.filter(
-      (o) => o.stage === 'Stock Check' && (o.status === 'Submitted' || o.status === 'SUBMITTED')
+    return (orders || []).filter(
+      (o) => o.stage === 'Stock Check' && o.status === 'SUBMITTED'
     );
-  }, [savedOrders]);
+  }, [orders]);
 
   // Track layout boundaries and clear data parameters if an assignment shifts status metrics
   useEffect(() => {
@@ -225,7 +221,7 @@ function StockCalculationContent() {
       isFormValid,
       totalQuantity,
       totalProductionRequired,
-      derivedPODate: selectedOrder?.poDate || '',
+      derivedPODate: selectedOrder?.poDate ? selectedOrder.poDate.split('T')[0] : '',
     };
   }, [selectedOrder]);
 
@@ -265,8 +261,8 @@ function StockCalculationContent() {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-6">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 mt-6">
+        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 rounded-t-xl">
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
             <Box className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
             Stock Calculation
@@ -324,8 +320,8 @@ function StockCalculationContent() {
                   <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     <tr className="text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50/30 transition-colors">
                       <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400">{selectedOrder.poNumber}</td>
-                      <td className="px-6 py-4">{selectedOrder.poDate}</td>
-                      <td className="px-6 py-4">{selectedOrder.deliveryDate}</td>
+                      <td className="px-6 py-4">{selectedOrder.poDate ? selectedOrder.poDate.split('T')[0] : '—'}</td>
+                      <td className="px-6 py-4">{selectedOrder.deliveryDate ? selectedOrder.deliveryDate.split('T')[0] : '—'}</td>
                       <td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400 space-y-2">
                         {selectedOrder.specs && selectedOrder.specs.length > 0 ? (
                           selectedOrder.specs.map((spec) => (

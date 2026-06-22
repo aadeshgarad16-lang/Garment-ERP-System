@@ -56,11 +56,11 @@ export default function OrderDetailsPage() {
             </div>
             <div>
               <p className="text-neutral-500 dark:text-neutral-400">PO Date</p>
-              <p className="font-medium text-neutral-900 dark:text-neutral-100">{order.poDate || '-'}</p>
+              <p className="font-medium text-neutral-900 dark:text-neutral-100">{order.poDate ? order.poDate.split('T')[0] : '-'}</p>
             </div>
             <div>
               <p className="text-neutral-500 dark:text-neutral-400">Delivery Date</p>
-              <p className="font-medium text-neutral-900 dark:text-neutral-100">{order.deliveryDate || '-'}</p>
+              <p className="font-medium text-neutral-900 dark:text-neutral-100">{order.deliveryDate ? order.deliveryDate.split('T')[0] : '-'}</p>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/contexts/language-context";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { OrderProvider } from "@/contexts/order-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors font-sans antialiased selection:bg-primary/20 selection:text-primary dark:selection:bg-primary/40 dark:selection:text-primary-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <OrderProvider>{children}</OrderProvider>
+            </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

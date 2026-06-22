@@ -5,9 +5,10 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 interface PackingVerificationProps {
   onComplete: () => void;
+  order?: any;
 }
 
-export default function PackingVerification({ onComplete }: PackingVerificationProps) {
+export default function PackingVerification({ onComplete, order }: PackingVerificationProps) {
   const { t } = useTranslation();
   const [manifestId, setManifestId] = useState('MNF-2026-089');
   const [verifiedQty, setVerifiedQty] = useState('');
@@ -23,6 +24,11 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
   };
 
   const isFormValid = verifiedQty.trim() !== '';
+
+  const orderId = order?.poNumber || 'PO-2026-004';
+  const targetQty = order?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
+  const destination = order?.deliveryAddress || 'Warehouse B, Dubai';
+  const cartonCount = Math.ceil(targetQty / 40);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -88,19 +94,19 @@ export default function PackingVerification({ onComplete }: PackingVerificationP
             <div className="space-y-4 flex-1">
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.recentOrders.headers.orderId') || 'Order ID'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">PO-2026-004</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{orderId}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.targetQty') || 'Target Quantity'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">1000 pcs</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{targetQty} pcs</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.cartonCount') || 'Carton Count'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">25 Cartons</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{cartonCount} Cartons</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
                 <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.destination') || 'Destination'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Warehouse B, Dubai</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{destination}</span>
               </div>
             </div>
             

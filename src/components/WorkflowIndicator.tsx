@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useOrders } from '@/contexts/order-context';
 
 // Full workflow sequence used to determine if a step is in the past
 const allSteps = [
@@ -66,26 +67,9 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
   const { t } = useTranslation();
   const router = useRouter();
 
-  const [orders, setOrders] = useState<any[]>([]);
+  const { orders } = useOrders();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const loadOrders = () => {
-      let combinedOrders: any[] = [];
-      const stored = localStorage.getItem('savedOrders');
-      if (stored) {
-        try {
-          combinedOrders = JSON.parse(stored);
-        } catch (e) { }
-      }
-      setOrders(combinedOrders);
-    };
-    loadOrders();
-
-    window.addEventListener('storage', loadOrders);
-    return () => window.removeEventListener('storage', loadOrders);
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -109,12 +93,12 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
 
   const getOrdersForStage = (stage: string) => {
     if (stage === 'Order Initiation') {
-      return orders.filter(o => o.status === 'Draft' || o.status === 'DRAFT');
+      return orders.filter(o => o.status === 'DRAFT');
     }
     const targetStageIndex = allSteps.indexOf(stage);
     return orders.filter(o => {
-      if (o.status !== 'Submitted' && o.status !== 'SUBMITTED') return false;
-      const orderStage = o.stage || o.current_stage;
+      if (o.status !== 'SUBMITTED') return false;
+      const orderStage = o.stage || o.current_stage || 'Order Initiation';
       const orderStageIndex = allSteps.indexOf(orderStage);
       if (orderStageIndex === -1) return false;
       return orderStageIndex <= targetStageIndex;

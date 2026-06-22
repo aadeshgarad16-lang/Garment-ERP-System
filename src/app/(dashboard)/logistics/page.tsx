@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Truck, CheckCircle2 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import LogisticsWorkflowHeader from '@/components/logistics/LogisticsWorkflowHeader';
@@ -11,32 +12,90 @@ import DispatchSection from '@/components/logistics/DispatchSection';
 import ProofOfDelivery from '@/components/logistics/ProofOfDelivery';
 import FinancialClosure from '@/components/logistics/FinancialClosure';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
 
 export default function LogisticsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { user } = useAuth();
+  
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [orderArchived, setOrderArchived] = useState(false);
 
-  const handleStepComplete = useCallback((stepId: number) => {
-    setCompletedSteps(prev => {
-      if (!prev.includes(stepId)) {
-        return [...prev, stepId];
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const po = params.get('poNumber');
+      if (po) {
+        const ordersStr = localStorage.getItem('savedOrders');
+        if (ordersStr) {
+          try {
+            const orders = JSON.parse(ordersStr);
+            const found = orders.find((o: any) => o.poNumber === po);
+            if (found) {
+              setCurrentOrder(found);
+              if (found.logisticsStep) {
+                setCurrentStep(found.logisticsStep);
+              }
+              if (found.logisticsCompletedSteps) {
+                setCompletedSteps(found.logisticsCompletedSteps);
+              }
+              if (found.orderArchived !== undefined) {
+                setOrderArchived(found.orderArchived);
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
       }
-      return prev;
-    });
-    // Auto advance to next step if not the last one
-    if (stepId < 6) {
-      setCurrentStep(stepId + 1);
-    } else {
-      setOrderArchived(true);
     }
   }, []);
+
+  const saveLogisticsProgress = (step: number, completed: number[], archived: boolean) => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const po = params.get('poNumber');
+    if (po) {
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? {
+          ...o,
+          logisticsStep: step,
+          logisticsCompletedSteps: completed,
+          orderArchived: archived,
+          stage: archived ? "Archived" : "Logistics"
+        } : o);
+      });
+    }
+  };
+
+  const handleStepComplete = useCallback((stepId: number) => {
+    setCompletedSteps(prev => {
+      const nextCompleted = prev.includes(stepId) ? prev : [...prev, stepId];
+      let nextStep = currentStep;
+      let nextArchived = orderArchived;
+
+      if (stepId < 6) {
+        nextStep = stepId + 1;
+      } else {
+        nextArchived = true;
+      }
+
+      setCurrentStep(nextStep);
+      setOrderArchived(nextArchived);
+      saveLogisticsProgress(nextStep, nextCompleted, nextArchived);
+
+      return nextCompleted;
+    });
+  }, [currentStep, orderArchived, user?.name]);
 
   const renderActiveSection = () => {
     switch (currentStep) {
       case 1:
-        return <PackingVerification onComplete={() => handleStepComplete(1)} />;
+        return <PackingVerification order={currentOrder} onComplete={() => handleStepComplete(1)} />;
       case 2:
         return <ApprovalSection onComplete={() => handleStepComplete(2)} />;
       case 3:
@@ -79,7 +138,9 @@ export default function LogisticsPage() {
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
             <h2 className="text-xl font-bold text-emerald-800">{t('logistics.fulfilled') || 'Order Fulfilled & Archived'}</h2>
-            <p className="text-emerald-600 text-sm mt-1">{t('logistics.fulfilledDesc') || 'PO-2026-004 has been successfully delivered and closed.'}</p>
+            <p className="text-emerald-600 text-sm mt-1">
+              {(currentOrder?.poNumber || 'Order') + " " + (t('logistics.fulfilledDesc') || 'has been successfully delivered and closed.')}
+            </p>
           </div>
         </div>
       ) : (
