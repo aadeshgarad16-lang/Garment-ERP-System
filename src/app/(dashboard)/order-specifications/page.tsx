@@ -742,14 +742,18 @@ function GarmentSpecsContent() {
         </div>
 
         <div className="p-6 bg-neutral-50/50 dark:bg-slate-800/30">
-          {/* View Selected PO Number */}
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
-            <span>Selected PO Number:</span>
-            <span className="text-neutral-800 dark:text-neutral-200 bg-neutral-100 dark:bg-slate-800 px-3 py-1 rounded-md border border-neutral-200 dark:border-slate-700 font-mono">
-              {currentPoNumber}
-            </span>
+          <div className="mb-6">
+            <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-slate-800/50 text-neutral-500 border-neutral-200 dark:border-slate-700 font-semibold text-sm flex items-center gap-2.5 shadow-sm">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500/80 animate-pulse"></span>
+              <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected Purchase Order:</span>
+              <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
+                {currentPoNumber.startsWith("PO") ? currentPoNumber : `#${currentPoNumber}`}
+              </span>
+              <span className="ml-auto text-xs font-semibold text-neutral-400 uppercase tracking-widest bg-neutral-200/50 dark:bg-slate-700 px-2.5 py-1 rounded-md">
+                View Only
+              </span>
+            </div>
           </div>
-
           <div className="space-y-8">
             {specs.map((spec, index) => (
               <div key={spec.id} className="relative bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm mt-4">

@@ -44,10 +44,11 @@ export default function StorePage() {
         <div className="flex gap-3">
           <button
             onClick={() => setActiveTab("raw")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-              }`}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${
+              activeTab === "raw"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+            }`}
           >
             Raw Material
           </button>
@@ -224,7 +225,6 @@ function RawMaterialModule() {
         matchesDate = item.availableQty < 50;
       }
     }
-
     return (
       matchesSearch &&
       matchesFilter &&
