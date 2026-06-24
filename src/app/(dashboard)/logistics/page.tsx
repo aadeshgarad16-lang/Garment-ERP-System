@@ -21,6 +21,7 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [poNumber, setPoNumber] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [orderArchived, setOrderArchived] = useState(false);
@@ -30,6 +31,7 @@ export default function LogisticsPage() {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
       if (po) {
+        setPoNumber(po);
         const ordersStr = localStorage.getItem('savedOrders');
         if (ordersStr) {
           try {
@@ -122,7 +124,22 @@ export default function LogisticsPage() {
             <Truck className="h-6 w-6 text-indigo-600" />
             {t('logistics.title') || 'Logistics Management'}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+              {t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}
+            </p>
+            {poNumber && (
+              <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded text-xs font-bold border border-indigo-100 dark:border-indigo-900/30">
+                {poNumber}
+              </span>
+            )}
+            {currentOrder?.customerName && (
+              <span className="text-neutral-400 dark:text-neutral-500 text-xs flex items-center gap-1">
+                <span>•</span>
+                <span>Customer: <strong className="text-neutral-700 dark:text-neutral-300">{currentOrder.customerName}</strong></span>
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

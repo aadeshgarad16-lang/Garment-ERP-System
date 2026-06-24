@@ -129,26 +129,26 @@ export default function DashboardHomePage() {
 
       return (
         <tr key={order.id} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
-          <td className="px-6 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{order.id}</td>
-          <td className="px-4 py-[18px] text-sm text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{order.customer}</td>
-          <td className="px-4 py-[18px] whitespace-nowrap">
+          <td className="pl-6 pr-2 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{order.id}</td>
+          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{order.customer}</td>
+          <td className="px-2 py-[18px] whitespace-nowrap">
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.statusKey] || STATUS_THEME_MAP.pending}`}>
               {t(`dashboard.recentOrders.status.${order.statusKey}`)}
             </span>
           </td>
-          <td className="px-4 py-[18px] whitespace-nowrap">
+          <td className="px-2 py-[18px] whitespace-nowrap">
             <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               <span>{order.poDate ? order.poDate.split('T')[0] : '—'}</span>
             </div>
           </td>
-          <td className="px-4 py-[18px] whitespace-nowrap">
+          <td className="px-2 py-[18px] whitespace-nowrap">
             <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               <span>{order.date}</span>
             </div>
           </td>
-          <td className="px-4 py-[18px] text-sm font-medium whitespace-nowrap">
+          <td className="px-2 py-[18px] text-sm font-medium whitespace-nowrap">
             {delayDays ? (
               <span className="text-red-600 bg-red-50 border border-red-100 dark:bg-red-900/20 dark:border-red-800/30 dark:text-red-400 px-2.5 py-1 rounded-md">
                 {delayDays}
@@ -157,7 +157,7 @@ export default function DashboardHomePage() {
               <span className="text-neutral-400">-</span>
             )}
           </td>
-          <td className="px-4 py-[18px] text-sm text-neutral-600 dark:text-neutral-400">
+          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400">
             {editingReasonId === order.id ? (
               <div className="flex flex-col gap-2">
                 <input
@@ -171,7 +171,7 @@ export default function DashboardHomePage() {
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-[11px] text-neutral-500 font-medium cursor-pointer">
                     <input type="checkbox" className="w-3 h-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                    Save this address for later?
+                    Save this Reason for later?
                   </label>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleSaveReason(order.id)} className="p-1 text-green-600 hover:bg-green-100 rounded-md"><Check className="h-4 w-4" /></button>
@@ -203,7 +203,7 @@ export default function DashboardHomePage() {
               </select>
             )}
           </td>
-          <td className="px-6 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 text-right whitespace-nowrap">
+          <td className="pl-2 pr-6 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 text-right whitespace-nowrap">
             {indianCurrencyFormatter.format(order.amount)}
           </td>
         </tr>
@@ -289,17 +289,17 @@ export default function DashboardHomePage() {
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('dashboard.recentOrders.title')}</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold bg-neutral-50/30 dark:bg-slate-900">
-                  <th scope="col" className="w-[12%] px-6 py-4">{t('dashboard.recentOrders.headers.poNumber')}</th>
-                  <th scope="col" className="w-[16%] px-4 py-4">{t('dashboard.recentOrders.headers.customer')}</th>
-                  <th scope="col" className="w-[12%] px-4 py-4">{t('dashboard.recentOrders.headers.status')}</th>
-                  <th scope="col" className="w-[10%] px-4 py-4">PO Date</th>
-                  <th scope="col" className="w-[10%] px-4 py-4">{t('dashboard.recentOrders.headers.deliveryDate')}</th>
-                  <th scope="col" className="w-[8%] px-4 py-4">Delay Days</th>
-                  <th scope="col" className="w-[22%] px-4 py-4">Delay Reason</th>
-                  <th scope="col" className="w-[10%] px-6 py-4 text-right">{t('dashboard.recentOrders.headers.amount')}</th>
+                  <th scope="col" className="w-[12%] pl-6 pr-2 py-4">{t('dashboard.recentOrders.headers.poNumber')}</th>
+                  <th scope="col" className="w-[16%] px-2 py-4">{t('dashboard.recentOrders.headers.customer')}</th>
+                  <th scope="col" className="w-[12%] px-2 py-4">{t('dashboard.recentOrders.headers.status')}</th>
+                  <th scope="col" className="w-[10%] px-2 py-4">PO Date</th>
+                  <th scope="col" className="w-[10%] px-2 py-4">{t('dashboard.recentOrders.headers.deliveryDate')}</th>
+                  <th scope="col" className="w-[8%] px-2 py-4">Delay Days</th>
+                  <th scope="col" className="w-[22%] px-2 py-4">Delay Reason</th>
+                  <th scope="col" className="w-[10%] pl-2 pr-6 py-4 text-right">{t('dashboard.recentOrders.headers.amount')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">

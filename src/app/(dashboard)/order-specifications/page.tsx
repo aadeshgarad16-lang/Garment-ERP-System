@@ -745,7 +745,7 @@ function GarmentSpecsContent() {
           <div className="mb-6">
             <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-slate-800/50 text-neutral-500 border-neutral-200 dark:border-slate-700 font-semibold text-sm flex items-center gap-2.5 shadow-sm">
               <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500/80 animate-pulse"></span>
-              <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected Purchase Order:</span>
+              <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected PO Number:</span>
               <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
                 {currentPoNumber.startsWith("PO") ? currentPoNumber : `#${currentPoNumber}`}
               </span>

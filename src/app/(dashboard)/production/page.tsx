@@ -49,12 +49,14 @@ export default function ProductionPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [poNumber, setPoNumber] = useState<string>('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
       if (po) {
+        setPoNumber(po);
         const ordersStr = localStorage.getItem('savedOrders');
         if (ordersStr) {
           try {
@@ -154,11 +156,11 @@ export default function ProductionPage() {
 
   const getStatusBadge = (status: StageStatus) => {
     switch (status) {
-      case 'Pending': return <span className="bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.status.pending') || 'Pending'}</span>;
-      case 'In Progress': return <span className="bg-blue-100 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.recentOrders.headers.poNumber') || 'In Progress'}</span>;
-      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('orderInitiation.header.saveOrder') || 'Completed'}</span>;
+      case 'Pending': return <span className="bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Pending'}</span>;
+      case 'In Progress': return <span className="bg-blue-100 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'In Progress'}</span>;
+      case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Completed'}</span>;
       case 'Failed':
-      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{t('dashboard.stockAlerts.severity.critical') || 'Rework Required'}</span>;
+      case 'Rework Required': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Rework Required'}</span>;
       default: return null;
     }
   };
@@ -198,15 +200,34 @@ export default function ProductionPage() {
             <Activity className="h-6 w-6 text-indigo-600" />
             {t('production.title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('production.subtitle')}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+              {t('production.subtitle')}
+            </p>
+            {poNumber && (
+              <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded text-xs font-bold border border-indigo-100 dark:border-indigo-900/30">
+                {poNumber}
+              </span>
+            )}
+            {currentOrder?.customerName && (
+              <span className="text-neutral-400 dark:text-neutral-500 text-xs flex items-center gap-1">
+                <span>•</span>
+                <span>Customer: <strong className="text-neutral-700 dark:text-neutral-300">{currentOrder.customerName}</strong></span>
+              </span>
+            )}
+          </div>
         </div>
         <div>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${overallProductionStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${
+            overallProductionStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
             overallProductionStatus === 'Rework Required' ? 'bg-red-100 text-red-800 border-red-200' :
-              overallProductionStatus === 'Production Started' ? 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200' :
-                'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700'
-            }`}>
-            {overallProductionStatus === 'Completed' ? t('orderInitiation.header.saveOrder') : overallProductionStatus === 'Rework Required' ? t('dashboard.stockAlerts.severity.critical') : overallProductionStatus === 'Production Started' ? t('dashboard.recentOrders.headers.poNumber') : t('dashboard.recentOrders.status.pending')}
+            overallProductionStatus === 'Production Started' ? 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200' :
+            'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700'
+          }`}>
+            {overallProductionStatus === 'Completed' ? (t('quality.stageComplete') || 'Completed') :
+             overallProductionStatus === 'Rework Required' ? (t('dashboard.stockAlerts.severity.critical') || 'Rework Required') :
+             overallProductionStatus === 'Production Started' ? (t('dashboard.recentOrders.status.inProduction') || 'Production Started') :
+             (t('dashboard.recentOrders.status.pending') || 'Pending')}
           </span>
         </div>
       </div>
@@ -235,6 +256,12 @@ export default function ProductionPage() {
           </div>
 
           <div className="flex gap-4 md:gap-8 flex-shrink-0 items-center">
+            {poNumber && (
+              <div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">PO Number</p>
+                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{poNumber}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">{t('production.total') || 'Total Pieces'}</p>
               <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalOrderQty}</p>

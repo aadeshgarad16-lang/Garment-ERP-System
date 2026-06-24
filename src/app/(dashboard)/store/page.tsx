@@ -694,11 +694,13 @@ function RawMaterialModule() {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() =>
-                            setMaterials(
-                              materials.filter((m) => m.id !== item.id),
-                            )
-                          }
+                          onClick={() => {
+                            if (window.confirm("do you want to delete this item")) {
+                              setMaterials(
+                                materials.filter((m) => m.id !== item.id),
+                              );
+                            }
+                          }}
                           className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="Delete"
                         >
@@ -1461,11 +1463,13 @@ function PreStitchedModule() {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() =>
-                            setGarments(
-                              garments.filter((g) => g.id !== item.id),
-                            )
-                          }
+                          onClick={() => {
+                            if (window.confirm("do you want to delete this item")) {
+                              setGarments(
+                                garments.filter((g) => g.id !== item.id),
+                              );
+                            }
+                          }}
                           className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="Delete"
                         >
