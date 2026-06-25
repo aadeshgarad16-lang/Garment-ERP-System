@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { saveOrderAPI, getOrderByIdAPI, getLatestPoSequenceAPI, getAllOrdersAPI, Order } from "@/lib/api";
+import { saveOrderAPI, getOrderByIdAPI, getLatestPoSequenceAPI, getAllOrdersAPI, Order, getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress } from "@/lib/api";
 import {
   CreditCard,
   FileText,
@@ -105,6 +105,37 @@ function OrdersPageContent() {
   const [tempParentPo, setTempParentPo] = useState("");
   const [parentPage, setParentPage] = useState(1);
   const PARENT_PAGE_SIZE = 5;
+
+  // --- CUSTOMER-SPECIFIC ADDRESS DROPDOWN & SMART MODAL STATES ---
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [showSaveNewAddressModal, setShowSaveNewAddressModal] = useState(false);
+  const addressDropdownRef = React.useRef<HTMLDivElement>(null);
+  const lastDeclinedAddress = React.useRef("");
+  const [isSavingNewAddress, setIsSavingNewAddress] = useState(false);
+
+  // Fetch customer addresses when customerName changes
+  useEffect(() => {
+    const custName = formState.customerName.trim();
+    if (custName) {
+      getCustomerAddressesAPI(custName).then((addresses) => {
+        setCustomerAddresses(addresses);
+      });
+    } else {
+      setCustomerAddresses([]);
+    }
+  }, [formState.customerName]);
+
+  // Click outside to close the address dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (addressDropdownRef.current && !addressDropdownRef.current.contains(event.target as Node)) {
+        setShowAddressDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isLinkingParent && parentPOs.length === 0) {
@@ -239,6 +270,33 @@ function OrdersPageContent() {
     const err = validateField(field, currentValue, formState);
     setErrors((prev) => ({ ...prev, [field]: err }));
   };
+
+  const handleAddressBlur = () => {
+    handleBlur("deliveryAddress");
+
+    const enteredAddr = formState.deliveryAddress.trim();
+    const custName = formState.customerName.trim();
+
+    if (!enteredAddr || !custName) return;
+
+    // Check if it's already saved under this customer
+    const isSaved = customerAddresses.some(
+      (addr) => addr.address.trim().toLowerCase() === enteredAddr.toLowerCase()
+    );
+
+    // If not saved and not recently declined, trigger the modal
+    if (!isSaved && enteredAddr.toLowerCase() !== lastDeclinedAddress.current.toLowerCase()) {
+      setShowSaveNewAddressModal(true);
+    }
+  };
+
+  const filteredAddresses = useMemo(() => {
+    const query = formState.deliveryAddress.trim().toLowerCase();
+    if (!query) return customerAddresses;
+    return customerAddresses.filter(
+      (addr) => addr.address.toLowerCase().includes(query) || addr.pinCode.includes(query)
+    );
+  }, [customerAddresses, formState.deliveryAddress]);
 
   useEffect(() => {
     let isMounted = true;
@@ -792,19 +850,69 @@ function OrdersPageContent() {
               {/* DYNAMIC DELIVERY SECTIONS MATCHING STATE CONFIGURATION */}
               {formState.deliveryType === "single" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="md:col-span-2 flex flex-col">
+                  <div className="md:col-span-2 flex flex-col relative animate-in fade-in duration-150" ref={addressDropdownRef}>
                     <label htmlFor="deliveryAddress" className="text-sm font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       Delivery Address <span className="text-red-500">*</span>
                     </label>
-                    <textarea
-                      id="deliveryAddress"
-                      value={formState.deliveryAddress}
-                      onBlur={() => handleBlur("deliveryAddress")}
-                      onChange={(e) => handleInputChange("deliveryAddress", e.target.value)}
-                      placeholder="Enter complete delivery address"
-                      className={`${getInputStyle(errors.deliveryAddress)} flex-1 min-h-[100px] mt-1 resize-y`}
-                    />
+                    <div className="relative mt-1 flex-1">
+                      <textarea
+                        id="deliveryAddress"
+                        value={formState.deliveryAddress}
+                        onFocus={() => {
+                          if (formState.customerName.trim() && customerAddresses.length > 0) {
+                            setShowAddressDropdown(true);
+                          }
+                        }}
+                        onBlur={handleAddressBlur}
+                        onChange={(e) => {
+                          handleInputChange("deliveryAddress", e.target.value);
+                          if (formState.customerName.trim() && customerAddresses.length > 0) {
+                            setShowAddressDropdown(true);
+                          }
+                        }}
+                        placeholder="Enter complete delivery address"
+                        className={`${getInputStyle(errors.deliveryAddress)} w-full min-h-[100px] resize-y`}
+                      />
+                      {showAddressDropdown && formState.customerName.trim() !== "" && (
+                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                          <div className="px-3 py-2 bg-neutral-50 dark:bg-slate-800 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 border-b border-neutral-100 dark:border-slate-800 uppercase tracking-wider">
+                            Saved Addresses for {formState.customerName}
+                          </div>
+                          {filteredAddresses.length === 0 ? (
+                            <div className="px-4 py-3 text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                              No matching saved addresses. Press Tab to use this new address.
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-neutral-100 dark:divide-slate-800">
+                              {filteredAddresses.map((addr) => (
+                                <div
+                                  key={addr.id}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleInputChange("deliveryAddress", addr.address);
+                                    handleInputChange("deliveryPin", addr.pinCode);
+                                    setShowAddressDropdown(false);
+                                    
+                                    // Focus PIN Code field afterwards (simulating standard tab-out)
+                                    setTimeout(() => {
+                                      document.getElementById("deliveryPin")?.focus();
+                                    }, 0);
+                                  }}
+                                  className="px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-700 dark:text-neutral-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer text-xs transition-colors flex items-start gap-2"
+                                >
+                                  <MapPin className="h-4 w-4 mt-0.5 text-neutral-400 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium leading-relaxed">{addr.address}</p>
+                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">PIN: {addr.pinCode}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {errors.deliveryAddress && <p className="text-red-500 text-xs mt-1">{errors.deliveryAddress}</p>}
                   </div>
                   <div className="flex flex-col gap-4">
@@ -1135,6 +1243,92 @@ function OrdersPageContent() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVE NEW ADDRESS CONFIRMATION MODAL */}
+      {showSaveNewAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
+            <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-500" />
+                Save New Address?
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  lastDeclinedAddress.current = formState.deliveryAddress.trim();
+                  setShowSaveNewAddressModal(false);
+                  setTimeout(() => {
+                    document.getElementById("deliveryPin")?.focus();
+                  }, 0);
+                }}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                This is a new address. Would you like to save it to this customer's profile for future use?
+              </p>
+              <div className="bg-neutral-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-slate-800/60 text-left">
+                <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
+                <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mt-0.5 mb-2">{formState.customerName}</p>
+                <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
+                <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5 leading-relaxed">{formState.deliveryAddress}</p>
+                {formState.deliveryPin && (
+                  <>
+                    <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-2">PIN Code</p>
+                    <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5">{formState.deliveryPin}</p>
+                  </>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    lastDeclinedAddress.current = formState.deliveryAddress.trim();
+                    setShowSaveNewAddressModal(false);
+                    setTimeout(() => {
+                      document.getElementById("deliveryPin")?.focus();
+                    }, 0);
+                  }}
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingNewAddress}
+                  onClick={async () => {
+                    setIsSavingNewAddress(true);
+                    try {
+                      await saveCustomerAddressAPI(
+                        formState.customerName,
+                        formState.deliveryAddress,
+                        formState.deliveryPin
+                      );
+                      const updated = await getCustomerAddressesAPI(formState.customerName);
+                      setCustomerAddresses(updated);
+                    } catch (e) {
+                      console.error("Failed saving address:", e);
+                    } finally {
+                      setIsSavingNewAddress(false);
+                      setShowSaveNewAddressModal(false);
+                      setTimeout(() => {
+                        document.getElementById("deliveryPin")?.focus();
+                      }, 0);
+                    }
+                  }}
+                  className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                >
+                  {isSavingNewAddress ? "Saving..." : "Yes, Save Address"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -343,7 +343,7 @@ export default function MaterialReleasePage() {
                     <th scope="col" className="px-4 py-3">{t('inventory.materials.table.headers.category') || 'Category'}</th>
                     <th scope="col" className="px-4 py-3 text-right">{t('procurement.frozenQty') || 'Frozen Qty'}</th>
                     <th scope="col" className="px-4 py-3">{t('procurement.destination') || 'Destination'}</th>
-                    <th scope="col" className="px-4 py-3 text-center">{t('procurement.releaseQty') || 'Release Qty'}</th>
+                    <th scope="col" className="px-4 py-3 text-center">{t('Release  Qty') || 'Release Qty'}</th>
                     <th scope="col" className="px-4 py-3">{t('procurement.status') || 'Status'}</th>
                   </tr>
                 </thead>

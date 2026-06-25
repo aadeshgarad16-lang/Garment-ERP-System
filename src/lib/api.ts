@@ -169,3 +169,82 @@ export const getLatestPoSequenceAPI = async (): Promise<number> => {
   
   return maxNumber + 1;
 };
+
+// --- CUSTOMER ADDRESSES MOCK DATABASE ---
+export interface CustomerAddress {
+  id: string;
+  address: string;
+  pinCode: string;
+}
+
+const SEED_CUSTOMER_ADDRESSES: Record<string, CustomerAddress[]> = {
+  "John Doe": [
+    { id: "jd-1", address: "123 Maple Street, Apartment 4B, New York, NY 10001", pinCode: "10001" },
+    { id: "jd-2", address: "789 Broadway Ave, Business Suite 200, New York, NY 10003", pinCode: "10003" }
+  ],
+  "Sarah Jenkins": [
+    { id: "sj-1", address: "456 Oak Lane, Austin, TX 78701", pinCode: "78701" }
+  ],
+  "Arjun Mehta": [
+    { id: "am-1", address: "Flat 402, Royal Residency, Baner, Pune 411045", pinCode: "411045" },
+    { id: "am-2", address: "Plot 12, Phase 3, Hinjewadi IT Park, Pune 411057", pinCode: "411057" }
+  ],
+  "Zara India": [
+    { id: "zara-1", address: "Zara Retail Store, Palladium Mall, Lower Parel, Mumbai", pinCode: "400013" },
+    { id: "zara-2", address: "Zara Logistics Hub, Khasra 382, Bilaspur, Gurugram", pinCode: "122413" }
+  ],
+  "Reliance Trends": [
+    { id: "rt-1", address: "Reliance Trends Hub, Whitefield Main Road, Bangalore", pinCode: "560066" },
+    { id: "rt-2", address: "Trends Depot, Ghansoli, Navi Mumbai", pinCode: "400701" }
+  ],
+  "Acme Corp": [
+    { id: "acme-1", address: "Acme Headquarters, Connaught Place, New Delhi", pinCode: "110001" },
+    { id: "acme-2", address: "Acme Industrial Area, Phase II, Noida", pinCode: "201301" }
+  ]
+};
+
+export const getCustomerAddressesAPI = async (customerName: string): Promise<CustomerAddress[]> => {
+  await delay(200);
+  if (typeof window === "undefined") return [];
+  
+  const stored = localStorage.getItem("customerAddresses");
+  const db = stored ? JSON.parse(stored) : { ...SEED_CUSTOMER_ADDRESSES };
+  
+  // Ensure newly added seeds are in the db
+  let updated = false;
+  Object.keys(SEED_CUSTOMER_ADDRESSES).forEach(k => {
+    if (!db[k]) {
+      db[k] = SEED_CUSTOMER_ADDRESSES[k];
+      updated = true;
+    }
+  });
+  if (updated || !stored) {
+    localStorage.setItem("customerAddresses", JSON.stringify(db));
+  }
+  
+  const key = Object.keys(db).find(k => k.toLowerCase() === customerName.toLowerCase());
+  return key ? db[key] : [];
+};
+
+export const saveCustomerAddressAPI = async (customerName: string, address: string, pinCode: string): Promise<{ success: boolean; data: CustomerAddress }> => {
+  await delay(300);
+  if (typeof window === "undefined") return { success: false, data: {} as any };
+  
+  const stored = localStorage.getItem("customerAddresses");
+  const db = stored ? JSON.parse(stored) : { ...SEED_CUSTOMER_ADDRESSES };
+  
+  const key = Object.keys(db).find(k => k.toLowerCase() === customerName.toLowerCase()) || customerName;
+  const existing = db[key] || [];
+  
+  const newAddr: CustomerAddress = {
+    id: "addr-" + Date.now(),
+    address: address.trim(),
+    pinCode: pinCode.trim()
+  };
+  
+  db[key] = [...existing, newAddr];
+  localStorage.setItem("customerAddresses", JSON.stringify(db));
+  
+  return { success: true, data: newAddr };
+};
+

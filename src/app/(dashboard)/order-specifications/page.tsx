@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown, Eye } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useAuth } from "@/context/AuthContext";
 import { updateOrderAndLog } from "@/lib/logger";
+import { getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress } from "@/lib/api";
 
 let __idCounter = 0;
 const generateId = () => `row-${Date.now()}-${__idCounter++}`;
@@ -317,6 +319,97 @@ function GarmentSpecsContent() {
   const [savedDrafts, setSavedDrafts] = useState<DraftOrder[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+
+  // --- CUSTOMER-SPECIFIC ADDRESS SELECTION STATES ---
+  const currentCustomerName = searchParams.get("customerName") || "";
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [showAddressDropdownRowId, setShowAddressDropdownRowId] = useState<string | null>(null);
+  const [showSaveNewAddressModal, setShowSaveNewAddressModal] = useState(false);
+  const [pendingSaveAddress, setPendingSaveAddress] = useState("");
+  const [isSavingNewAddress, setIsSavingNewAddress] = useState(false);
+  const lastDeclinedAddress = useRef("");
+  const addressDropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+
+  // Fetch customer addresses when customerName changes or is loaded
+  useEffect(() => {
+    if (currentCustomerName) {
+      getCustomerAddressesAPI(currentCustomerName).then((addresses) => {
+        setCustomerAddresses(addresses);
+      });
+    } else {
+      setCustomerAddresses([]);
+    }
+  }, [currentCustomerName]);
+
+  // Dynamically position the dropdown and track scrolls/resizes viewport-wide
+  useEffect(() => {
+    if (!showAddressDropdownRowId) return;
+
+    const inputId = `address-input-${showAddressDropdownRowId}`;
+    const activeEl = document.getElementById(inputId);
+    if (!activeEl) return;
+
+    const handleReposition = () => {
+      const rect = activeEl.getBoundingClientRect();
+      setDropdownCoords({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width
+      });
+    };
+
+    handleReposition();
+
+    // Capture vertical scroll (window) and horizontal scroll (table container)
+    window.addEventListener("scroll", handleReposition, true);
+    window.addEventListener("resize", handleReposition);
+
+    return () => {
+      window.removeEventListener("scroll", handleReposition, true);
+      window.removeEventListener("resize", handleReposition);
+    };
+  }, [showAddressDropdownRowId]);
+
+  // Click outside to close the row address dropdowns (includes inputs check)
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const targetNode = event.target as Node;
+      
+      // If clicking inside the portal dropdown container, do nothing
+      if (addressDropdownRef.current && addressDropdownRef.current.contains(targetNode)) {
+        return;
+      }
+      
+      // If clicking the active textarea itself, do nothing
+      if (showAddressDropdownRowId) {
+        const activeInput = document.getElementById(`address-input-${showAddressDropdownRowId}`);
+        if (activeInput && activeInput.contains(targetNode)) {
+          return;
+        }
+      }
+      
+      setShowAddressDropdownRowId(null);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showAddressDropdownRowId]);
+
+  const handleRowAddressBlur = (rowAddr: string) => {
+    const enteredAddr = rowAddr.trim();
+    if (!enteredAddr || !currentCustomerName) return;
+
+    // Check if it's already saved under this customer (ignoring case and whitespace, matching pinCode or address suffix)
+    const isSaved = customerAddresses.some(
+      (addr) => enteredAddr.toLowerCase().includes(addr.address.trim().toLowerCase())
+    );
+
+    // If not saved and not recently declined, trigger the modal
+    if (!isSaved && enteredAddr.toLowerCase() !== lastDeclinedAddress.current.toLowerCase()) {
+      setPendingSaveAddress(enteredAddr);
+      setShowSaveNewAddressModal(true);
+    }
+  };
 
   // --- INTERACTION HOOKS ---
   useEffect(() => {
@@ -967,7 +1060,7 @@ function GarmentSpecsContent() {
               <>
                 <select
                   onChange={(e) => {
-                    const tmpl = savedTemplates.find((t) => t.id === e.target.value);
+                    const tmpl = customerAddresses.find((t) => t.id === e.target.value);
                     if (tmpl) {
                       const targetId = activeDropdownRow || detailedAllocations[detailedAllocations.length - 1]?.id;
                       if (targetId) {
@@ -981,10 +1074,16 @@ function GarmentSpecsContent() {
                   className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-700 cursor-pointer shadow-sm transition-colors"
                   defaultValue=""
                 >
-                  <option value="" disabled>Saved Addresses...</option>
-                  {savedTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
-                  ))}
+                  <option value="" disabled>Address List...</option>
+                  {customerAddresses.length === 0 ? (
+                    <option value="" disabled>No saved addresses</option>
+                  ) : (
+                    customerAddresses.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.address.length > 40 ? t.address.substring(0, 40) + "..." : t.address}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <button
                   onClick={addAllocationRow}
@@ -1029,6 +1128,15 @@ function GarmentSpecsContent() {
                   const isExceeding = alloc.itemId && remainingQty < 0;
                   const isExact = alloc.itemId && remainingQty === 0;
 
+                  const rowQuery = alloc.deliveryAddress.trim().toLowerCase();
+                  const rowFilteredAddresses = rowQuery
+                    ? customerAddresses.filter(
+                        (addr) =>
+                          addr.address.toLowerCase().includes(rowQuery) ||
+                          addr.pinCode.includes(rowQuery)
+                      )
+                    : customerAddresses;
+
                   return (
                     <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
                       <td className="px-2 py-3 font-medium text-neutral-900 dark:text-neutral-100 text-center w-[70px]">
@@ -1037,40 +1145,75 @@ function GarmentSpecsContent() {
                       <td className="px-2 py-3 align-top">
                         <div className="relative">
                           <textarea
+                            id={`address-input-${alloc.id}`}
                             rows={2}
                             value={deliveryType === "single" ? (singleAddress + (singlePin ? ` - PIN: ${singlePin}` : "")) : alloc.deliveryAddress}
-                            onChange={(e) => updateAllocationRow(alloc.id, "deliveryAddress", e.target.value)}
-                            onFocus={() => setActiveDropdownRow(alloc.id)}
+                            onChange={(e) => {
+                              updateAllocationRow(alloc.id, "deliveryAddress", e.target.value);
+                              if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
+                                setShowAddressDropdownRowId(alloc.id);
+                              }
+                            }}
+                            onFocus={() => {
+                              setActiveDropdownRow(alloc.id);
+                              if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
+                                setShowAddressDropdownRowId(alloc.id);
+                              }
+                            }}
+                            onBlur={() => {
+                              if (deliveryType === "multi") {
+                                handleRowAddressBlur(alloc.deliveryAddress);
+                              }
+                            }}
                             readOnly={deliveryType === "single"}
                             placeholder="Delivery Location & PIN"
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none text-sm ${deliveryType === "single"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none text-xs ${deliveryType === "single"
                               ? "bg-neutral-100 dark:bg-slate-800 border-transparent text-neutral-600 dark:text-neutral-400 cursor-not-allowed"
                               : "bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
                               }`}
                           />
-                          {deliveryType === "multi" && alloc.deliveryAddress.trim() !== "" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const isDuplicate = savedTemplates.some(t => alloc.deliveryAddress.includes(t.address));
-                                if (!isDuplicate) {
-                                  const newTemplate: AddressTemplate = {
-                                    id: generateId(),
-                                    label: `Saved Address (${new Date().toLocaleTimeString()})`,
-                                    address: alloc.deliveryAddress,
-                                    pinCode: ""
-                                  };
-                                  setSavedTemplates(prev => [...prev, newTemplate]);
-                                  alert("Address saved to profile book!");
-                                } else {
-                                  alert("Address is already in your profile book.");
-                                }
+                          {deliveryType === "multi" && showAddressDropdownRowId === alloc.id && currentCustomerName !== "" && typeof document !== "undefined" && createPortal(
+                            <div
+                              ref={addressDropdownRef}
+                              style={{
+                                position: "fixed",
+                                top: `${dropdownCoords.top}px`,
+                                left: `${dropdownCoords.left}px`,
+                                width: `${dropdownCoords.width}px`,
+                                zIndex: 9999,
                               }}
-                              className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors block"
-                              title="Save for Later"
+                              className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
                             >
-                              [💾 Save Address]
-                            </button>
+                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-slate-800 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 border-b border-neutral-100 dark:border-slate-800 uppercase tracking-wider">
+                                Saved Addresses for {currentCustomerName}
+                              </div>
+                              {rowFilteredAddresses.length === 0 ? (
+                                <div className="px-3 py-2.5 text-[11px] text-neutral-500 dark:text-neutral-400 text-center">
+                                  No matching saved addresses.
+                                </div>
+                              ) : (
+                                <div className="divide-y divide-neutral-100 dark:divide-slate-800">
+                                  {rowFilteredAddresses.map((addr) => (
+                                    <div
+                                      key={addr.id}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault(); // Prevents blur event from firing
+                                        updateAllocationRow(alloc.id, "deliveryAddress", `${addr.address}${addr.pinCode ? ` - PIN: ${addr.pinCode}` : ""}`);
+                                        setShowAddressDropdownRowId(null);
+                                      }}
+                                      className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-700 dark:text-neutral-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer text-xs transition-colors flex items-start gap-2"
+                                    >
+                                      <MapPin className="h-3 w-3 mt-0.5 text-neutral-400 flex-shrink-0" />
+                                      <div className="flex-1">
+                                        <p className="font-medium leading-relaxed">{addr.address}</p>
+                                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">PIN: {addr.pinCode}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>,
+                            document.body
                           )}
                         </div>
                       </td>
@@ -1359,6 +1502,99 @@ function GarmentSpecsContent() {
                 alt="Uploaded preview"
                 className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-md"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVE NEW ADDRESS CONFIRMATION MODAL */}
+      {showSaveNewAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
+            <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2 text-left">
+                <MapPin className="h-5 w-5 text-blue-500" />
+                Save New Address?
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  lastDeclinedAddress.current = pendingSaveAddress;
+                  setShowSaveNewAddressModal(false);
+                }}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed text-left">
+                This is a new address. Would you like to save it to this customer's profile for future use?
+              </p>
+              <div className="bg-neutral-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-slate-800/60 text-left">
+                <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
+                <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mt-0.5 mb-2">{currentCustomerName}</p>
+                <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
+                <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5 leading-relaxed">
+                  {pendingSaveAddress.replace(/-\s*PIN:\s*[1-9][0-9]{5}/i, "").trim()}
+                </p>
+                {(() => {
+                  const pinMatch = pendingSaveAddress.match(/-\s*PIN:\s*([1-9][0-9]{5})/i);
+                  if (pinMatch) {
+                    return (
+                      <>
+                        <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-2">PIN Code</p>
+                        <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5">{pinMatch[1]}</p>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    lastDeclinedAddress.current = pendingSaveAddress;
+                    setShowSaveNewAddressModal(false);
+                  }}
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingNewAddress}
+                  onClick={async () => {
+                    setIsSavingNewAddress(true);
+                    try {
+                      let pinCode = "";
+                      let cleanAddress = pendingSaveAddress;
+                      const pinMatch = pendingSaveAddress.match(/-\s*PIN:\s*([1-9][0-9]{5})/i);
+                      if (pinMatch) {
+                        pinCode = pinMatch[1];
+                        cleanAddress = pendingSaveAddress.replace(/-\s*PIN:\s*[1-9][0-9]{5}/i, "").trim();
+                      }
+                      
+                      await saveCustomerAddressAPI(
+                        currentCustomerName,
+                        cleanAddress,
+                        pinCode
+                      );
+                      const updated = await getCustomerAddressesAPI(currentCustomerName);
+                      setCustomerAddresses(updated);
+                    } catch (e) {
+                      console.error("Failed saving address:", e);
+                    } finally {
+                      setIsSavingNewAddress(false);
+                      setShowSaveNewAddressModal(false);
+                    }
+                  }}
+                  className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                >
+                  {isSavingNewAddress ? "Saving..." : "Yes, Save Address"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
