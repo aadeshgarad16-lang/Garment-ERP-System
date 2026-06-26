@@ -78,10 +78,10 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
             
             <div>
               <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-2 mb-1.5">
-                {t('logistics.remarks') || 'Verification Remarks'}
+                {t('logistics.verificationRemarks') || 'Verification Remarks'}
               </label>
               <textarea 
-                placeholder={t('logistics.remarksPlaceholder') || "Any discrepancies or notes..."}
+                placeholder={t('logistics.verificationRemarksPlaceholder') || "Any discrepancies or notes..."}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all min-h-[100px]"

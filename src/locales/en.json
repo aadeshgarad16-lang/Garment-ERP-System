@@ -48,7 +48,8 @@
         "customer": "CUSTOMER",
         "status": "STATUS",
         "deliveryDate": "DELIVERY DATE",
-        "amount": "AMOUNT"
+        "amount": "AMOUNT",
+        "orderId": "Order ID"
       },
       "status": {
         "inProduction": "In Production",
@@ -513,12 +514,15 @@
     "manifestId": "Shipping Manifest ID",
     "verifiedQty": "Verified Quantity",
     "remarks": "Verification Remarks",
-    "summary": "MANIFEST SUMMARY",
+    "verificationRemarks": "Verification Remarks",
+    "verificationRemarksPlaceholder": "Any discrepancies or notes...",
+    "summary": "Manifest Summary",
     "orderId": "Order ID",
     "targetQty": "Target Quantity",
     "cartonCount": "Carton Count",
     "destination": "Destination",
     "confirmButton": "Confirm & Verify Packing",
+    "confirmVerify": "Confirm & Verify",
     "complianceDocs": "Compliance & Shipping Documents",
     "complianceDocsDesc": "Upload required customs, packing lists, and commercial invoices.",
     "uploadedDocs": "Uploaded Documents",

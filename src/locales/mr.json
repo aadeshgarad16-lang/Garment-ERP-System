@@ -44,7 +44,8 @@
         "customer": "ग्राहक",
         "status": "स्थिती",
         "deliveryDate": "वितरण तारीख",
-        "amount": "रक्कम"
+        "amount": "रक्कम",
+        "orderId": "आदेश आयडी"
       },
       "status": {
         "inProduction": "उत्पादनामध्ये आहे",
@@ -503,12 +504,15 @@
     "manifestId": "शिपिंग मॅनिफेस्ट आयडी",
     "verifiedQty": "पडताळणीकृत प्रमाण",
     "remarks": "नोंदी / टिप्पणी",
+    "verificationRemarks": "नोंदी / टिप्पणी",
+    "verificationRemarksPlaceholder": "कोणतीही विसंगती किंवा नोंदी...",
     "summary": "मॅनिफेस्ट सारांश",
     "orderId": "आदेश आयडी",
     "targetQty": "लक्ष्य प्रमाण",
     "cartonCount": "कार्टन संख्या",
     "destination": "गंतव्य स्थान",
     "confirmButton": "वेष्टन निश्चित आणि पडताळणी करा",
+    "confirmVerify": "निश्चित करा आणि पडताळणी करा",
     "complianceDocs": "अनुपालन आणि वहन दस्तऐवज",
     "complianceDocsDesc": "आवश्यक सीमाशुल्क, वेष्टन सूची आणि व्यावसायिक बीजक अपलोड करा.",
     "uploadedDocs": "अपलोड केलेले दस्तऐवज",
