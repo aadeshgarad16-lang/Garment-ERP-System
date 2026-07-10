@@ -1,7 +1,6 @@
 "use client";
 
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   CheckCircle2,
@@ -10,378 +9,558 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
-  PackageCheck
+  PackageCheck,
+  RefreshCw,
+  ShoppingCart,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { getAuthHeaders } from '@/lib/api';
 
-// Mock Data representing required materials for an order that have sufficient stock
-const mockMaterials = [
-  { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', available: 1250, required: 1000, linkedPO: 'PO-2026-004', unit: 'meters' },
-  { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', available: 120, required: 100, linkedPO: 'PO-2026-004', unit: 'spools' },
-  { id: 'MAT-004', name: 'Plastic Buttons (Black)', category: 'Buttons', available: 5000, required: 5000, linkedPO: 'PO-2026-004', unit: 'pieces' },
-  { id: 'MAT-006', name: 'Standard Collar (White)', category: 'Collar/Cuff', available: 800, required: 600, linkedPO: 'PO-2026-004', unit: 'pieces' },
-];
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
-interface AllocationState {
-  isSelected: boolean;
-  allocatedQty: number;
-  status: 'Available' | 'Allocated' | 'Frozen';
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+interface BOMLine {
+  bom_id?: number;
+  material_id: number;
+  material_name: string;
+  category: string;
+  unit: string;
+  unit_price: number;
+  required_qty: number;
+  available_qty: number;
+  allocate_qty: number;
+  shortage_qty: number;
+  status: 'Available' | 'Shortage' | 'Allocated' | 'Locked';
+  isLocked: boolean;
 }
 
-const getStatusStyle = (status: string) => {
-  switch (status) {
-    case 'Available': return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
-    case 'Allocated': return 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200';
-    case 'Frozen': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-    default: return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
-  }
-};
+type AllocationResult = 'idle' | 'loading' | 'success' | 'error';
 
+// ─────────────────────────────────────────────
+// Status badge helper
+// ─────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Available: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    Shortage: 'bg-red-100 text-red-700 border-red-200',
+    Allocated: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    Locked: 'bg-violet-100 text-violet-800 border-violet-200',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'bg-neutral-100 text-neutral-700 border-neutral-200'}`}>
+      {status === 'Locked' && <Lock className="h-2.5 w-2.5 mr-1" />}
+      {status}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────
 export default function MaterialAllocationPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
 
-  const advanceStage = (nextPath: string, nextStage: string) => {
+  const [poNumber, setPoNumber] = useState('');
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [bomLines, setBomLines] = useState<BOMLine[]>([]);
+  const [loadingBOM, setLoadingBOM] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const [allocationResult, setAllocationResult] = useState<AllocationResult>('idle');
+  const [allocationMessage, setAllocationMessage] = useState('');
+  const [nextStage, setNextStage] = useState('');
+
+  // ── Load PO + BOM on mount ──
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
-    if (po) {
-      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
-        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+    if (!po) return;
+    setPoNumber(po);
+    fetchOrderAndBOM(po);
+  }, []);
+
+  const fetchOrderAndBOM = async (po: string) => {
+    setLoadingBOM(true);
+    setLoadError('');
+    setBomLines([]);
+
+    // Load order from localStorage first for context
+    try {
+      const ordersStr = localStorage.getItem('savedOrders');
+      if (ordersStr) {
+        const orders = JSON.parse(ordersStr);
+        const found = orders.find((o: any) => o.poNumber === po);
+        if (found) setCurrentOrder(found);
+      }
+    } catch { /* ignore */ }
+
+    try {
+      // Fetch full PO details with bom_calculations from backend
+      const res = await fetch(`${BACKEND_URL}/purchase_orders/details/${encodeURIComponent(po)}`, {
+        headers: getAuthHeaders(),
       });
-      router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
-    } else {
-      router.push(nextPath);
+
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentOrder((prev: any) => ({ ...prev, ...data }));
+
+        const bom: any[] = data.bom_calculations || [];
+        if (bom.length > 0) {
+          setBomLines(buildBOMLines(bom));
+        } else {
+          setLoadError('No BOM lines found for this order. Please complete BOM Calculation first.');
+        }
+      } else {
+        setLoadError('Could not load BOM data from server. Check if BOM Calculation was completed.');
+      }
+    } catch (err) {
+      console.warn('Backend unavailable for BOM load:', err);
+      setLoadError('Backend offline. Please ensure BOM Calculation has been saved first.');
+    } finally {
+      setLoadingBOM(false);
     }
   };
 
-  const [currentOrder, setCurrentOrder] = useState<any>(null);
-  const [allocations, setAllocations] = useState<Record<string, AllocationState>>({});
-  const [globalMessage, setGlobalMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const buildBOMLines = (rawBOM: any[]): BOMLine[] => {
+    return rawBOM.map(b => {
+      const required = parseFloat(b.final_qty || b.required_qty || 0);
+      const available = parseFloat(b.available_qty || 0);
+      const allocatable = Math.min(available, required);
+      const shortage = Math.max(0, required - available);
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const po = params.get('poNumber');
-      if (po) {
-        const ordersStr = localStorage.getItem('savedOrders');
-        if (ordersStr) {
-          const orders = JSON.parse(ordersStr);
-          const found = orders.find((o: any) => o.poNumber === po);
-          if (found) setCurrentOrder(found);
-        }
+      return {
+        bom_id: b.bom_id,
+        material_id: b.material_id,
+        material_name: b.material_name || `Material #${b.material_id}`,
+        category: b.category || '—',
+        unit: b.unit || 'units',
+        unit_price: parseFloat(b.unit_price || 0),
+        required_qty: required,
+        available_qty: available,
+        allocate_qty: allocatable,
+        shortage_qty: shortage,
+        status: shortage > 0 ? 'Shortage' : 'Available',
+        isLocked: false,
+      };
+    });
+  };
+
+  // ── Editable allocation qty ──
+  const handleQtyChange = useCallback((material_id: number, val: string) => {
+    const qty = parseFloat(val) || 0;
+    setBomLines(prev => prev.map(line =>
+      line.material_id === material_id && !line.isLocked
+        ? { ...line, allocate_qty: Math.min(qty, line.available_qty) }
+        : line
+    ));
+  }, []);
+
+  // ── Stats ──
+  const stats = useMemo(() => ({
+    total: bomLines.length,
+    available: bomLines.filter(l => l.status === 'Available' || l.status === 'Allocated').length,
+    shortage: bomLines.filter(l => l.shortage_qty > 0).length,
+    locked: bomLines.filter(l => l.isLocked).length,
+    allLocked: bomLines.length > 0 && bomLines.every(l => l.isLocked),
+    totalAllocatableCost: bomLines.reduce((sum, l) => sum + (l.allocate_qty * l.unit_price), 0),
+  }), [bomLines]);
+
+  const readinessStatus = stats.allLocked
+    ? 'Fully Allocated — Ready for Release'
+    : stats.locked > 0
+      ? 'Partially Allocated'
+      : 'Awaiting Allocation';
+
+  const canAllocate = bomLines.some(l => !l.isLocked && l.allocate_qty > 0);
+
+  // ── HARD RESERVATION LOCK ──
+  const handleAllocate = useCallback(async () => {
+    if (!poNumber || !canAllocate) return;
+    setAllocationResult('loading');
+    setAllocationMessage('');
+
+    const allocations = bomLines
+      .filter(l => !l.isLocked)
+      .map(l => ({
+        material_id: l.material_id,
+        material_name: l.material_name,
+        required_qty: l.required_qty,
+        available_qty: l.available_qty,
+        allocate_qty: l.allocate_qty,
+        shortage_qty: l.shortage_qty,
+      }));
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/bom/allocate-materials`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(true), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ poNumber, allocations }),
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        const stage = resData.next_stage || 'Production';
+        setNextStage(stage);
+
+        // Mark all lines as locked
+        setBomLines(prev => prev.map(l => ({ ...l, isLocked: true, status: l.shortage_qty > 0 ? 'Shortage' : 'Locked' })));
+
+        // Update localStorage
+        updateOrderAndLog(poNumber, user?.name || 'System User', 'Updated', `Materials Allocated → ${stage}`, (orders) =>
+          orders.map((o: any) => o.poNumber === poNumber ? { ...o, stage } : o)
+        );
+        window.dispatchEvent(new Event('orders-updated'));
+
+        setAllocationResult('success');
+        setAllocationMessage(resData.message || `Materials allocated. Order advanced to ${stage}.`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server returned ${res.status}`);
       }
+    } catch (err: any) {
+      console.error('Allocation failed:', err);
+      // Graceful offline fallback: lock locally, update localStorage
+      const hasShortage = bomLines.some(l => l.shortage_qty > 0);
+      const stage = hasShortage ? 'Procurement' : 'Production';
+      setNextStage(stage);
+
+      setBomLines(prev => prev.map(l => ({ ...l, isLocked: true, status: l.shortage_qty > 0 ? 'Shortage' : 'Locked' })));
+      updateOrderAndLog(poNumber, user?.name || 'System User', 'Updated', `Materials Allocated (offline) → ${stage}`, (orders) =>
+        orders.map((o: any) => o.poNumber === poNumber ? { ...o, stage } : o)
+      );
+      window.dispatchEvent(new Event('orders-updated'));
+
+      setAllocationResult('success');
+      setAllocationMessage(`Backend offline — allocation saved locally. Order marked as ${stage}.`);
     }
-  }, []);
+  }, [poNumber, bomLines, canAllocate, user]);
 
-  const orderMaterials = React.useMemo(() => {
-    if (!currentOrder || !currentOrder.specs) return mockMaterials;
-    return currentOrder.specs.map((spec: any) => ({
-      id: spec.id || `MAT-${Math.floor(Math.random()*1000)}`,
-      name: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
-      category: 'Fabric',
-      available: spec.stockAvailable || 0,
-      required: spec.quantity || 0,
-      linkedPO: currentOrder.poNumber,
-      unit: 'pieces'
-    }));
-  }, [currentOrder]);
+  // ── Navigate to next stage ──
+  const handleProceed = useCallback(() => {
+    if (!nextStage) return;
+    const pathMap: Record<string, string> = {
+      'Production': '/production',
+      'Procurement': '/procurement',
+    };
+    const path = pathMap[nextStage] || '/production';
+    router.push(`${path}${poNumber ? `?poNumber=${encodeURIComponent(poNumber)}` : ''}`);
+  }, [nextStage, poNumber, router]);
 
-  React.useEffect(() => {
-    if (orderMaterials.length > 0 && Object.keys(allocations).length === 0) {
-      const init = orderMaterials.reduce((acc: any, mat: any) => {
-        const isSelected = mat.required > 0 && mat.available > 0;
-        const allocatedQty = isSelected ? Math.min(mat.required, mat.available) : 0;
-        acc[mat.id] = { isSelected, allocatedQty, status: 'Available' };
-        return acc;
-      }, {} as Record<string, AllocationState>);
-      setAllocations(init);
-    }
-  }, [orderMaterials, allocations]);
-
-  const handleAllocationChange = useCallback((id: string, value: string) => {
-    const qty = parseInt(value, 10) || 0;
-    setAllocations(prev => ({
-      ...prev,
-      [id]: { ...prev[id], allocatedQty: qty }
-    }));
-  }, []);
-
-  const handleSelectionChange = useCallback((id: string, checked: boolean) => {
-    setAllocations(prev => ({
-      ...prev,
-      [id]: { ...prev[id], isSelected: checked }
-    }));
-  }, []);
-
-  const handleSelectAll = useCallback((checked: boolean) => {
-    setAllocations(prev => {
-      const next = { ...prev };
-      Object.keys(next).forEach(id => {
-        if (next[id].status !== 'Frozen') {
-          next[id] = { ...next[id], isSelected: checked };
-        }
-      });
-      return next;
-    });
-  }, []);
-
-  const handleAllocate = useCallback(() => {
-    setAllocations(prev => {
-      const next = { ...prev };
-      Object.keys(next).forEach(id => {
-        if (next[id].isSelected && next[id].allocatedQty > 0 && next[id].status === 'Available') {
-          next[id] = { ...next[id], status: 'Frozen', isSelected: false };
-        }
-      });
-      return next;
-    });
-    setGlobalMessage({ text: t('procurement.frozenSuccess') || 'Selected materials allocated and frozen successfully for production release.', type: 'success' });
-  }, [t]);
-
-  // State Logic Variables
-  const totalMaterials = orderMaterials.length;
-
-  const hasValidAllocationsToSave = orderMaterials.some((mat: any) => {
-    const alloc = allocations[mat.id];
-    return alloc && alloc.isSelected && alloc.status === 'Available' && alloc.allocatedQty > 0 && alloc.allocatedQty <= mat.available;
-  });
-
-  const hasAnyFrozen = Object.values(allocations).some(a => a.status === 'Frozen');
-  const allFrozen = Object.keys(allocations).length > 0 && Object.values(allocations).every(a => a.status === 'Frozen');
-
-  const allocatedCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
-  const frozenCount = Object.values(allocations).filter(a => a.status === 'Frozen').length;
-
-  let readinessStatus = t('procurement.awaitingAllocation') || 'Awaiting Allocation';
-  if (allFrozen) readinessStatus = t('procurement.fullyReady') || 'Fully Ready for Release';
-  else if (frozenCount > 0) readinessStatus = t('procurement.partiallyReady') || 'Partially Ready';
-
-  const isAllSelectableChecked = orderMaterials.filter((m:any) => allocations[m.id]?.status !== 'Frozen').every((m:any) => allocations[m.id]?.isSelected);
-  const hasSelectable = orderMaterials.some((m:any) => allocations[m.id]?.status !== 'Frozen');
+  // ─────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
       <WorkflowIndicator currentStep="Material Allocation" />
 
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
             <ListChecks className="h-6 w-6 text-indigo-600" />
             {t('procurement.materialAllocation') || 'Material Allocation'}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('procurement.materialAllocationDesc') || 'Reserve and freeze warehouse inventory for production'}</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+            {t('procurement.materialAllocationDesc') || 'Reserve and lock warehouse inventory against this Purchase Order'}
+          </p>
+          {poNumber && (
+            <span className="inline-block mt-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2.5 py-0.5 rounded text-xs font-bold border border-indigo-100 dark:border-indigo-900/30">
+              PO: {poNumber}
+            </span>
+          )}
+          {currentOrder?.customerName && (
+            <span className="inline-block mt-2 ml-2 text-xs text-neutral-500">
+              Customer: <strong className="text-neutral-700 dark:text-neutral-300">{currentOrder.customerName}</strong>
+            </span>
+          )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-          <button
-            onClick={handleAllocate}
-            disabled={!hasValidAllocationsToSave}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasValidAllocationsToSave
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-              : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
-              }`}
-          >
-            <Box className="h-4 w-4" />
-            {t('procurement.allocateMaterials') || 'Allocate Materials'}
-          </button>
 
-          {hasAnyFrozen && (
+        {/* Primary action buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+          {allocationResult !== 'success' && (
             <button
-              onClick={() => advanceStage('/material-release', 'Material Release')}
-              className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+              onClick={handleAllocate}
+              disabled={!canAllocate || allocationResult === 'loading'}
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+                canAllocate && allocationResult !== 'loading'
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+              }`}
             >
-              {t('procurement.proceedToRelease') || 'Proceed to Release'}
+              {allocationResult === 'loading'
+                ? <><RefreshCw className="h-4 w-4 animate-spin" /> Locking…</>
+                : <><Lock className="h-4 w-4" /> Allocate &amp; Lock Materials</>}
+            </button>
+          )}
+
+          {allocationResult === 'success' && (
+            <button
+              onClick={handleProceed}
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+                nextStage === 'Procurement'
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              Proceed to {nextStage}
               <ArrowRight className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
-      {globalMessage && (
-        <div className={`p-4 rounded-xl flex items-start gap-3 border ${globalMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-blue-50 border-blue-200 text-blue-800 dark:text-blue-200'}`}>
-          {globalMessage.type === 'success' ? <CheckCircle2 className="h-5 w-5 mt-0.5" /> : <AlertCircle className="h-5 w-5 mt-0.5" />}
+      {/* Global Messages */}
+      {allocationResult === 'success' && (
+        <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+          nextStage === 'Procurement'
+            ? 'bg-amber-50 border-amber-200 text-amber-800'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+        }`}>
+          {nextStage === 'Procurement'
+            ? <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            : <CheckCircle2 className="h-5 w-5 mt-0.5 flex-shrink-0" />}
           <div>
-            <p className="font-medium text-sm">{globalMessage.text}</p>
+            <p className="font-semibold text-sm">{nextStage === 'Procurement' ? 'Partial Allocation — Procurement Required' : 'Allocation Successful!'}</p>
+            <p className="text-xs mt-0.5 opacity-80">{allocationMessage}</p>
           </div>
         </div>
       )}
 
-      {/* ERP Summary Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-neutral-100 dark:bg-slate-800">
-            <PackageCheck className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.totalMaterialsSelected') || 'Total Materials Selected'}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalMaterials}</p>
-          </div>
+      {allocationResult === 'error' && (
+        <div className="p-4 rounded-xl flex items-start gap-3 border bg-red-50 border-red-200 text-red-800">
+          <X className="h-5 w-5 mt-0.5 flex-shrink-0" />
+          <p className="text-sm">{allocationMessage}</p>
         </div>
+      )}
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100">
-            <ListChecks className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.allocatedMaterials') || 'Allocated Materials'}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{allocatedCount}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-100">
-            <Lock className="h-6 w-6 text-indigo-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.frozenMaterials') || 'Frozen Materials'}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{frozenCount}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6 flex items-center gap-4">
-          <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${allFrozen ? 'bg-emerald-100' : 'bg-neutral-100 dark:bg-slate-800'}`}>
-            <Layers className={`h-6 w-6 ${allFrozen ? 'text-emerald-600' : 'text-neutral-600 dark:text-neutral-400'}`} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.productionReadiness') || 'Production Readiness'}</p>
-            <p className={`text-sm font-bold mt-1 ${allFrozen ? 'text-emerald-600' : 'text-neutral-900 dark:text-neutral-100'}`}>{readinessStatus}</p>
-          </div>
-        </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { icon: PackageCheck, label: 'Total BOM Lines', value: stats.total, color: 'neutral' },
+          { icon: CheckCircle2, label: 'Fully Available', value: stats.available, color: 'emerald' },
+          { icon: AlertCircle, label: 'Shortage Items', value: stats.shortage, color: stats.shortage > 0 ? 'red' : 'neutral' },
+          { icon: Lock, label: 'Locked / Reserved', value: stats.locked, color: stats.locked > 0 ? 'indigo' : 'neutral' },
+        ].map((card, i) => {
+          const colorBg: Record<string, string> = {
+            neutral: 'bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400',
+            emerald: 'bg-emerald-100 text-emerald-600',
+            red: 'bg-red-100 text-red-600',
+            indigo: 'bg-indigo-100 text-indigo-600',
+          };
+          const Icon = card.icon;
+          return (
+            <div key={i} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex items-center gap-4">
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${colorBg[card.color]}`}>
+                <Icon className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{card.label}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{card.value}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Main Allocation Table */}
+
+      {/* BOM Allocation Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('procurement.reservationAllocation') || 'Reservation & Allocation'}</h2>
+        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+            <Box className="h-4 w-4 text-indigo-500" />
+            Reservation &amp; Allocation Table
+          </h2>
+          {loadingBOM && (
+            <div className="flex items-center gap-2 text-xs text-indigo-500">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading BOM data…
+            </div>
+          )}
         </div>
 
+        {/* Load Error */}
+        {loadError && !loadingBOM && (
+          <div className="m-4 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">No BOM data found</p>
+              <p className="text-xs mt-0.5">{loadError}</p>
+              <button onClick={() => router.push(`/bom-calculation${poNumber ? `?poNumber=${poNumber}` : ''}`)}
+                className="mt-2 text-xs text-indigo-600 underline hover:text-indigo-800">
+                → Go to BOM Calculation
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse ">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                <th scope="col" className="px-4 py-3 w-12">
-                  <input
-                    type="checkbox"
-                    className="rounded border-neutral-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
-                    checked={isAllSelectableChecked && hasSelectable}
-                    disabled={!hasSelectable}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                </th>
-                <th scope="col" className="px-4 py-3">{t('inventory.materials.table.headers.name') || 'Material Name'}</th>
-                <th scope="col" className="px-4 py-3">{t('inventory.materials.table.headers.category') || 'Category'}</th>
-                <th scope="col" className="px-4 py-3 text-right">{t('inventory.materials.table.headers.qty') || 'Available Qty'}</th>
-                <th scope="col" className="px-4 py-3">{t('procurement.linkedPO') || 'Linked PO'}</th>
-                <th scope="col" className="px-4 py-3 text-center">{t('procurement.allocationQty') || 'Allocation Qty'}</th>
-                <th scope="col" className="px-4 py-3">{t('procurement.freezeStatus') || 'Freeze Status'}</th>
-                <th scope="col" className="px-4 py-3">{t('procurement.status') || 'Status'}</th>
+                <th className="px-4 py-3.5">Material Name</th>
+                <th className="px-4 py-3.5">Category</th>
+                <th className="px-4 py-3.5 text-right">Required Qty</th>
+                <th className="px-4 py-3.5 text-right">In Store</th>
+                <th className="px-4 py-3.5 text-center">Allocate Qty</th>
+                <th className="px-4 py-3.5 text-right">Shortage</th>
+                <th className="px-4 py-3.5 text-center">Lock Status</th>
+                <th className="px-4 py-3.5 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-              {orderMaterials.map((item: any) => {
-                const alloc = allocations[item.id] || { isSelected: false, allocatedQty: 0, status: 'Available' };
-                const isError = alloc.allocatedQty > item.available;
-                const isShortage = item.required > 0 && item.available < item.required;
+              {bomLines.length === 0 && !loadingBOM && !loadError ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-neutral-400">
+                    {poNumber ? 'Loading…' : 'No PO Number provided. Navigate here from BOM Calculation.'}
+                  </td>
+                </tr>
+              ) : (
+                bomLines.map((line, idx) => {
+                  const isShortage = line.shortage_qty > 0;
+                  return (
+                    <tr key={idx} className={`transition-colors ${
+                      line.isLocked ? 'bg-indigo-50/30 dark:bg-indigo-900/10' :
+                      isShortage ? 'bg-red-50/30 dark:bg-red-900/10 hover:bg-red-50/60' :
+                      'hover:bg-neutral-50/80 dark:hover:bg-slate-800/50'
+                    }`}>
+                      {/* Material Name */}
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{line.material_name}</span>
+                          <span className="text-[11px] text-neutral-400">ID: {line.material_id}</span>
+                        </div>
+                      </td>
 
-                return (
-                  <tr key={item.id} className={`transition-colors ${alloc.status === 'Frozen' ? 'bg-indigo-50/30' : 'hover:bg-neutral-50/80'} ${alloc.isSelected ? 'bg-blue-50/30' : ''}`}>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        className="rounded border-neutral-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
-                        checked={alloc.isSelected ?? false}
-                        disabled={alloc.status === 'Frozen'}
-                        onChange={(e) => handleSelectionChange(item.id, e.target.checked)}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t(`inventory.materials.items.${item.id}`) || item.name}</span>
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.id}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{t(`inventory.categories.${item.category.toLowerCase()}`) || item.category}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{item.available}</span>
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{t(`inventory.units.${item.unit}`) || item.unit}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[13px] font-medium text-neutral-700 dark:text-neutral-300">{item.linkedPO}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          max={item.available}
-                          value={alloc.allocatedQty ?? ""}
-                          onChange={(e) => handleAllocationChange(item.id, e.target.value)}
-                          disabled={alloc.status === 'Frozen' || !alloc.isSelected}
-                          className={`w-24 px-3 py-1.5 border rounded-lg text-sm text-right transition-colors ${alloc.status === 'Frozen' || !alloc.isSelected
-                            ? 'bg-neutral-100 dark:bg-slate-800 border-neutral-200 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
-                            : isError
-                              ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50 text-red-900'
-                              : isShortage
-                                ? 'border-amber-300 dark:border-amber-700 focus:ring-amber-500 focus:border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100'
-                                : 'border-neutral-300 dark:border-slate-600 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 text-neutral-900 dark:text-neutral-100'
-                            }`}
-                        />
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400 w-12">{t(`inventory.units.${item.unit}`) || item.unit}</span>
-                      </div>
-                      {isError && alloc.isSelected && <p className="text-[10px] text-red-600 mt-1 text-center font-medium">{t('procurement.exceedsAvailable') || 'Exceeds available'}</p>}
-                      {isShortage && alloc.isSelected && !isError && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 text-center font-medium flex items-center justify-center gap-1"><AlertCircle className="h-3 w-3" /> {t('procurement.shortage') || 'Shortage'}</p>}
-                      {alloc.allocatedQty > 0 && alloc.status === 'Available' && alloc.isSelected && !isShortage && !isError && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 text-center font-medium">{t('procurement.req') || 'Req'}: {item.required}</p>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {alloc.status === 'Frozen' ? (
-                        <span className="inline-flex items-center text-xs font-medium text-indigo-700">
-                          <Lock className="h-3 w-3 mr-1" />
-                          {t('procurement.reserved') || 'Reserved'}
+                      {/* Category */}
+                      <td className="px-4 py-4 text-xs text-neutral-600 dark:text-neutral-400">{line.category}</td>
+
+                      {/* Required Qty */}
+                      <td className="px-4 py-4 text-right">
+                        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{line.required_qty.toLocaleString()}</span>
+                        <span className="text-[11px] text-neutral-400 block">{line.unit}</span>
+                      </td>
+
+                      {/* Available in Store */}
+                      <td className="px-4 py-4 text-right">
+                        <span className={`text-sm font-semibold ${line.available_qty >= line.required_qty ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {line.available_qty.toLocaleString()}
                         </span>
-                      ) : (
-                        <span className="text-xs text-neutral-400">{t('procurement.unlocked') || 'Unlocked'}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(alloc.status)}`}>
-                        {alloc.status === 'Frozen' ? (t('procurement.frozen') || 'Frozen') : alloc.status === 'Allocated' ? (t('procurement.allocated') || 'Allocated') : (t('procurement.available') || 'Available')}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                        <span className="text-[11px] text-neutral-400 block">{line.unit}</span>
+                      </td>
+
+                      {/* Allocate Qty (editable) */}
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={line.available_qty}
+                            value={line.allocate_qty}
+                            onChange={e => handleQtyChange(line.material_id, e.target.value)}
+                            disabled={line.isLocked}
+                            className={`w-24 px-2 py-1.5 border rounded-lg text-sm text-right transition-colors ${
+                              line.isLocked
+                                ? 'bg-neutral-100 dark:bg-slate-800 border-neutral-200 dark:border-slate-700 text-neutral-500 cursor-not-allowed'
+                                : line.allocate_qty > line.available_qty
+                                  ? 'border-red-300 bg-red-50 text-red-900'
+                                  : 'border-neutral-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-neutral-900 dark:text-neutral-100 focus:ring-indigo-500 focus:border-indigo-500'
+                            }`}
+                          />
+                          <span className="text-xs text-neutral-400">{line.unit}</span>
+                        </div>
+                        {line.allocate_qty > line.available_qty && (
+                          <p className="text-[10px] text-red-600 mt-1 text-center">Exceeds available stock</p>
+                        )}
+                      </td>
+
+                      {/* Shortage */}
+                      <td className="px-4 py-4 text-right">
+                        {isShortage ? (
+                          <div>
+                            <span className="text-sm font-bold text-red-700">{line.shortage_qty.toLocaleString()}</span>
+                            <p className="text-[10px] text-red-500 mt-0.5 flex items-center justify-end gap-1">
+                              <ShoppingCart className="h-2.5 w-2.5" /> → Procurement
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-emerald-600 font-medium">—</span>
+                        )}
+                      </td>
+
+                      {/* Lock Status */}
+                      <td className="px-4 py-4 text-center">
+                        {line.isLocked ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700">
+                            <Lock className="h-3 w-3" /> Reserved
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-400">Unlocked</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-4 text-center">
+                        <StatusBadge status={line.isLocked ? (isShortage ? 'Shortage' : 'Locked') : line.status} />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Secondary bottom action buttons */}
-        <div className="border-t border-neutral-100 dark:border-slate-800 px-4 py-3 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-end gap-3">
-          <button
-            onClick={handleAllocate}
-            disabled={!hasValidAllocationsToSave}
-            className={`px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center gap-2 transition-colors ${hasValidAllocationsToSave
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-              : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
-              }`}
-          >
-            <Box className="h-4 w-4" />
-            {t('procurement.allocateMaterials') || 'Allocate Materials'}
-          </button>
+        {/* Bottom action bar */}
+        <div className="border-t border-neutral-100 dark:border-slate-800 px-4 py-3 bg-neutral-50/50 dark:bg-slate-800/30 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="flex items-center gap-4 text-xs text-neutral-500">
+            <span><span className="font-semibold text-neutral-700 dark:text-neutral-300">{stats.locked}</span> / {stats.total} lines reserved</span>
+            {stats.shortage > 0 && (
+              <span className="flex items-center gap-1 text-amber-600">
+                <AlertTriangle className="h-3 w-3" />
+                {stats.shortage} material{stats.shortage > 1 ? 's' : ''} will trigger procurement
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            {allocationResult !== 'success' && (
+              <button
+                onClick={handleAllocate}
+                disabled={!canAllocate || allocationResult === 'loading'}
+                className={`px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center gap-2 transition-colors ${
+                  canAllocate && allocationResult !== 'loading'
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                }`}
+              >
+                <Lock className="h-4 w-4" />
+                {allocationResult === 'loading' ? 'Locking…' : 'Allocate & Lock'}
+              </button>
+            )}
 
-          {hasAnyFrozen && (
-            <button
-              onClick={() => advanceStage('/material-release', 'Material Release')}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2"
-            >
-              {t('procurement.proceedToRelease') || 'Proceed to Release'}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
+            {allocationResult === 'success' && (
+              <button
+                onClick={handleProceed}
+                className={`px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center gap-2 transition-colors ${
+                  nextStage === 'Procurement'
+                    ? 'bg-amber-600 text-white hover:bg-amber-700'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
+              >
+                Proceed to {nextStage}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

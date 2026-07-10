@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/contexts/language-context';
 import LanguageSwitcher from '@/components/language-switcher';
+import { formatDateDisplay } from '@/utils/dateUtils';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -23,6 +24,10 @@ import {
   X,
   Search,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   Map,
   User,
@@ -30,32 +35,35 @@ import {
   Sun,
   Moon,
   Calendar,
-  ClipboardList
+  ClipboardList,
+  UserPlus
 } from 'lucide-react';
 
 const navItems = [
-  { tKey: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { tKey: 'orderInitiation', href: '/orders', icon: ShoppingCart },
-  { tKey: 'orderSpecifications', href: '/order-specifications', icon: ClipboardList },
-  { tKey: 'stockCalculation', href: '/stock-calculation', icon: Package },
-  { tKey: 'bomCalculation', href: '/bom-calculation', icon: Calculator },
-  { tKey: 'inventoryCheck', href: '/inventory', icon: Box },
-  { tKey: 'materialallocation', href: '/material-allocation', icon: Layers },
-  { tKey: 'outSource', href: '/out-source', icon: PackageCheck },
-  { tKey: 'procurement', href: '/procurement', icon: Truck },
-  { tKey: 'production', href: '/production', icon: Factory },
-  { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck },
-  { tKey: 'logistics', href: '/logistics', icon: Map },
-  { tKey: 'accounts', href: '/accounts', icon: PieChart },
-  { tKey: 'store', href: '/store', icon: ShoppingCart },
-  { tKey: 'logs', href: '/logs', icon: ClipboardList },
-  { tKey: 'settings', href: '/settings', icon: Settings },
+  { tKey: 'dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'Dashboard' },
+  { tKey: 'orderInitiation', href: '/orders', icon: ShoppingCart, module: 'Order Initiation' },
+  { tKey: 'orderSpecifications', href: '/order-specifications', icon: ClipboardList, module: 'Specifications' },
+  { tKey: 'stockCalculation', href: '/stock-calculation', icon: Package, module: 'Stock Check' },
+  { tKey: 'bomCalculation', href: '/bom-calculation', icon: Calculator, module: 'BOM Calculation' },
+  { tKey: 'inventoryCheck', href: '/inventory', icon: Box, module: 'Inventory Check' },
+  { tKey: 'materialallocation', href: '/material-allocation', icon: Layers, module: 'Material Allocation' },
+  { tKey: 'outSource', href: '/out-source', icon: PackageCheck, module: 'Out Source' },
+  { tKey: 'procurement', href: '/procurement', icon: Truck, module: 'Procurement' },
+  { tKey: 'production', href: '/production', icon: Factory, module: 'Production' },
+  { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck, module: 'Quality & Packing' },
+  { tKey: 'logistics', href: '/logistics', icon: Map, module: 'Logistics' },
+  { tKey: 'accounts', href: '/accounts', icon: PieChart, module: 'Accounts' },
+  { tKey: 'store', href: '/store', icon: ShoppingCart, module: 'Store' },
+  { tKey: 'logs', href: '/logs', icon: ClipboardList, module: 'System Logs' },
+  { tKey: 'ManageUser', label: 'Manage User', href: '/manage-user', icon: UserPlus, module: 'User Management' },
+  { tKey: 'settings', href: '/settings', icon: Settings, module: 'Settings' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [currentDate, setCurrentDate] = useState('');
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -63,10 +71,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     setMounted(true);
+    setCurrentDate(new Date().toISOString().split('T')[0]);
+    const storedCollapseState = localStorage.getItem('sason_sidebar_collapsed');
+    if (storedCollapseState) {
+      setSidebarCollapsed(storedCollapseState === 'true');
+    }
   }, []);
+
+  const toggleSidebarCollapse = () => {
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    localStorage.setItem('sason_sidebar_collapsed', String(newState));
+  };
+
   const router = useRouter();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+
+  useEffect(() => {
+    // Route protection logic (ensure user is logged in)
+    const storedSession = localStorage.getItem('sason_active_session');
+    if (!storedSession) {
+      if (pathname !== '/login') router.push('/login');
+    }
+  }, [pathname, router]);
 
   // Handle active state matching (e.g., if pathname is '/orders', Orders is active)
   const isItemActive = (href: string) => {
@@ -89,43 +117,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-[#1e293b] text-neutral-300 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
+        fixed inset-y-0 left-0 z-50 bg-[#1e293b] text-neutral-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${sidebarCollapsed ? 'w-20' : 'w-64'}
       `}>
-        <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 w-full">
-          <Link href="/" onClick={() => setSidebarOpen(false)} className="text-xl font-bold text-white flex items-center gap-2">
-            <Factory className="h-6 w-6 text-blue-500" />
-            {t('appName') || 'Sasons ERP'}
+        <div className={`flex-shrink-0 flex items-center h-16 w-full transition-all duration-300 justify-between ${sidebarCollapsed ? 'px-3' : 'px-4'}`}>
+          <Link href="/" onClick={() => setSidebarOpen(false)} className={`text-xl font-bold text-white flex items-center gap-2 overflow-hidden transition-all duration-300 shrink-0`}>
+            <Factory className="h-6 w-6 text-blue-500 shrink-0" />
+            <span className={`whitespace-nowrap transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>{t('appName') || 'Sasons ERP'}</span>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-neutral-400 hover:text-white">
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center shrink-0">
+            <button
+              onClick={toggleSidebarCollapse}
+              className={`hidden lg:flex items-center justify-center h-8 w-8 text-neutral-400 hover:text-white hover:bg-slate-700/80 transition-all rounded-md ${sidebarCollapsed ? 'bg-slate-800/80' : 'bg-transparent'}`}
+              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-neutral-400 hover:text-white ml-2">
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="px-4 mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">{t('sidebar.mainMenu')}</div>
-          <nav className="space-y-1 px-3">
-            {navItems.map((item) => {
+          <div className={`mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider transition-all duration-300 overflow-hidden ${sidebarCollapsed ? 'px-0 h-0 opacity-0' : 'px-4 h-auto opacity-100'}`}>
+            {!sidebarCollapsed && (t('sidebar.mainMenu') || 'MAIN MENU')}
+          </div>
+          <nav className={`space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'} transition-all duration-300`}>
+            {mounted ? navItems.filter(item => user?.role === 'Super Admin' || user?.modules_access?.includes(item.module)).map((item: any) => {
               const Icon = item.icon;
               const isActive = isItemActive(item.href);
-              const itemName = t(`sidebar.${item.tKey}`);
+              const itemName = item.label || t(`sidebar.${item.tKey}`);
               return (
-                <Link
-                  key={item.tKey}
-                  href={item.href}
-                  target={item.href.startsWith('http') ? '_blank' : undefined}
-                  rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
-                    }`}
-                >
-                  <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
-                  {itemName}
-                </Link>
+                <div key={item.tKey} className="relative group">
+                  <Link
+                    href={item.href}
+                    target={item.href.startsWith('http') ? '_blank' : undefined}
+                    rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`w-full flex items-center rounded-lg text-sm font-medium transition-colors ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2'} ${isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
+                      }`}
+                  >
+                    <Icon className={`h-5 w-5 shrink-0 transition-all duration-300 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
+                    <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
+                      {itemName}
+                    </span>
+                  </Link>
+
+                  {/* Tooltip for Collapsed State */}
+                  {sidebarCollapsed && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 bg-neutral-800 text-white text-xs font-medium px-2 py-1.5 rounded shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[60]">
+                      {itemName}
+                      {/* Tooltip arrow */}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-800"></div>
+                    </div>
+                  )}
+                </div>
               );
-            })}
+            }) : null}
           </nav>
         </div>
       </aside>
@@ -166,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <input
                 type="date"
+                lang="en-GB"
                 ref={dateInputRef}
                 value={currentDate}
                 onChange={(e) => setCurrentDate(e.target.value)}
@@ -174,7 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-slate-800 rounded-lg text-sm font-medium border border-neutral-200 dark:border-slate-700 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors pointer-events-none">
                 <Calendar className="w-4 h-4 text-blue-500" />
                 <span className="text-neutral-700 dark:text-neutral-300">
-                  {mounted ? new Date(currentDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                  {mounted && currentDate ? formatDateDisplay(currentDate) : ''}
                 </span>
               </div>
             </div>
@@ -196,10 +249,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
               >
                 <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  {(user as any)?.fullName ? (user as any).fullName.charAt(0).toUpperCase() : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 leading-tight">{user?.name || "User"}</p>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 leading-tight">{(user as any)?.fullName || user?.name || "User"}</p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.role || "Role"}</p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-neutral-400 hidden sm:block" />

@@ -25,39 +25,11 @@ export const addLog = (log: Omit<SystemLog, 'id' | 'timestamp'>) => {
   window.dispatchEvent(new Event('systemLogsUpdated'));
 };
 
-const initialMockLogs: SystemLog[] = [
-  { id: 'log-mock-1', orderNo: 'PO-1001', person: 'Arjun Mehta', actionType: 'Created', changeDetails: 'New garment order created for Polo T-Shirt', timestamp: '2026-06-10T09:15:00' },
-  { id: 'log-mock-2', orderNo: 'PO-1001', person: 'Arjun Mehta', actionType: 'Updated', changeDetails: 'Quantity changed from 500 pcs to 750 pcs', timestamp: '2026-06-10T09:30:00' },
-  { id: 'log-mock-3', orderNo: 'PO-1001', person: 'Rahul Sharma', actionType: 'Approved', changeDetails: 'Order approved and moved to Production Planning', timestamp: '2026-06-10T10:05:00' },
-  { id: 'log-mock-4', orderNo: 'PO-1002', person: 'Priya Mehta', actionType: 'Created', changeDetails: 'New garment order created for Hooded Sweatshirt', timestamp: '2026-06-10T11:10:00' },
-  { id: 'log-mock-5', orderNo: 'PO-1002', person: 'Priya Mehta', actionType: 'Updated', changeDetails: 'Delivery date changed from 25-Jun-2026 to 30-Jun-2026', timestamp: '2026-06-10T11:25:00' },
-  { id: 'log-mock-6', orderNo: 'PO-1003', person: 'Neha Gupta', actionType: 'Updated', changeDetails: 'Garment color changed from Navy Blue to Black', timestamp: '2026-06-09T14:45:00' },
-  { id: 'log-mock-7', orderNo: 'PO-1003', person: 'Neha Gupta', actionType: 'Updated', changeDetails: 'Size ratio updated (S-50, M-150, L-200, XL-100)', timestamp: '2026-06-09T15:10:00' },
-  { id: 'log-mock-8', orderNo: 'PO-1004', person: 'Vikram Singh', actionType: 'Created', changeDetails: 'New garment order created for Round Neck T-Shirt', timestamp: '2026-06-09T16:20:00' },
-  { id: 'log-mock-9', orderNo: 'PO-1004', person: 'Rahul Sharma', actionType: 'Updated', changeDetails: 'Fabric changed from 100% Cotton to Cotton Lycra', timestamp: '2026-06-09T16:50:00' },
-  { id: 'log-mock-10', orderNo: 'PO-1005', person: 'Priya Mehta', actionType: 'Updated', changeDetails: 'Buyer changed from H&M to Zara', timestamp: '2026-06-08T10:15:00' },
-  { id: 'log-mock-11', orderNo: 'PO-1005', person: 'Priya Mehta', actionType: 'Approved', changeDetails: 'Tech Pack approved by Merchandising Team', timestamp: '2026-06-08T11:30:00' },
-  { id: 'log-mock-12', orderNo: 'PO-1006', person: 'Rahul Sharma', actionType: 'Updated', changeDetails: 'Printing requirement changed from Screen Print to DTF Print', timestamp: '2026-06-08T13:45:00' },
-  { id: 'log-mock-13', orderNo: 'PO-1006', person: 'Rahul Sharma', actionType: 'Updated', changeDetails: 'Garment specification updated with new measurement chart', timestamp: '2026-06-08T14:20:00' },
-  { id: 'log-mock-14', orderNo: 'PO-1007', person: 'Neha Gupta', actionType: 'Created', changeDetails: 'New garment order created for Jogger Pants', timestamp: '2026-06-07T09:40:00' },
-  { id: 'log-mock-15', orderNo: 'PO-1007', person: 'Vikram Singh', actionType: 'Updated', changeDetails: 'Shipment mode changed from Sea Freight to Air Freight', timestamp: '2026-06-07T10:15:00' },
-  { id: 'log-mock-16', orderNo: 'PO-1008', person: 'Karan Patel', actionType: 'Updated', changeDetails: 'Delivery type changed from Single Delivery Address to Multi Delivery Address', timestamp: '2026-06-07T11:20:00' },
-  { id: 'log-mock-17', orderNo: 'PO-1008', person: 'Karan Patel', actionType: 'Updated', changeDetails: 'Added 3 delivery destinations for order distribution', timestamp: '2026-06-07T11:35:00' },
-  { id: 'log-mock-18', orderNo: 'PO-1009', person: 'Rahul Sharma', actionType: 'Approved', changeDetails: 'Production order approved and released to factory', timestamp: '2026-06-06T14:10:00' },
-  { id: 'log-mock-19', orderNo: 'PO-1010', person: 'Priya Mehta', actionType: 'Updated', changeDetails: 'PO Number updated from PO-2451 to PO-2451A', timestamp: '2026-06-06T15:05:00' },
-  { id: 'log-mock-20', orderNo: 'PO-1011', person: 'Neha Gupta', actionType: 'Updated', changeDetails: 'Vendor changed from ABC Garments to XYZ Apparel Pvt Ltd', timestamp: '2026-06-05T10:50:00' },
-  { id: 'log-mock-21', orderNo: 'PO-1012', person: 'Vikram Singh', actionType: 'Updated', changeDetails: 'Quantity reduced from 1200 pcs to 1000 pcs', timestamp: '2026-06-05T12:25:00' },
-  { id: 'log-mock-22', orderNo: 'PO-1013', person: 'Rahul Sharma', actionType: 'Rejected', changeDetails: 'Order rejected due to missing garment specifications', timestamp: '2026-06-05T14:40:00' },
-  { id: 'log-mock-23', orderNo: 'PO-1014', person: 'Karan Patel', actionType: 'Updated', changeDetails: 'Care label information updated as per buyer requirement', timestamp: '2026-06-04T11:15:00' },
-  { id: 'log-mock-24', orderNo: 'PO-1015', person: 'Priya Mehta', actionType: 'Approved', changeDetails: 'Final order approved and moved to Dispatch Stage', timestamp: '2026-06-04T16:30:00' }
-];
-
 export const getLogs = (): SystemLog[] => {
   if (typeof window === 'undefined') return [];
   const storedLogs = localStorage.getItem('systemLogs');
-  if (!storedLogs || JSON.parse(storedLogs).length === 0) {
-    localStorage.setItem('systemLogs', JSON.stringify(initialMockLogs));
-    return initialMockLogs;
+  if (!storedLogs) {
+    return [];
   }
   return JSON.parse(storedLogs);
 };

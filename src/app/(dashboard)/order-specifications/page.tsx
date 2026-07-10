@@ -6,8 +6,11 @@ import { createPortal } from "react-dom";
 import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown, Eye } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useAuth } from "@/context/AuthContext";
+import { useOrders } from "@/contexts/order-context";
 import { updateOrderAndLog } from "@/lib/logger";
-import { getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress } from "@/lib/api";
+import { getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress, getAuthHeaders } from "@/lib/api";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 let __idCounter = 0;
 const generateId = () => `row-${Date.now()}-${__idCounter++}`;
@@ -28,6 +31,8 @@ interface GarmentSpec {
   photoName: string | null;
   photoUrl?: string | null;
   productionType: "In House" | "Outsource" | "Both";
+  deliveryAddress?: string;
+  deliveryPin?: string;
 }
 
 interface DeliveryAddress {
@@ -278,8 +283,9 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
 function GarmentSpecsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { reloadOrders } = useOrders();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentPoNumber = searchParams.get("poNumber") || `PO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -319,6 +325,8 @@ function GarmentSpecsContent() {
   const [savedDrafts, setSavedDrafts] = useState<DraftOrder[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [activeItemSearchRowId, setActiveItemSearchRowId] = useState<string | null>(null);
+  const [itemSearchQueries, setItemSearchQueries] = useState<Record<string, string>>({});
 
   // --- CUSTOMER-SPECIFIC ADDRESS SELECTION STATES ---
   const currentCustomerName = searchParams.get("customerName") || "";
@@ -330,6 +338,26 @@ function GarmentSpecsContent() {
   const lastDeclinedAddress = useRef("");
   const addressDropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+
+  // --- MASTER GARMENTS ---
+  const [masterGarments, setMasterGarments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchGarments = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/garments/master-list`, {
+          headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setMasterGarments(json.data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch master garments:", err);
+      }
+    };
+    fetchGarments();
+  }, []);
 
   // Fetch customer addresses when customerName changes or is loaded
   useEffect(() => {
@@ -417,57 +445,184 @@ function GarmentSpecsContent() {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setActiveDropdownRow(null);
         setIsSavedAddressesOpen(false);
+        setActiveItemSearchRowId(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ─── Load PO data: localStorage first (instant), then backend (authoritative) ───
   useEffect(() => {
-    const stored = localStorage.getItem("savedOrders");
+    if (!currentPoNumber) return;
+
+    // ── Helper: apply a loaded order object to state ──
+    const applyOrder = (order: any, source: 'local' | 'backend') => {
+      setIsLiveOrder(true);
+      const dType: 'single' | 'multi' = order.deliveryType || order.delivery_type || 'single';
+      const addr  = order.deliveryAddress  || order.delivery_address  || '';
+      const pin   = order.deliveryPin      || order.delivery_pin      || '';
+
+      // Collect all delivery addresses for this PO
+      // (Order Initiation stores them in deliveryAddresses[] for multi mode)
+      const multiAddrs: { address: string; pinCode: string }[] =
+        Array.isArray(order.deliveryAddresses) && order.deliveryAddresses.length > 0
+          ? order.deliveryAddresses
+          : addr
+            ? [{ address: addr, pinCode: pin }]
+            : [];
+
+      setDeliveryType(dType);
+      setSingleAddress(addr);
+      setSinglePin(pin);
+
+      if (order.specs && Array.isArray(order.specs)) {
+        setSpecs(order.specs);
+      }
+
+      if (order.deliveryAddresses && order.deliveryAddresses.length > 0) {
+        setDeliveryAddresses(order.deliveryAddresses);
+      }
+
+      // Prefer saved detailedAllocations; otherwise auto-generate pre-filled rows
+      if (order.detailedAllocations && order.detailedAllocations.length > 0) {
+        setDetailedAllocations(order.detailedAllocations);
+      } else if (order.specs && Array.isArray(order.specs)) {
+        const isSingle = dType === 'single';
+        const parsedAllocations: DetailedAllocation[] = [];
+        let addrIdx = 0;
+
+        order.specs.forEach((s: GarmentSpec) => {
+          const sizes = s.size ? s.size.split(',').map((sz: string) => sz.trim()).filter(Boolean) : ['Standard'];
+          sizes.forEach((sz: string) => {
+            // For single delivery: use the single address.
+            // For multi delivery: cycle through PO's delivery addresses so
+            //   every row gets the correct pre-filled address from Order Initiation.
+            let rowAddr = '';
+            let rowPin = '';
+            if (isSingle) {
+              rowAddr = addr;
+              rowPin = pin;
+            } else if (multiAddrs.length > 0) {
+              const picked = multiAddrs[addrIdx % multiAddrs.length];
+              rowAddr = picked.address || '';
+              rowPin = picked.pinCode || '';
+              addrIdx++;
+            }
+
+            parsedAllocations.push({
+              id: generateId(),
+              deliveryAddress: rowAddr,
+              pinCode: rowPin,
+              itemId: s.id,
+              color: '',
+              size: sz,
+              quantity: sizes.length === 1 ? (s.quantity || 0) : 0,
+            });
+          });
+        });
+        setDetailedAllocations(parsedAllocations);
+      }
+    };
+
+    // 1. Load from localStorage immediately for a snappy UI
+    const stored = localStorage.getItem('savedOrders');
     if (stored) {
       try {
         const savedOrders = JSON.parse(stored);
-        const order = savedOrders.find((o: any) => o.poNumber === currentPoNumber);
-        if (order) {
-          setIsLiveOrder(true);
-          setDeliveryType(order.deliveryType || "single");
-          setSingleAddress(order.deliveryAddress || "");
-          setSinglePin(order.deliveryPin || "");
-          if (order.specs) {
-            setSpecs(order.specs);
-
-            const isSingle = (order.deliveryType || "single") === "single";
-
-            if (!order.detailedAllocations || order.detailedAllocations.length === 0) {
-              const parsedAllocations: DetailedAllocation[] = [];
-              order.specs.forEach((s: GarmentSpec) => {
-                const sizes = s.size ? s.size.split(",").map(sz => sz.trim()).filter(Boolean) : ["Standard"];
-                sizes.forEach(sz => {
-                  parsedAllocations.push({
-                    id: generateId(),
-                    deliveryAddress: isSingle ? (order.deliveryAddress || "Single Address") : "",
-                    pinCode: isSingle ? (order.deliveryPin || "") : "",
-                    itemId: s.id,
-                    color: "",
-                    size: sz,
-                    quantity: 0
-                  });
-                });
-              });
-              setDetailedAllocations(parsedAllocations);
-            } else {
-              setDetailedAllocations(order.detailedAllocations);
-            }
-            if (order.deliveryAddresses && order.deliveryAddresses.length > 0) {
-              setDeliveryAddresses(order.deliveryAddresses);
-            }
-          }
-        }
+        const localOrder = savedOrders.find((o: any) => o.poNumber === currentPoNumber);
+        if (localOrder) applyOrder(localOrder, 'local');
       } catch (e) {
-        console.error(e);
+        console.error('Failed to parse savedOrders from localStorage:', e);
       }
     }
+
+    // 2. Fetch from backend to get the authoritative delivery address data
+    //    (overrides localStorage with fresh DB values)
+    fetch(`${BACKEND_URL}/purchase_orders/details/${encodeURIComponent(currentPoNumber)}`, {
+      headers: getAuthHeaders(),
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.success) return;
+
+        // Backend uses snake_case; build a unified order-like object
+        const backendOrder: any = {
+          deliveryType:      data.delivery_type      || 'single',
+          deliveryAddress:   data.delivery_address   || '',
+          deliveryPin:       data.delivery_pin       || '',
+          // deliveryAddresses may be stored as a JSON column or separate table
+          deliveryAddresses: Array.isArray(data.deliveryAddresses)
+            ? data.deliveryAddresses
+            : Array.isArray(data.delivery_addresses)
+              ? data.delivery_addresses
+              : [],
+          specs: data.specs || [],
+          // Keep existing detailedAllocations from local state if already populated
+          detailedAllocations: [],
+        };
+
+        // Only override address fields; don't wipe user-edited allocations
+        const dType: 'single' | 'multi' = backendOrder.deliveryType;
+        const addr  = backendOrder.deliveryAddress;
+        const pin   = backendOrder.deliveryPin;
+
+        setDeliveryType(dType);
+        setSingleAddress(addr);
+        setSinglePin(pin);
+
+        if (backendOrder.deliveryAddresses.length > 0) {
+          setDeliveryAddresses(backendOrder.deliveryAddresses);
+        }
+
+        // Pre-fill allocation rows with authoritative address from DB
+        // (only if there are no user-edited allocation rows yet)
+        setDetailedAllocations((prev) => {
+          // If rows are already pre-filled with real addresses, don't overwrite
+          const anyFilled = prev.some(
+            (a) => a.deliveryAddress && a.deliveryAddress.trim().length > 0
+          );
+          if (anyFilled) return prev;
+
+          // Build fresh rows with correct addresses from DB
+          const multiAddrs: { address: string; pinCode: string }[] =
+            backendOrder.deliveryAddresses.length > 0
+              ? backendOrder.deliveryAddresses
+              : addr
+                ? [{ address: addr, pinCode: pin }]
+                : [];
+
+          const isSingle = dType === 'single';
+          const newAllocs: DetailedAllocation[] = [];
+          let addrIdx = 0;
+
+          prev.forEach((alloc) => {
+            let rowAddr = alloc.deliveryAddress;
+            let rowPin  = alloc.pinCode || '';
+
+            if (!rowAddr || rowAddr.trim() === '') {
+              if (isSingle) {
+                rowAddr = addr;
+                rowPin  = pin;
+              } else if (multiAddrs.length > 0) {
+                const picked = multiAddrs[addrIdx % multiAddrs.length];
+                rowAddr = picked.address || '';
+                rowPin  = picked.pinCode || '';
+                addrIdx++;
+              }
+            }
+
+            newAllocs.push({ ...alloc, deliveryAddress: rowAddr, pinCode: rowPin });
+          });
+
+          return newAllocs;
+        });
+      })
+      .catch((err) => {
+        console.warn('Backend fetch for PO delivery address failed (offline?):', err);
+        // localStorage data already applied above — no further action needed
+      });
   }, [currentPoNumber]);
 
   // Synchronize detailed allocations with garment specs when in Single Delivery mode
@@ -663,58 +818,81 @@ function GarmentSpecsContent() {
     return true;
   };
 
-  const handleSaveAndAdvance = () => {
-    if (!validateFormOrAlert()) return;
-    router.push("/stock-calculation");
-  };
-
   const handleFinalSubmit = () => {
     if (!validateFormOrAlert()) return;
     setShowConfirmModal(true);
   };
 
-  const handleSubmitSpecifications = () => {
+  const handleSubmitSpecifications = async () => {
+    if (!validateFormOrAlert()) return;
+
     const payload = {
-      poNumber: currentPoNumber,
+      po_number: currentPoNumber,
       poDate: new Date().toISOString(),
-      specs,
+      specifications: specs.map(s => ({
+        ...s,
+        required_qty: s.quantity,
+        available_qty: s.stockAvailable,
+        item_description: s.itemDescription
+      })),
       deliveryAddresses,
       detailedAllocations,
       stage: "Stock Check",
       status: "SUBMITTED",
     };
 
-    updateOrderAndLog(currentPoNumber, user?.name || "System User", "Updated", "Saved Garment Specifications to drafts", (orders) => {
-      const existingIndex = orders.findIndex((o: { poNumber: string }) => o.poNumber === currentPoNumber);
-      if (existingIndex !== -1) {
-        orders[existingIndex] = { ...orders[existingIndex], ...payload };
+    try {
+      const response = await fetch("http://localhost:5000/purchase_orders/save_specifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        window.dispatchEvent(new Event("orders-updated"));
+        
+        // Log legacy UI helper (will be deprecated)
+        updateOrderAndLog(currentPoNumber, user?.name || "System User", "Updated", "Saved Garment Specifications to DB", (orders) => {
+          const existingIndex = orders.findIndex((o: { poNumber: string }) => o.poNumber === currentPoNumber);
+          if (existingIndex !== -1) {
+            orders[existingIndex] = { ...orders[existingIndex], ...payload, poNumber: currentPoNumber };
+          } else {
+            orders.push({ id: generateId(), ...payload, poNumber: currentPoNumber });
+          }
+          return [...orders];
+        });
+
+        // Trigger context refresh so no manual reload is needed
+        await reloadOrders();
+
+        // Reset Forms
+        setSpecs([{
+          id: "1",
+          category: "",
+          gender: "",
+          itemDescription: "",
+          hsnCode: "",
+          size: "",
+          color: "",
+          pattern: "",
+          quantity: 0,
+          stockAvailable: 0,
+          unitPrice: 0,
+          photoName: null,
+          productionType: "In House",
+        }]);
+        setDeliveryAddresses([{ id: "1", address: "", pinCode: "" }]);
+        setDetailedAllocations([{ id: "1", deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
+
+        setShowConfirmModal(false);
+        router.push(`/stock-calculation?poNumber=${currentPoNumber}`);
       } else {
-        orders.push({ id: generateId(), ...payload });
+        alert("Failed to save specifications: " + (data.error || "Unknown error"));
       }
-      return [...orders];
-    });
-
-    // Reset Forms
-    setSpecs([{
-      id: "1",
-      category: "",
-      gender: "",
-      itemDescription: "",
-      hsnCode: "",
-      size: "",
-      color: "",
-      pattern: "",
-      quantity: 0,
-      stockAvailable: 0,
-      unitPrice: 0,
-      photoName: null,
-      productionType: "In House",
-    }]);
-    setDeliveryAddresses([{ id: "1", address: "", pinCode: "" }]);
-    setDetailedAllocations([{ id: "1", deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
-
-    setShowConfirmModal(false);
-    router.push(`/stock-calculation?poNumber=${currentPoNumber}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save specifications. Ensure backend is running.");
+    }
   };
 
   const onSaveDraft = () => {
@@ -835,7 +1013,7 @@ function GarmentSpecsContent() {
         </div>
 
         <div className="p-6 bg-neutral-50/50 dark:bg-slate-800/30">
-          <div className="mb-6">
+          <div className="mb-6 space-y-3">
             <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-slate-800/50 text-neutral-500 border-neutral-200 dark:border-slate-700 font-semibold text-sm flex items-center gap-2.5 shadow-sm">
               <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500/80 animate-pulse"></span>
               <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected PO Number:</span>
@@ -964,15 +1142,84 @@ function GarmentSpecsContent() {
                     </div>
                   </div>
 
+                  {deliveryType === "multi" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                      <div>
+                        <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5" /> Delivery Address (For this Item) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={spec.deliveryAddress || ""}
+                          onChange={(e) => updateRow(spec.id, "deliveryAddress", e.target.value)}
+                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-blue-500`}
+                          placeholder="Enter complete delivery address"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider">
+                          Delivery PIN <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={spec.deliveryPin || ""}
+                          onChange={(e) => updateRow(spec.id, "deliveryPin", e.target.value)}
+                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-blue-500`}
+                          placeholder="e.g. 110001"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Row 3: Large Textareas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Item Description <span className="text-red-500">*</span></label>
                       <textarea
-                        value={spec.itemDescription}
-                        onChange={(e) => updateRow(spec.id, "itemDescription", e.target.value)}
+                        value={itemSearchQueries[spec.id] !== undefined ? itemSearchQueries[spec.id] : (masterGarments.find(g => g.sku_no === spec.itemDescription)?.description || spec.itemDescription || "")}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setItemSearchQueries(prev => ({ ...prev, [spec.id]: val }));
+                          if (val === "") {
+                            setSpecs(prevSpecs => prevSpecs.map(s => s.id === spec.id ? {
+                                ...s, itemDescription: "", category: "", gender: "", size: "", color: "", hsnCode: "", unitPrice: 0, pattern: ""
+                            } : s));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== "") {
+                            const garment = masterGarments.find(g => g.description.toLowerCase() === val.toLowerCase());
+                            if (garment) {
+                              setSpecs(prevSpecs => prevSpecs.map(s => s.id === spec.id ? {
+                                ...s,
+                                itemDescription: garment.sku_no,
+                                category: garment.category || s.category,
+                                gender: (garment.gender && garment.gender !== "Unisex") ? (garment.gender === "Male" ? "Men" : "Women") : s.gender,
+                                size: garment.size || s.size,
+                                color: garment.color || s.color,
+                                hsnCode: garment.hsn_code || s.hsnCode,
+                                unitPrice: garment.unit_price || s.unitPrice,
+                                pattern: garment.pattern || s.pattern
+                              } : s));
+                              setItemSearchQueries(prev => { const next = { ...prev }; delete next[spec.id]; return next; });
+                            } else {
+                              setSpecs(prevSpecs => prevSpecs.map(s => s.id === spec.id ? {
+                                ...s,
+                                itemDescription: val
+                              } : s));
+                              setItemSearchQueries(prev => { const next = { ...prev }; delete next[spec.id]; return next; });
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.currentTarget.blur();
+                          }
+                        }}
                         className={`${INPUT_STYLE} min-h-[96px] resize-y py-3 shadow-sm`}
-                        placeholder="e.g. Cotton Polo"
+                        placeholder="Type item description and press Enter..."
                       />
                     </div>
                     <div>
@@ -1360,17 +1607,9 @@ function GarmentSpecsContent() {
             type="button"
             onClick={handleFinalSubmit}
             disabled={hasExceedingItems}
-            className={`px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition shadow-sm ${hasExceedingItems ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            Submit
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveAndAdvance}
-            disabled={hasExceedingItems}
             className={`px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm ${hasExceedingItems ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Proceed to Stock Check →
+            Submit
           </button>
         </div>
       </div>

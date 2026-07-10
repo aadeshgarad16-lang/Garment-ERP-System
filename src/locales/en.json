@@ -219,7 +219,7 @@
     "checkInventory": "Check Inventory"
   },
   "inventoryVal": {
-    "title": "Inventory Validation",
+    "title": "Inventory Check",
     "subtitle": "Validate BOM requirements against available stock",
     "allocate": "Allocate Materials",
     "purchaseRequest": "Create Purchase Request",

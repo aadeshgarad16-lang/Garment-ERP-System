@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { use, useState, useMemo } from 'react';
+import React, { use, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -19,65 +19,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// --- MOCK DATA GENERATION ---
-const totalOrdersData = [
-  { id: 'PO-2026-0001', customer: 'Acme Retail', poDate: '2026-05-23', deliveryDate: '2026-06-10', status: 'In Production', amount: '₹15,400.00', items: 150 },
-  { id: 'PO-2026-0002', customer: 'Global Fashion', poDate: '2026-05-24', deliveryDate: '2026-06-11', status: 'Pending', amount: '₹19,200.00', items: 124 },
-  { id: 'PO-2026-0003', customer: 'Urban Styles', poDate: '2026-05-25', deliveryDate: '2026-06-12', status: 'Delivered', amount: '₹23,700.00', items: 174 },
-  { id: 'PO-2026-0004', customer: 'Boutique XYZ', poDate: '2026-05-26', deliveryDate: '2026-06-13', status: 'Cutting', amount: '₹18,100.00', items: 150 },
-  { id: 'PO-2026-0005', customer: 'Mega Mart', poDate: '2026-05-23', deliveryDate: '2026-06-14', status: 'In Production', amount: '₹16,100.00', items: 124 },
-  { id: 'PO-2026-0006', customer: 'Acme Retail', poDate: '2026-05-24', deliveryDate: '2026-06-15', status: 'Pending', amount: '₹9,140.00', items: 150 },
-  { id: 'PO-2026-0007', customer: 'Global Fashion', poDate: '2026-05-25', deliveryDate: '2026-06-16', status: 'Delivered', amount: '₹13,980.00', items: 100 },
-  { id: 'PO-2026-0008', customer: 'Urban Styles', poDate: '2026-05-26', deliveryDate: '2026-06-17', status: 'Cutting', amount: '₹21,160.00', items: 100 },
-  { id: 'PO-2026-0009', customer: 'Boutique XYZ', poDate: '2026-05-23', deliveryDate: '2026-06-18', status: 'In Production', amount: '₹12,400.00', items: 100 },
-  { id: 'PO-2026-0010', customer: 'Mega Mart', poDate: '2026-05-24', deliveryDate: '2026-06-19', status: 'Pending', amount: '₹9,640.00', items: 100 },
-  { id: 'PO-2026-0011', customer: 'Acme Retail', poDate: '2026-05-25', deliveryDate: '2026-06-20', status: 'Delivered', amount: '₹11,750.00', items: 100 },
-  { id: 'PO-2026-0012', customer: 'Global Fashion', poDate: '2026-05-26', deliveryDate: '2026-06-21', status: 'Cutting', amount: '₹15,300.00', items: 123 },
-];
-
-const activeProductionData = [
-  { poNumber: 'PO-2026-0001', style: 'Denim Jacket (DJ-001)', stage: 'Stitching', startDate: '2026-05-05', expectedCompletion: '2026-05-18', qty: 1200 },
-  { poNumber: 'PO-2026-0002', style: 'Winter Coat (WC-001)', stage: 'Cutting', startDate: '2026-05-05', expectedCompletion: '2026-05-20', qty: 800 },
-  { poNumber: 'PO-2026-0003', style: 'Cotton T-Shirt (CT-005)', stage: 'Checking', startDate: '2026-05-03', expectedCompletion: '2026-05-15', qty: 1500 },
-  { poNumber: 'PO-2026-0004', style: 'Denim Jacket (DJ-001)', stage: 'Packing', startDate: '2026-05-01', expectedCompletion: '2026-05-12', qty: 900 },
-  { poNumber: 'PO-2026-0005', style: 'Winter Coat (WC-001)', stage: 'Stitching', startDate: '2026-05-07', expectedCompletion: '2026-05-22', qty: 400 },
-  { poNumber: 'PO-2026-0006', style: 'Cotton T-Shirt (CT-005)', stage: 'Cutting', startDate: '2026-05-08', expectedCompletion: '2026-05-18', qty: 1100 },
-  { poNumber: 'PO-2026-0007', style: 'Denim Jacket (DJ-001)', stage: 'Checking', startDate: '2026-05-04', expectedCompletion: '2026-05-16', qty: 730 },
-  { poNumber: 'PO-2026-0008', style: 'Winter Coat (WC-001)', stage: 'Packing', startDate: '2026-05-02', expectedCompletion: '2026-05-13', qty: 1800 },
-];
-
-const procurementMaterialsList = [
-  { m: 'Denim Fabric (12oz)', u: 'meters' },
-  { m: 'Heavy Duty Zippers', u: 'units' },
-  { m: 'Wool Blend Fabric', u: 'meters' },
-  { m: 'Cotton Thread', u: 'spools' },
-  { m: 'Metal Buttons (Silver)', u: 'units' },
-  { m: 'Leather Patches', u: 'units' },
-  { m: 'Elastic Band (2 inch)', u: 'meters' },
-  { m: 'Brand Labels', u: 'units' },
-  { m: 'Collar Interlining', u: 'meters' },
-  { m: 'Pocket Lining Cotton', u: 'meters' },
-  { m: 'Packing Boxes', u: 'units' },
-  { m: 'Polythene Bags', u: 'units' },
-];
-
-const pendingProcurementData = procurementMaterialsList.map((item, i) => ({
-  poNumber: `PO-2026-${String((i * 10) + 1).padStart(4, '0')}`,
-  material: item.m,
-  requiredQty: Math.floor(Math.random() * 5000 + 500).toString(),
-  unit: item.u,
-  supplier: ['TexCorp Mills', 'ZipFast Inc.', 'Global Textiles', 'Trim & Tag Solutions', 'PackMaster Pro'][i % 5],
-  status: ['Pending Approval', 'Ordered', 'Delayed', 'In Transit'][i % 4]
-}));
-
-const inventoryAlertsData = [
-  { materialId: 'MAT-001', name: 'Cotton Thread (White)', currentStock: '50', threshold: '200', status: 'Critical', unit: 'spools' },
-  { materialId: 'MAT-045', name: 'Metal Buttons (Silver)', currentStock: '120', threshold: '500', status: 'Low', unit: 'units' },
-  { materialId: 'MAT-088', name: 'Elastic Band (2 inch)', currentStock: '45', threshold: '100', status: 'Critical', unit: 'meters' },
-  { materialId: 'MAT-102', name: 'Brand Labels', currentStock: '800', threshold: '1000', status: 'Low', unit: 'units' },
-  { materialId: 'MAT-115', name: 'Polyester Fabric (Black)', currentStock: '150', threshold: '400', status: 'Low', unit: 'meters' },
-];
-
 export default function ReportPage({ params }: { params: Promise<{ type: string }> }) {
   const router = useRouter();
   const resolvedParams = use(params);
@@ -86,36 +27,95 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
   let title = '';
   let description = '';
   let icon = null;
-  let dataToRender = null;
   let tableHeaders: string[] = [];
+
+  // --- 1. DATA MAPPING HOOKS & STATE ---
+  const [reportStats, setReportStats] = useState({ pending: 0, inProduction: 0, cutting: 0, delivered: 0 });
+  const [dataToRender, setDataToRender] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        let endpoint = '';
+        if (type === 'total-orders') endpoint = '/api/reports/orders';
+        else if (type === 'active-production') endpoint = '/api/reports/active-production';
+        else if (type === 'pending-procurement') endpoint = '/api/reports/procurement';
+        else if (type === 'inventory-alerts') endpoint = '/api/reports/inventory-alerts';
+        
+        if (!endpoint) {
+          if (isMounted) setDataToRender(null);
+          return;
+        }
+        
+        const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
+        const readKey = process.env.NEXT_PUBLIC_ERP_READ_API_KEY || "sasons_read_only_key_2026_abc";
+        
+        const res = await fetch(`${baseUrl}${endpoint}`, {
+          headers: {
+            "X-API-Key": readKey,
+            "Content-Type": "application/json"
+          }
+        });
+        
+        if (!res.ok) throw new Error('Failed to fetch data');
+        const result = await res.json();
+        
+        if (isMounted && result) {
+          if (type === 'total-orders') {
+            setDataToRender(result.orders || []);
+            setReportStats(result.stats || { pending: 0, inProduction: 0, cutting: 0, delivered: 0 });
+          } else if (type === 'inventory-alerts') {
+            setDataToRender(result.alerts || []);
+          } else if (type === 'active-production') {
+            setDataToRender(result.production || []);
+          } else if (type === 'pending-procurement') {
+            setDataToRender(result.procurement || []);
+          } else {
+            // Fallback handling if response is already an array list
+            setDataToRender(Array.isArray(result) ? result : []);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (isMounted) setDataToRender([]);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [type]);
 
   switch (type) {
     case 'total-orders':
       title = 'Total Orders Report';
       description = 'Detailed view of all recent and historical orders.';
       icon = <ShoppingCart className="h-6 w-6 text-blue-600" />;
-      dataToRender = totalOrdersData;
       tableHeaders = ['PO Number', 'Customer', 'Items', 'PO Date', 'Delivery Date', 'Status', 'Total Value'];
       break;
     case 'active-production':
       title = 'Active Production Units';
       description = 'Real-time tracking of garments currently on the production floor.';
       icon = <Factory className="h-6 w-6 text-emerald-600" />;
-      dataToRender = activeProductionData;
       tableHeaders = ['PO Number', 'Garment Style', 'Current Stage', 'Quantity', 'Start Date', 'Expected Completion'];
       break;
     case 'pending-procurement':
       title = 'Pending Procurement';
       description = 'Materials that are currently short and awaiting procurement.';
       icon = <Truck className="h-6 w-6 text-amber-600" />;
-      dataToRender = pendingProcurementData;
       tableHeaders = ['PO Number', 'Material Needed', 'Required Qty', 'Supplier', 'Status'];
       break;
     case 'inventory-alerts':
       title = 'Inventory Alerts';
       description = 'Materials that have dropped below their minimum stock threshold.';
       icon = <AlertTriangle className="h-6 w-6 text-red-600" />;
-      dataToRender = inventoryAlertsData;
       tableHeaders = ['Material ID', 'Material Name', 'Current Stock', 'Min. Threshold', 'Alert Level'];
       break;
     default:
@@ -317,19 +317,19 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {[
             {
-              id: 'Pending', label: 'Pending', icon: Clock, count: dataToRender?.filter((x: any) => x.status === 'Pending').reduce((acc: number, curr: any) => acc + curr.items, 0) || 0,
+              id: 'Pending', label: 'Pending', icon: Clock, count: reportStats.pending,
               bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-600 dark:text-amber-400', active: 'ring-1 ring-amber-500 border-amber-500 shadow-md', hover: 'hover:border-amber-300 dark:hover:border-amber-700'
             },
             {
-              id: 'In Production', label: 'In Production', icon: Factory, count: dataToRender?.filter((x: any) => x.status === 'In Production').reduce((acc: number, curr: any) => acc + curr.items, 0) || 0,
+              id: 'In Production', label: 'In Production', icon: Factory, count: reportStats.inProduction,
               bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', active: 'ring-1 ring-blue-500 border-blue-500 shadow-md', hover: 'hover:border-blue-300 dark:hover:border-blue-700'
             },
             {
-              id: 'Cutting', label: 'Cutting', icon: Scissors, count: dataToRender?.filter((x: any) => x.status === 'Cutting').reduce((acc: number, curr: any) => acc + curr.items, 0) || 0,
+              id: 'Cutting', label: 'Cutting', icon: Scissors, count: reportStats.cutting,
               bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', active: 'ring-1 ring-purple-500 border-purple-500 shadow-md', hover: 'hover:border-purple-300 dark:hover:border-purple-700'
             },
             {
-              id: 'Delivered', label: 'Delivered', icon: CheckCircle2, count: dataToRender?.filter((x: any) => x.status === 'Delivered').reduce((acc: number, curr: any) => acc + curr.items, 0) || 0,
+              id: 'Delivered', label: 'Delivered', icon: CheckCircle2, count: reportStats.delivered,
               bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400', active: 'ring-1 ring-emerald-500 border-emerald-500 shadow-md', hover: 'hover:border-emerald-300 dark:hover:border-emerald-700'
             }
           ].map(box => {
@@ -438,3 +438,4 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     </div>
   );
 }
+

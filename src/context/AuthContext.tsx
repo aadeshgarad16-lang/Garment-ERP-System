@@ -1,24 +1,33 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAuthHeaders } from '@/lib/api';
 
 export type User = {
-  name: string;
+  id?: number;
+  fullName?: string; // from backend full_name
+  contactNo?: string; // from backend contact_no
   email: string;
   role: string;
+  designation?: string;
+  modules_access?: string[];
+  status?: string;
   password?: string;
+  name?: string; // fallback for legacy code
 };
 
 type AuthContextType = {
   user: User | null;
-  login: (credentials: User) => { success: boolean; error?: string };
-  register: (userData: User) => { success: boolean; error?: string };
+  login: (credentials: { contactNo?: string; email?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  deleteAccount: (email: string) => void;
+  isAuthorized: (moduleName: string) => boolean;
+  hasWriteAccess: (moduleName: string) => boolean;
   updateUser: (user: Partial<User>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -27,51 +36,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check localStorage on mount for active session
     const storedUser = localStorage.getItem('sason_active_session');
     if (storedUser) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {}
     }
   }, []);
 
-  const register = (userData: User) => {
-    const existingUsers = JSON.parse(localStorage.getItem('sason_users') || '[]');
-    if (existingUsers.find((u: User) => u.email === userData.email)) {
-      return { success: false, error: 'User with this email already exists' };
+  const login = async (credentials: { contactNo?: string; email?: string; password?: string }) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Invalid credentials' };
+      }
+
+      const backendUser = data.user;
+      const safeUser: User = {
+        id: backendUser.id,
+        fullName: backendUser.full_name,
+        name: backendUser.full_name, // Map for legacy components
+        contactNo: backendUser.contact_no,
+        email: backendUser.email,
+        role: backendUser.role,
+        designation: backendUser.designation,
+        modules_access: backendUser.modules_access,
+        status: backendUser.status
+      };
+
+      setUser(safeUser);
+      localStorage.setItem('sason_active_session', JSON.stringify(safeUser));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Network error' };
     }
-    // "Hash" password (for demo purposes we just encode it, in reality use bcrypt or similar on backend)
-    const newUser = { ...userData, password: btoa(userData.password || '') };
-    existingUsers.push(newUser);
-    localStorage.setItem('sason_users', JSON.stringify(existingUsers));
-    return { success: true };
-  };
-
-  const login = (credentials: User) => {
-    const existingUsers = JSON.parse(localStorage.getItem('sason_users') || '[]');
-    const matchedUser = existingUsers.find((u: User) =>
-      u.email === credentials.email &&
-      u.password === btoa(credentials.password || '')
-    );
-
-    if (!matchedUser) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...safeUser } = matchedUser;
-    setUser(safeUser);
-    localStorage.setItem('sason_active_session', JSON.stringify(safeUser));
-    return { success: true };
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('sason_active_session');
+    window.location.href = '/login';
   };
 
-  const deleteAccount = (email: string) => {
-    const existingUsers = JSON.parse(localStorage.getItem('sason_users') || '[]');
-    const updatedUsers = existingUsers.filter((u: User) => u.email !== email);
-    localStorage.setItem('sason_users', JSON.stringify(updatedUsers));
-    logout();
+  const isAuthorized = (moduleName: string): boolean => {
+    if (!user) return false;
+    if (!user.modules_access) return false;
+    return user.modules_access.includes(moduleName);
+  };
+
+  const hasWriteAccess = (moduleName: string): boolean => {
+    if (!user) return false;
+    if (!user.modules_access) return false;
+    return user.modules_access.includes(moduleName);
   };
 
   const updateUser = (updates: Partial<User>) => {
@@ -84,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, deleteAccount, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthorized, hasWriteAccess, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

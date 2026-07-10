@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/language-context';
@@ -18,16 +17,15 @@ import {
   Calendar,
   Package,
   LucideIcon,
-  Pencil,
   Check,
   X as XIcon
 } from 'lucide-react';
 
 // Unified interfaces for stricter static typing
-interface StatItem {
+export interface StatItem {
   tKey: string;
   subtitleKey?: string;
-  value: string;
+  value: string | number;
   change?: string;
   icon: LucideIcon;
   color: string;
@@ -35,7 +33,7 @@ interface StatItem {
   href: string;
 }
 
-interface RecentOrder {
+export interface RecentOrder {
   id: string;
   customer: string;
   statusKey: 'delivered' | 'pending' | 'inProduction' | 'cutting';
@@ -44,36 +42,13 @@ interface RecentOrder {
   amount: number;
 }
 
-interface ProductionStage {
+export interface ProductionStage {
   tKey: 'cutting' | 'stitching' | 'checking' | 'packing';
   count: number;
   capacity: number;
   icon: LucideIcon;
   color: string;
 }
-
-// Immutable configuration data declared outside component to prevent garbage-collection recalculations on re-render
-const STATS_DATA: StatItem[] = [
-  { tKey: 'totalOrders', value: '1,495', change: '+12%', icon: ShoppingCart, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/40', href: '/reports/total-orders' },
-  { tKey: 'activeProduction', subtitleKey: 'units', value: '8,430', icon: Factory, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/40', href: '/reports/active-production' },
-  { tKey: 'pendingProcurement', subtitleKey: 'purchaseOrders', value: '12', icon: Truck, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/40', href: '/reports/pending-procurement' },
-  { tKey: 'inventoryAlerts', subtitleKey: 'lowStockItems', value: '5', icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40', href: '/reports/inventory-alerts' },
-];
-
-const RECENT_ORDERS_DATA: RecentOrder[] = [
-  { id: 'PO-2026-081', customer: 'Acme Retail', statusKey: 'inProduction', poDate: '2026-05-01', date: '2026-05-20', amount: 15400.00 },
-  { id: 'PO-2026-082', customer: 'Global Fashion', statusKey: 'pending', poDate: '2026-05-05', date: '2026-05-25', amount: 8250.00 },
-  { id: 'PO-2026-083', customer: 'Urban Styles', statusKey: 'delivered', poDate: '2026-04-20', date: '2026-05-10', amount: 22100.00 },
-  { id: 'PO-2026-084', customer: 'Boutique XYZ', statusKey: 'cutting', poDate: '2026-05-15', date: '2026-06-01', amount: 45000.00 },
-  { id: 'PO-2026-085', customer: 'Mega Mart', statusKey: 'inProduction', poDate: '2026-05-02', date: '2026-05-18', amount: 12800.00 },
-];
-
-const PRODUCTION_STAGES_DATA: ProductionStage[] = [
-  { tKey: 'cutting', count: 1250, capacity: 2000, icon: Scissors, color: 'bg-blue-500 dark:bg-blue-600' },
-  { tKey: 'stitching', count: 3400, capacity: 5000, icon: Factory, color: 'bg-indigo-500 dark:bg-indigo-600' },
-  { tKey: 'checking', count: 850, capacity: 1500, icon: CheckSquare, color: 'bg-amber-500 dark:bg-amber-600' },
-  { tKey: 'packing', count: 420, capacity: 1000, icon: Package, color: 'bg-emerald-500 dark:bg-emerald-600' },
-];
 
 // Re-usable status styling map replacing slow switch-cases
 const STATUS_THEME_MAP: Record<string, string> = {
@@ -90,9 +65,52 @@ const indianCurrencyFormatter = new Intl.NumberFormat('en-IN', {
   minimumFractionDigits: 2
 });
 
-export default function DashboardHomePage() {
-  const { t } = useLanguage();
+interface DashboardHomePageProps {
+  statsData?: {
+    totalOrders: string | number;
+    activeProduction: string | number;
+    pendingProcurement: string | number;
+    inventoryAlerts: string | number;
+    totalOrdersChange?: string;
+  };
+  recentOrders?: RecentOrder[];
+  productionStages?: Record<'cutting' | 'stitching' | 'checking' | 'packing', { count: number; capacity: number }>;
+}
 
+export default function DashboardHomePage({
+  statsData: initialStatsData,
+  recentOrders: initialRecentOrders = [],
+  productionStages
+}: DashboardHomePageProps) {
+  const { t } = useLanguage();
+  
+  const [statsData, setStatsData] = useState<any>(initialStatsData || {
+    totalOrders: 0,
+    activeProduction: 0,
+    pendingProcurement: 0,
+    inventoryAlerts: 0
+  });
+  const [recentOrders, setRecentOrders] = useState<any[]>(initialRecentOrders);
+  
+  // Fetch live dashboard data from backend
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/api/dashboard/summary`);
+        if (!res.ok) throw new Error(`Server status ${res.status}`);
+        
+        const data = await res.json();
+        if (data.success) {
+          setStatsData(data.statsData);
+          setRecentOrders(data.recentOrders);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+      }
+    };
+    fetchDashboardData();
+  }, []);
   const [delayReasons, setDelayReasons] = useState<Record<string, string>>({});
   const [editingReasonId, setEditingReasonId] = useState<string | null>(null);
   const [tempReason, setTempReason] = useState<string>('');
@@ -112,28 +130,48 @@ export default function DashboardHomePage() {
     setTempReason('');
   };
 
+  // Dynamic evaluation of Metric blocks maps
+  const metricsBlocks: StatItem[] = useMemo(() => [
+    { tKey: 'totalOrders', value: statsData?.totalOrders ?? '0', change: statsData?.totalOrdersChange, icon: ShoppingCart, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/40', href: '/reports/total-orders' },
+    { tKey: 'activeProduction', subtitleKey: 'units', value: statsData?.activeProduction ?? '0', icon: Factory, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/40', href: '/reports/active-production' },
+    { tKey: 'pendingProcurement', subtitleKey: 'purchaseOrders', value: statsData?.pendingProcurement ?? '0', icon: Truck, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/40', href: '/reports/pending-procurement' },
+    { tKey: 'inventoryAlerts', subtitleKey: 'lowStockItems', value: statsData?.inventoryAlerts ?? '0', icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40', href: '/reports/inventory-alerts' },
+  ], [statsData]);
+
+  // Dynamic production line stage config values
+  const normalizedProductionStages = useMemo(() => [
+    { tKey: 'cutting' as const, count: productionStages?.cutting?.count ?? 0, capacity: productionStages?.cutting?.capacity ?? 0, icon: Scissors, color: 'bg-blue-500 dark:bg-blue-600' },
+    { tKey: 'stitching' as const, count: productionStages?.stitching?.count ?? 0, capacity: productionStages?.stitching?.capacity ?? 0, icon: Factory, color: 'bg-indigo-500 dark:bg-indigo-600' },
+    { tKey: 'checking' as const, count: productionStages?.checking?.count ?? 0, capacity: productionStages?.checking?.capacity ?? 0, icon: CheckSquare, color: 'bg-amber-500 dark:bg-amber-600' },
+    { tKey: 'packing' as const, count: productionStages?.packing?.count ?? 0, capacity: productionStages?.packing?.capacity ?? 0, icon: Package, color: 'bg-emerald-500 dark:bg-emerald-600' },
+  ], [productionStages]);
+
   // Optimizing table rendering via structural memoization
   const renderedOrderRows = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return RECENT_ORDERS_DATA.map((order) => {
-      const deliveryDate = new Date(order.date);
-      deliveryDate.setHours(0, 0, 0, 0);
+    if (recentOrders.length === 0) {
+      return (
+        <tr>
+          <td colSpan={8} className="text-center py-8 text-sm text-neutral-400 dark:text-neutral-500">
+            No recent orders found
+          </td>
+        </tr>
+      );
+    }
 
-      const diffTime = today.getTime() - deliveryDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const delayDays = diffDays > 0 ? diffDays : null;
-
-      const reason = delayReasons[order.id] || '';
+    return recentOrders.map((order) => {
+      const delayDays = order.delayDays || null;
+      const reason = order.delayReason || delayReasons[order.poNumber] || '';
 
       return (
-        <tr key={order.id} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
-          <td className="pl-6 pr-2 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{order.id}</td>
-          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{order.customer}</td>
+        <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
+          <td className="pl-6 pr-2 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{order.poNumber}</td>
+          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{order.customerName}</td>
           <td className="px-2 py-[18px] whitespace-nowrap">
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.statusKey] || STATUS_THEME_MAP.pending}`}>
-              {t(`dashboard.recentOrders.status.${order.statusKey}`)}
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.currentStage] || STATUS_THEME_MAP.pending}`}>
+              {order.currentStage}
             </span>
           </td>
           <td className="px-2 py-[18px] whitespace-nowrap">
@@ -145,7 +183,7 @@ export default function DashboardHomePage() {
           <td className="px-2 py-[18px] whitespace-nowrap">
             <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{order.date}</span>
+              <span>{order.deliveryDate ? order.deliveryDate.split(' ')[0].split('T')[0] : '—'}</span>
             </div>
           </td>
           <td className="px-2 py-[18px] text-sm font-medium whitespace-nowrap">
@@ -158,7 +196,7 @@ export default function DashboardHomePage() {
             )}
           </td>
           <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400">
-            {editingReasonId === order.id ? (
+            {editingReasonId === order.poNumber ? (
               <div className="flex flex-col gap-2">
                 <input
                   type="text"
@@ -174,7 +212,7 @@ export default function DashboardHomePage() {
                     Save this Reason for later?
                   </label>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleSaveReason(order.id)} className="p-1 text-green-600 hover:bg-green-100 rounded-md"><Check className="h-4 w-4" /></button>
+                    <button onClick={() => handleSaveReason(order.poNumber)} className="p-1 text-green-600 hover:bg-green-100 rounded-md"><Check className="h-4 w-4" /></button>
                     <button onClick={handleCancelReason} className="p-1 text-red-600 hover:bg-red-100 rounded-md"><XIcon className="h-4 w-4" /></button>
                   </div>
                 </div>
@@ -197,23 +235,22 @@ export default function DashboardHomePage() {
                 <option value="Sample Approval Pending">Sample Approval Pending</option>
                 <option value="Production Overload">Production Overload</option>
                 {reason && !["", "Fabric Sourcing Delay", "Logistics Breakdown", "Sample Approval Pending", "Production Overload"].includes(reason) && (
-                  <option value={reason}>{reason}</option>
+                  <option value="Machine Breakdown">Machine Breakdown</option>
                 )}
                 <option value="Other...">Other...</option>
               </select>
             )}
           </td>
-          <td className="pl-2 pr-6 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 text-right whitespace-nowrap">
+          <td className="pr-6 pl-2 py-[18px] text-right font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
             {indianCurrencyFormatter.format(order.amount)}
           </td>
         </tr>
       );
     });
-  }, [t, delayReasons, editingReasonId, tempReason]);
+  }, [recentOrders, delayReasons, editingReasonId, tempReason, t]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
-
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -228,7 +265,6 @@ export default function DashboardHomePage() {
             <PlusCircle className="h-4 w-4" />
             <span>Order Initiation</span>
           </Link>
-
           {/* Orderlist Button */}
           <Link
             href="/order-list"
@@ -237,7 +273,6 @@ export default function DashboardHomePage() {
             <Calculator className="h-4 w-4" />
             <span>{t('Order List')}</span>
           </Link>
-
           {/* Reports Button */}
           <Link
             href="/reports"
@@ -251,7 +286,7 @@ export default function DashboardHomePage() {
 
       {/* Analytics Metric Blocks */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {STATS_DATA.map((stat) => {
+        {metricsBlocks.map((stat) => {
           const IconComponent = stat.icon;
           return (
             <Link href={stat.href} key={stat.tKey} className="block group">
@@ -316,10 +351,9 @@ export default function DashboardHomePage() {
           </div>
           <div className="p-6">
             <div className="space-y-6">
-              {PRODUCTION_STAGES_DATA.map((stage) => {
+              {normalizedProductionStages.map((stage) => {
                 const StageIcon = stage.icon;
                 const percentage = stage.capacity > 0 ? Math.round((stage.count / stage.capacity) * 100) : 0;
-
                 return (
                   <div key={stage.tKey}>
                     <div className="flex justify-between items-center mb-2">
@@ -345,7 +379,6 @@ export default function DashboardHomePage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

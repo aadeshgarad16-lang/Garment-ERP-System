@@ -24,6 +24,8 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
+import { getAuthHeaders } from '@/lib/api';
+import { isStageMatch } from '@/utils/orderUtils';
 
 function SearchableDropdown({
   options,
@@ -141,8 +143,37 @@ export default function BOMCalculationPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPODate, setSelectedPODate] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
+  const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
   const [wastage, setWastage] = useState(5);
+
+  useEffect(() => {
+    if (selectedPONumber) {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      fetch(`${BACKEND_URL}/purchase_orders/details/${selectedPONumber}`, {
+        headers: getAuthHeaders()
+      })
+        .then(res => res.json())
+        .then(data => {
+           if(data.success !== false) {
+             setDetailedOrder({
+               ...data,
+               poNumber: data.po_number || selectedPONumber,
+               specs: data.specs?.map((s: any) => ({
+                 ...s,
+                 itemDescription: s.item_description,
+                 stockAvailable: s.stock_available,
+                 useExistingStock: s.use_existing_stock,
+                 stockStatus: s.stock_status
+               })) || []
+             });
+           }
+        })
+        .catch(console.error);
+    } else {
+      setDetailedOrder(null);
+    }
+  }, [selectedPONumber]);
 
   useEffect(() => {
     const ordersStr = localStorage.getItem('savedOrders');
@@ -157,7 +188,8 @@ export default function BOMCalculationPage() {
     const urlPoNumber = params.get('poNumber');
 
     if (urlPoNumber) {
-      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && o.stage === 'BOM Calculation' && o.status === 'SUBMITTED');
+      const targetKeywords = ['bom calculation'];
+      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
       if (targetOrder) {
         setSelectedCustomer(targetOrder.customerName || '');
         setSelectedPODate(targetOrder.poDate || '');
@@ -192,7 +224,8 @@ export default function BOMCalculationPage() {
   }, [selectedCustomer, selectedPODate, selectedPONumber, wastage]);
 
   const activeOrders = React.useMemo(() => {
-    return (orders || []).filter(o => o.stage === 'BOM Calculation' && o.status === 'SUBMITTED');
+    const targetKeywords = ['bom calculation'];
+    return (orders || []).filter(o => isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
   }, [orders]);
 
   useEffect(() => {
@@ -217,8 +250,27 @@ export default function BOMCalculationPage() {
 
   const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
 
-  const currentOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
+  const baseOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
+  const currentOrder = detailedOrder ? { ...baseOrder, ...detailedOrder } : baseOrder;
   const activeSpecs = currentOrder ? (currentOrder.specs || []) : [];
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      let cleanedDate = dateString.endsWith('GM') ? dateString + 'T' : dateString;
+      const d = new Date(cleanedDate);
+      if (isNaN(d.getTime())) {
+        const parts = dateString.split(/[T ]/);
+        return parts.length > 3 ? `${parts[1]} ${parts[2]} ${parts[3]}` : parts[0];
+      }
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch {
+      return dateString.split(/[T ]/)[0];
+    }
+  };
 
   const totalProductionRequired = activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0);
 
@@ -416,7 +468,7 @@ export default function BOMCalculationPage() {
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
               <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
-                {currentOrder && currentOrder.poDate ? currentOrder.poDate.split('T')[0] : "—"}
+                {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
               </div>
             </div>
             <div className="w-full">
@@ -457,8 +509,8 @@ export default function BOMCalculationPage() {
           </div>
           <div className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {!currentOrder ? (
-                <p className="text-sm text-neutral-500 py-2 col-span-full">Please select an order to view specifications.</p>
+              {!selectedPONumber || !currentOrder ? (
+                <p className="text-sm text-neutral-500 py-2 col-span-full">Please select a PO number.</p>
               ) : activeSpecs.length === 0 ? (
                 <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
               ) : (
@@ -510,13 +562,12 @@ export default function BOMCalculationPage() {
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                  <th className="px-4 py-3.5 w-[24%] text-left font-semibold">{t('inventoryVal.materialsHeader') || 'Material'}</th>
-                  <th className="px-4 py-3.5 w-[8%] text-left font-semibold whitespace-nowrap">Unit</th>
-                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold whitespace-nowrap">Per Piece</th>
-                  <th className="px-4 py-3.5 w-[11%] text-right font-semibold whitespace-nowrap">Base Qty</th>
-                  <th className="px-4 py-3.5 w-[18%] text-right font-semibold whitespace-nowrap">{t('bom.wastage') || 'Wastage %'}</th>
-                  <th className="px-4 py-3.5 w-[14%] text-right font-semibold whitespace-nowrap">Final Qty</th>
-                  <th className="px-4 py-3.5 w-[15%] text-right font-semibold whitespace-nowrap">Stock Util.</th>
+                  <th className="px-4 py-3.5 w-[28%] text-left font-semibold">{t('inventoryVal.materialsHeader') || 'Material'}</th>
+                  <th className="px-4 py-3.5 w-[10%] text-left font-semibold whitespace-nowrap">Unit</th>
+                  <th className="px-4 py-3.5 w-[13%] text-right font-semibold whitespace-nowrap">Per Piece</th>
+                  <th className="px-4 py-3.5 w-[14%] text-right font-semibold whitespace-nowrap">Base Qty</th>
+                  <th className="px-4 py-3.5 w-[20%] text-right font-semibold whitespace-nowrap">{t('bom.wastage') || 'Wastage %'}</th>
+                  <th className="px-4 py-3.5 w-[15%] text-right font-semibold whitespace-nowrap">Final Qty</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -524,39 +575,26 @@ export default function BOMCalculationPage() {
                   const isShortage = item.missing > 0;
                   return (
                     <tr key={idx} className={isShortage ? "bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" : "hover:bg-neutral-50/80 dark:hover:bg-slate-800/50 transition-colors"}>
-                      <td className="px-4 py-[18px] text-left w-[24%]">
+                      <td className="px-4 py-[18px] text-left w-[28%]">
                         <div className="flex flex-col">
                           <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.name}</span>
                           <span className={`text-xs ${isShortage ? 'text-red-600 dark:text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>{item.category}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-[18px] text-left whitespace-nowrap w-[8%]">
+                      <td className="px-4 py-[18px] text-left whitespace-nowrap w-[10%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.unit}</span>
                       </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[10%]">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[13%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.perPiece}</span>
                       </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[11%]">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[14%]">
                         <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.baseRequired.toLocaleString()}</span>
                       </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[18%]">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[20%]">
                         <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{wastage}% <span className={`text-xs ${isShortage ? 'text-red-400 dark:text-red-500' : 'text-neutral-400'}`}>(+{Math.ceil(item.wastageAmount)})</span></span>
                       </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[14%]">
+                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[15%]">
                         <span className={`text-sm font-bold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{item.finalQuantity.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-[18px] text-right w-[15%]">
-                        <div className="inline-block w-full max-w-[120px] text-left">
-                          <div className="flex justify-between text-[11px] mb-1">
-                            <span className={`${item.stockRatio < 100 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} font-medium`}>{item.stockRatio}%</span>
-                          </div>
-                          <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
-                            <div
-                              className={`h-1.5 ${item.stockRatio < 100 ? 'bg-red-500' : 'bg-emerald-500'}`}
-                              style={{ width: `${item.stockRatio}%` }}
-                            />
-                          </div>
-                        </div>
                       </td>
                     </tr>
                   );
@@ -586,22 +624,57 @@ export default function BOMCalculationPage() {
               {t('bom.export')}
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (currentOrder) {
-                  updateOrderAndLog(currentOrder.poNumber, user?.name || 'System User', 'Updated', null, (orders) => {
-                    return orders.map((o: any) => 
-                      o.id === currentOrder.id ? { ...o, stage: 'Inventory Check' } : o
-                    );
-                  });
-                  
-                  setSelectedCustomer('');
-                  setSelectedPODate('');
-                  setSelectedPONumber('');
-                  setWastage(5);
-                  localStorage.removeItem('bomCalculationDraft');
+                    try {
+                      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+                      
+                      const bomLines = calculatedMaterials.map(m => ({
+                        material_id: m.id,
+                        material_name: m.name,
+                        category: m.category,
+                        unit: m.unit,
+                        per_piece_qty: m.perPiece,
+                        final_qty: m.finalQuantity,
+                        amount: m.finalQuantity * (m.category === 'Fabric' ? 5 : 0.5)
+                      }));
+
+                      const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...getAuthHeaders(true)
+                        },
+                        body: JSON.stringify({
+                          poNumber: currentOrder.poNumber,
+                          bomLines: bomLines,
+                          wastagePct: wastage
+                        })
+                      });
+
+                      const data = await res.json();
+                    
+                    if (res.ok && data.success !== false) {
+                      window.dispatchEvent(new Event("orders-updated"));
+
+                      const targetPoNumber = currentOrder.poNumber;
+
+                      setSelectedCustomer('');
+                      setSelectedPODate('');
+                      setSelectedPONumber('');
+                      setWastage(5);
+                      localStorage.removeItem('bomCalculationDraft');
+                      
+                      window.history.replaceState(null, '', window.location.pathname);
+                      router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
+                    } else {
+                      alert(data.error || "Failed to process order");
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    alert("Network error. Please try again.");
+                  }
                 }
-                window.history.replaceState(null, '', window.location.pathname);
-                router.push(`/inventory${currentOrder ? '?poNumber=' + encodeURIComponent(currentOrder.poNumber) : ''}`);
               }}
               disabled={totalProductionRequired === 0}
               className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0

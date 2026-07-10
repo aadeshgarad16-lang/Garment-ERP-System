@@ -98,15 +98,32 @@ export default function ProductionPage() {
 
   const totalOrderQty = currentOrder?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
 
-  const advanceStage = (nextPath: string, nextStage: string) => {
+  const advanceStage = async (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
     if (po) {
-      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
-        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
-      });
-      router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/purchase_orders/update_stage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ poNumber: po, stage: nextStage })
+        });
+        
+        if (res.ok) {
+          updateOrderAndLog(po, user?.name || 'System User', 'Updated', `Advanced to ${nextStage}`, (orders) => {
+            return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+          });
+          window.dispatchEvent(new Event("orders-updated"));
+          router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
+        } else {
+          alert("Failed to advance stage on the server.");
+        }
+      } catch (err) {
+        console.error("Failed to advance stage:", err);
+        alert("Failed to reach server.");
+      }
     } else {
       router.push(nextPath);
     }

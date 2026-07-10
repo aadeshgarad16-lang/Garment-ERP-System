@@ -15,11 +15,7 @@ export default function ProductionMaterialAllocation() {
     { id: 'MAT-003', name: 'Standard Collar (White)', category: 'Components', stock: 800, required: 600, allocated: 0, unit: 'pieces' },
   ]);
 
-  const vendors = [
-    { id: 'v1', name: 'StitchCraft Assembly Ltd.' },
-    { id: 'v2', name: 'Dye & Print Solutions Inc.' },
-    { id: 'v3', name: 'Premier Garment Makers' }
-  ];
+  const vendors: any[] = [];
 
   const handleAllocationChange = (id: string, value: string) => {
     const qty = parseInt(value, 10) || 0;
@@ -183,3 +179,4 @@ export default function ProductionMaterialAllocation() {
     </div>
   );
 }
+

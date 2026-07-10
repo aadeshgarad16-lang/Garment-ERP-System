@@ -10,7 +10,7 @@ interface PackingVerificationProps {
 
 export default function PackingVerification({ onComplete, order }: PackingVerificationProps) {
   const { t } = useTranslation();
-  const [manifestId, setManifestId] = useState('MNF-2026-089');
+  const [manifestId, setManifestId] = useState('—');
   const [verifiedQty, setVerifiedQty] = useState('');
   const [remarks, setRemarks] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -25,10 +25,10 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
 
   const isFormValid = verifiedQty.trim() !== '';
 
-  const orderId = order?.poNumber || 'PO-2026-004';
-  const targetQty = order?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
-  const destination = order?.deliveryAddress || 'Warehouse B, Dubai';
-  const cartonCount = Math.ceil(targetQty / 40);
+  const orderId = order?.poNumber || '—';
+  const targetQty = order?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 0;
+  const destination = order?.deliveryAddress || '—';
+  const cartonCount = targetQty > 0 ? Math.ceil(targetQty / 40) : 0;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">

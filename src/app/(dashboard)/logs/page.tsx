@@ -14,8 +14,12 @@ import {
   RefreshCw,
   ChevronDown,
   ArrowLeft,
+  ArrowRight,
   Eye
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
+import { formatDateDisplay } from '@/utils/dateUtils';
 
 // --- TypeScript Interfaces ---
 export interface SystemLog {
@@ -28,184 +32,8 @@ export interface SystemLog {
 }
 
 // --- Mock Service (Simulating @/lib/logger getLogs) ---
-const getLogs = (): SystemLog[] => {
-  return [
-    {
-      id: "1",
-      orderNo: "PO-1002",
-      person: "Priya Mehta",
-      actionType: "Updated",
-      changeDetails: "Fabric GSM changed from 180 to 210",
-      timestamp: "2026-06-10T11:25:00Z"
-    },
-    {
-      id: "2",
-      orderNo: "PO-1001",
-      person: "Arjun Mehta",
-      actionType: "Multiple Actions",
-      changeDetails: [
-        "Thread color updated to Navy Blue",
-        "Button type switched to Matte Finish",
-        "Lead time adjusted (+2 days)"
-      ],
-      timestamp: "2026-06-10T09:30:00Z"
-    },
-    {
-      id: "3",
-      orderNo: "PO-1004",
-      person: "Rahul Sharma",
-      actionType: "Updated",
-      changeDetails: "Measurement Spec Chart (Size L) revised",
-      timestamp: "2026-06-09T16:50:00Z"
-    },
-    {
-      id: "4",
-      orderNo: "PO-1003",
-      person: "Neha Gupta",
-      actionType: "Updated",
-      changeDetails: "Sampling status marked as 'Approved'",
-      timestamp: "2026-06-09T14:45:00Z"
-    },
-    {
-      id: "5",
-      orderNo: "PO-1006",
-      person: "Rahul Sharma",
-      actionType: "Updated",
-      changeDetails: "Material List: Added 500 meters of Zipper Tape",
-      timestamp: "2026-06-08T13:45:00Z"
-    },
-    {
-      id: "6",
-      orderNo: "PO-1005",
-      person: "Priya Mehta",
-      actionType: "Multiple Actions",
-      changeDetails: [
-        "BOM (Bill of Materials) cost updated",
-        "Supplier changed to Vardhman Textiles"
-      ],
-      timestamp: "2026-06-08T10:15:00Z"
-    },
-    {
-      id: "7",
-      orderNo: "PO-1008",
-      person: "Karan Patel",
-      actionType: "Updated",
-      changeDetails: "Washing instructions label text revised",
-      timestamp: "2026-06-07T11:20:00Z"
-    },
-    {
-      id: "8",
-      orderNo: "PO-1007",
-      person: "Vikram Singh",
-      actionType: "Updated",
-      changeDetails: "Shipment mode changed from Sea Freight to Air Freight",
-      timestamp: "2026-06-07T10:15:00Z"
-    },
-    {
-      id: "9",
-      orderNo: "PO-1010",
-      person: "Priya Mehta",
-      actionType: "Updated",
-      changeDetails: "Order quantity increased for Size M (+100 pcs)",
-      timestamp: "2026-06-06T15:05:00Z"
-    },
-    {
-      id: "10",
-      orderNo: "PO-1009",
-      person: "Rahul Sharma",
-      actionType: "Approved",
-      changeDetails: "Trim & Accessory selection verified",
-      timestamp: "2026-06-06T14:10:00Z"
-    },
-    {
-      id: "11",
-      orderNo: "PO-1013",
-      person: "Rahul Sharma",
-      actionType: "Rejected",
-      changeDetails: "Lab dip sample rejected due to color shading mismatch",
-      timestamp: "2026-06-05T14:40:00Z"
-    },
-    {
-      id: "12",
-      orderNo: "PO-1012",
-      person: "Vikram Singh",
-      actionType: "Updated",
-      changeDetails: "Packaging guidelines updated to Eco-friendly bags",
-      timestamp: "2026-06-05T12:25:00Z"
-    },
-    {
-      id: "13",
-      orderNo: "PO-1011",
-      person: "Neha Gupta",
-      actionType: "Updated",
-      changeDetails: "Cuff design pattern file re-uploaded",
-      timestamp: "2026-06-05T10:50:00Z"
-    },
-    {
-      id: "14",
-      orderNo: "PO-1015",
-      person: "Priya Mehta",
-      actionType: "Approved",
-      changeDetails: "Pre-production sample checklist cleared",
-      timestamp: "2026-06-04T16:30:00Z"
-    },
-    {
-      id: "15",
-      orderNo: "PO-1014",
-      person: "Karan Patel",
-      actionType: "Updated",
-      changeDetails: "Inseam measurement updated on Tech Pack",
-      timestamp: "2026-06-04T11:15:00Z"
-    },
-    {
-      id: "16",
-      orderNo: "PO-1016",
-      person: "Vikram Singh",
-      actionType: "Multiple Actions",
-      changeDetails: [
-        "Embroidery patch dimensions changed",
-        "Stitch density updated to 12 SPI"
-      ],
-      timestamp: "2026-06-03T17:20:00Z"
-    },
-    {
-      id: "17",
-      orderNo: "PO-1017",
-      person: "Neha Gupta",
-      actionType: "Updated",
-      changeDetails: "Fabric blend adjusted (95% Cotton, 5% Spandex)",
-      timestamp: "2026-06-03T11:00:00Z"
-    },
-    {
-      id: "18",
-      orderNo: "PO-1018",
-      person: "Arjun Mehta",
-      actionType: "Multiple Actions",
-      changeDetails: [
-        "Dyed lot number updated",
-        "Shrinkage test tolerance changed to 3%",
-        "Inspection date rescheduled"
-      ],
-      timestamp: "2026-06-02T16:15:00Z"
-    },
-    {
-      id: "19",
-      orderNo: "PO-1019",
-      person: "Rahul Sharma",
-      actionType: "Updated",
-      changeDetails: "Carton marking text updated for shipping",
-      timestamp: "2026-06-02T13:10:00Z"
-    },
-    {
-      id: "20",
-      orderNo: "PO-1020",
-      person: "Priya Mehta",
-      actionType: "Rejected",
-      changeDetails: "Bulk fabric roll QA status rejected (GSM variations)",
-      timestamp: "2026-06-01T10:00:00Z"
-    }
-  ];
-};
+import { getLogs as getRealLogs } from "@/lib/logger";
+const getLogs = (): SystemLog[] => { return getRealLogs() as any[]; };
 
 // --- Helper for Parsing Change Text ---
 const parseChange = (text: string) => {
@@ -281,7 +109,7 @@ function OrderDetailsView({
                 <td className="px-6 py-4 align-top">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                      {new Date(log.timestamp).toLocaleDateString()}
+                      {formatDateDisplay(log.timestamp)}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -535,6 +363,7 @@ export default function LogsPage() {
                 </label>
                 <input
                   type="date"
+                  lang="en-GB"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
                   className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
@@ -546,6 +375,7 @@ export default function LogsPage() {
                 </label>
                 <input
                   type="date"
+                  lang="en-GB"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
                   className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"

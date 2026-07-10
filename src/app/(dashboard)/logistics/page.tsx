@@ -57,11 +57,25 @@ export default function LogisticsPage() {
     }
   }, []);
 
-  const saveLogisticsProgress = (step: number, completed: number[], archived: boolean) => {
+  const saveLogisticsProgress = async (step: number, completed: number[], archived: boolean) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const po = params.get('poNumber');
     if (po) {
+      if (archived) {
+        try {
+          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+          await fetch(`${BACKEND_URL}/purchase_orders/update_stage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ poNumber: po, stage: "Archived" })
+          });
+          window.dispatchEvent(new Event("orders-updated"));
+        } catch (e) {
+          console.error("Failed to archive logistics order:", e);
+        }
+      }
+      
       updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
         return orders.map((o: any) => o.poNumber === po ? {
           ...o,

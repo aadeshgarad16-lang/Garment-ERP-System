@@ -81,13 +81,7 @@ export default function LoginPage() {
 
   const validateForm = () => {
     if (!formData.email.trim()) {
-      return "Email is required";
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(formData.email)) {
-      return "Please enter a valid email";
+      return "Please enter a valid Contact Number / User ID";
     }
 
     if (!formData.password.trim()) {
@@ -102,7 +96,7 @@ export default function LoginPage() {
   };
 
   const handleLogin = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
 
       const validationError = validateForm();
@@ -130,11 +124,10 @@ export default function LoginPage() {
         console.error(err);
       }
 
-      const result = login({
-        name: "",
+      const result = await login({
+        contactNo: formData.email,
         email: formData.email,
         password: formData.password,
-        role: formData.role,
       });
 
       if (!result.success) {
@@ -205,19 +198,19 @@ export default function LoginPage() {
         >
           <div>
             <label className="block mb-2 text-sm font-medium">
-              Email
+              Contact Number (User ID)
             </label>
 
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <UserCog className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
 
               <input
-                type="email"
+                type="text"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg"
-                placeholder="admin@sason.com"
+                placeholder="Enter 10-digit Mobile Number"
               />
             </div>
           </div>
@@ -241,31 +234,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block mb-2 text-sm font-medium">
-              Role
-            </label>
 
-            <div className="relative">
-              <UserCog className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg"
-              >
-                {ROLES.map((role) => (
-                  <option
-                    key={role}
-                    value={role}
-                  >
-                    {role}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
 
           <label className="flex items-center gap-2">
             <input
@@ -286,15 +255,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="text-center mt-6 text-sm">
-          Don't have an account?{" "}
-          <Link
-            href="/register"
-            className="text-blue-600 font-medium"
-          >
-            Sign Up
-          </Link>
-        </div>
+
       </div>
     </div>
   );

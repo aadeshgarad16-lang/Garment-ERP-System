@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -21,37 +20,26 @@ import {
   Package,
   Archive,
   RefreshCw,
-  Trash2
+  Trash2,
+  Star,
+  Mail,
+  Phone
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { formatDateDisplay } from '@/utils/dateUtils';
 
 // Shared Mock Data representing Shortages from Inventory
-const mockShortages = [
-  { id: 'PR-2026-101', material: 'Denim Fabric (Blue)', category: 'Fabric', required: 800, available: 0, shortage: 800, unit: 'meters', supplier: 'TexMill Global', cost: 4000, priority: 'Critical', status: 'Pending Procurement' },
-  { id: 'PR-2026-102', material: 'Polyester Thread (Navy)', category: 'Thread', required: 200, available: 120, shortage: 80, unit: 'spools', supplier: 'StitchCo', cost: 160, priority: 'Medium', status: 'Vendor Assigned' },
-  { id: 'PR-2026-103', material: 'Metal Hooks (Silver)', category: 'Hooks', required: 300, available: 150, shortage: 150, unit: 'pieces', supplier: 'ZipCorp', cost: 45, priority: 'High', status: 'Ordered' },
-];
+const mockShortages: any[] = [];
+// Removed static mockSuppliers to draw entirely from dynamic backend state
 
-const mockSuppliers = [
-  { name: 'TexMill Global', materials: 'Fabric, Denim', performance: 98, status: 'Active', contact: 'sales@texmill.com', leadTime: '5-7 Days', preferred: true },
-  { name: 'ZipCorp', materials: 'Zippers, Hooks', performance: 92, status: 'Active', contact: 'orders@zipcorp.com', leadTime: '2-3 Days', preferred: true },
-  { name: 'StitchCo', materials: 'Thread, Needles', performance: 85, status: 'Under Review', contact: 'supply@stitchco.com', leadTime: '4-6 Days', preferred: false },
-  { name: 'ButtonWorks', materials: 'Buttons, Fasteners', performance: 99, status: 'Active', contact: 'hello@buttonworks.com', leadTime: '2-5 Days', preferred: true },
-];
-
-const inventoryMaterials = [
-  { id: 'MAT-005', name: 'Denim Fabric (Blue)', category: 'Fabric', unit: 'meters', supplier: 'TexMill Global', costPerUnit: 5, priority: 'Critical', available: 0, required: 800 },
-  { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', unit: 'spools', supplier: 'StitchCo', costPerUnit: 2, priority: 'Medium', available: 120, required: 200 },
-  { id: 'MAT-007', name: 'Metal Hooks (Silver)', category: 'Hooks', unit: 'pieces', supplier: 'ZipCorp', costPerUnit: 0.3, priority: 'High', available: 150, required: 300 },
-  { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', unit: 'meters', supplier: 'TexMill Global', costPerUnit: 5, priority: 'Low', available: 1250, required: 1000 },
-  { id: 'MAT-003', name: 'Metal Zippers 15cm', category: 'Zippers', unit: 'pieces', supplier: 'ZipCorp', costPerUnit: 1.5, priority: 'Low', available: 45, required: 0 },
-  { id: 'MAT-004', name: 'Plastic Buttons (Black)', category: 'Buttons', unit: 'pieces', supplier: 'ButtonWorks', costPerUnit: 0.5, priority: 'Low', available: 5000, required: 5000 },
-  { id: 'MAT-006', name: 'Standard Collar (White)', category: 'Collar/Cuff', unit: 'pieces', supplier: 'TexMill Global', costPerUnit: 3, priority: 'Low', available: 800, required: 600 },
-  { id: 'MAT-008', name: 'Linen Fabric (Beige)', category: 'Fabric', unit: 'meters', supplier: 'TexMill Global', costPerUnit: 6, priority: 'Low', available: 320, required: 0 }
-];
+const getPerformanceBarColor = (performance: number) => {
+  if (performance >= 90) return 'bg-emerald-500';
+  if (performance >= 70) return 'bg-amber-500';
+  return 'bg-red-500';
+};
 
 export default function CreateProcurementPage() {
   const router = useRouter();
@@ -95,6 +83,41 @@ export default function CreateProcurementPage() {
   const [archivedItems, setArchivedItems] = useState<any[]>([]);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+
+  // Real Database Suppliers State
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
+
+  // Real Database Materials State
+  const [inventoryMaterials, setInventoryMaterials] = useState<any[]>([]);
+
+  // Fetch real supplier directory profiles on component load
+  useEffect(() => {
+    async function fetchSuppliers() {
+      try {
+        const response = await fetch('/api/suppliers');
+        if (!response.ok) throw new Error('Network response exception');
+        const data = await response.json();
+        setSuppliers(data);
+      } catch (error) {
+        console.error("Error connecting to supplier directory service:", error);
+      } finally {
+        setIsLoadingSuppliers(false);
+      }
+    }
+    async function fetchMaterials() {
+      try {
+        const response = await fetch('/api/store-materials');
+        if (!response.ok) return;
+        const data = await response.json();
+        setInventoryMaterials(data);
+      } catch (error) {
+        console.error("Error connecting to store materials API:", error);
+      }
+    }
+    fetchSuppliers();
+    fetchMaterials();
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -203,13 +226,13 @@ export default function CreateProcurementPage() {
 
         if (matchedAutoReqs.length > 0) {
           const mappedItems = matchedAutoReqs.map((req: any, idx: number) => {
-            const match = inventoryMaterials.find(m => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || inventoryMaterials[0];
+            const match = inventoryMaterials.find((m: any) => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || ({} as any);
             return {
               key: `bom-${idx}-${Date.now()}`,
               materialId: match.id,
               customName: req.material,
               quantity: req.shortage,
-              supplier: match.supplier
+              supplier: match.supplier || (suppliers[0]?.name || '')
             };
           });
           setRequestedMaterials(mappedItems);
@@ -219,13 +242,13 @@ export default function CreateProcurementPage() {
             const available = spec.stockAvailable || 0;
             const shortage = Math.max(0, required - available);
             if (shortage > 0) {
-              const match = inventoryMaterials.find(m => m.name.includes(spec.itemDescription || '')) || inventoryMaterials[0];
+              const match = inventoryMaterials.find((m: any) => m.name.includes(spec.itemDescription || '')) || ({} as any);
               return {
                 key: `init-${idx}-${Date.now()}`,
                 materialId: match.id,
                 customName: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
                 quantity: shortage,
-                supplier: match.supplier
+                supplier: match.supplier || (suppliers[0]?.name || '')
               };
             }
             return null;
@@ -234,10 +257,10 @@ export default function CreateProcurementPage() {
         }
       }
     }
-  }, [searchParams]);
+  }, [searchParams, suppliers]);
 
   const getMaterialDetails = (id: string) => {
-    return inventoryMaterials.find(m => m.id === id) || inventoryMaterials[0];
+    return inventoryMaterials.find((m: any) => m.id === id) || ({} as any);
   };
 
   const handleAddMaterialRow = () => {
@@ -247,7 +270,7 @@ export default function CreateProcurementPage() {
         key: `new-${Date.now()}-${Math.random()}`,
         materialId: 'MAT-001',
         quantity: 100,
-        supplier: 'TexMill Global'
+        supplier: suppliers[0]?.name || 'Pending Assignment'
       }
     ]);
   };
@@ -270,13 +293,13 @@ export default function CreateProcurementPage() {
     }
   };
 
-  const handleMaterialUpdate = (index: number, field: string, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const handleMaterialUpdate = (index: number, field: string, value: any) => {
     setRequestedMaterials(prev => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
       if (field === 'materialId') {
-        const details = inventoryMaterials.find(m => m.id === value);
-        if (details) {
+        const details = inventoryMaterials.find((m: any) => m.id === value);
+        if (details && details.supplier) {
           next[index].supplier = details.supplier;
         }
       }
@@ -323,13 +346,13 @@ export default function CreateProcurementPage() {
 
         if (matchedAutoReqs.length > 0) {
           const mappedItems = matchedAutoReqs.map((req: any, idx: number) => {
-            const match = inventoryMaterials.find(m => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || inventoryMaterials[0];
+            const match = inventoryMaterials.find((m: any) => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || ({} as any);
             return {
               key: `bom-${idx}-${Date.now()}`,
               materialId: match.id,
               customName: req.material,
               quantity: req.shortage,
-              supplier: match.supplier
+              supplier: match.supplier || (suppliers[0]?.name || '')
             };
           });
           setRequestedMaterials(mappedItems);
@@ -339,13 +362,13 @@ export default function CreateProcurementPage() {
             const available = spec.stockAvailable || 0;
             const shortage = Math.max(0, required - available);
             if (shortage > 0) {
-              const match = inventoryMaterials.find(m => m.name.includes(spec.itemDescription || '')) || inventoryMaterials[0];
+              const match = inventoryMaterials.find((m: any) => m.name.includes(spec.itemDescription || '')) || ({} as any);
               return {
                 key: `dyn-${idx}-${Date.now()}`,
                 materialId: match.id,
                 customName: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
                 quantity: shortage,
-                supplier: match.supplier
+                supplier: match.supplier || (suppliers[0]?.name || '')
               };
             }
             return null;
@@ -405,10 +428,10 @@ export default function CreateProcurementPage() {
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </div>
             <h2 className="text-xl font-bold text-emerald-800">
-              {t('SubmittedSuccess') || 'Purchase Request Submitted Successfully'}
+              {t('procurement.submittedSuccess') || 'Purchase Request Submitted Successfully'}
             </h2>
             <p className="text-emerald-600 text-sm mt-1">
-              {t('SubmittedDesc') || `PO Number ${formData.poNumber} has been sent for approval.`}
+              {t('procurement.submittedDesc') || `PO Number ${formData.poNumber} has been sent for approval.`}
             </p>
           </div>
 
@@ -443,7 +466,7 @@ export default function CreateProcurementPage() {
                 onClick={() => advanceStage('/procurement', 'Procurement')}
                 className="px-5 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 rounded-lg font-medium text-sm transition-colors"
               >
-                {t('Back To Summary') || 'Back to Procurement'}
+                {t('procurement.backToSummary') || 'Back to Procurement'}
               </button>
               <button
                 onClick={() => advanceStage('/procurement', 'Procurement')}
@@ -464,30 +487,30 @@ export default function CreateProcurementPage() {
                 <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
                     <Archive className="h-5 w-5 text-indigo-600" />
-                    Archived Items Dashboard
+                    {t('procurement.archiveDashboard') || 'Archived Items Dashboard'}
                   </h2>
                   <button
                     onClick={() => setShowArchive(false)}
                     className="px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 rounded-lg text-sm font-medium shadow-sm transition-colors"
                   >
-                    Back to Procurement
+                    {t('procurement.backToProcurement') || 'Back to Procurement'}
                   </button>
                 </div>
                 <div className="p-6">
                   {archivedItems.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-xl bg-neutral-50 dark:bg-slate-900/50">
                       <Archive className="h-10 w-10 text-neutral-300 dark:text-slate-600 mx-auto mb-3" />
-                      <p className="text-neutral-500 dark:text-neutral-400 font-medium">No archived materials found.</p>
+                      <p className="text-neutral-500 dark:text-neutral-400 font-medium">{t('procurement.noArchivedItems') || 'No archived materials found.'}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto border border-neutral-200 dark:border-slate-700 rounded-xl">
                       <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
                           <tr className="bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[10px] uppercase font-bold text-neutral-500 dark:text-neutral-400 tracking-wider">
-                            <th className="px-4 py-3">Material Name</th>
-                            <th className="px-4 py-3">PO Number</th>
-                            <th className="px-4 py-3">Archived Date</th>
-                            <th className="px-4 py-3">Reason</th>
+                            <th className="px-4 py-3">{t('inventoryVal.materialsHeader') || 'Material Name'}</th>
+                            <th className="px-4 py-3">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</th>
+                            <th className="px-4 py-3">{t('procurement.archivedDate') || 'Archived Date'}</th>
+                            <th className="px-4 py-3">{t('procurement.archiveReason') || 'Reason'}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -501,7 +524,7 @@ export default function CreateProcurementPage() {
                                   {item.linkedPO}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
-                                  {item.archivedDate ? new Date(item.archivedDate).toLocaleDateString() : 'N/A'}
+                                  {item.archivedDate ? formatDateDisplay(item.archivedDate) : 'N/A'}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-neutral-500 italic">
                                   {item.archiveReason || 'Not Related To Current Order'}
@@ -522,7 +545,6 @@ export default function CreateProcurementPage() {
                     {t('procurement.requestFormTitle') || 'Purchase Request Configuration'}
                   </h2>
                 </div>
-
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -550,7 +572,8 @@ export default function CreateProcurementPage() {
                         {t('dashboard.recentOrders.headers.deliveryDate') || 'Request Date'}
                       </label>
                       <input
-                        type="text"
+                        type="date"
+                        lang="en-GB"
                         value={formData.requestDate}
                         disabled
                         className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
@@ -575,7 +598,7 @@ export default function CreateProcurementPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                        {t('role') || 'Department'}
+                        {t('common.department') || 'Department'}
                       </label>
                       <select
                         name="department"
@@ -595,7 +618,7 @@ export default function CreateProcurementPage() {
                     <div className="flex justify-between items-center bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
                       <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 text-xs font-semibold uppercase tracking-wider">
                         <FileCheck2 className="h-4 w-4" />
-                        Material Procurement Form
+                        {t('procurement.materialForm') || 'Material Procurement Form'}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -604,7 +627,7 @@ export default function CreateProcurementPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg text-xs font-bold shadow-sm transition-colors"
                         >
                           <Archive className="h-3.5 w-3.5" />
-                          Archive Box ({archivedItems.length})
+                          {t('procurement.archiveBox') || 'Archive Box'} ({archivedItems.length})
                         </button>
                         <button
                           type="button"
@@ -612,7 +635,7 @@ export default function CreateProcurementPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Add Material
+                          {t('procurement.addMaterial') || 'Add Material'}
                         </button>
                       </div>
                     </div>
@@ -622,11 +645,11 @@ export default function CreateProcurementPage() {
                         {/* Header Row */}
                         <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[10px] uppercase font-bold text-neutral-500 dark:text-neutral-400 tracking-wider whitespace-nowrap px-6 py-3">
                           <div>{t('inventoryVal.materialsHeader') || 'Material'}</div>
-                          <div>Quantity</div>
-                          <div>Unit</div>
+                          <div>{t('procurement.quantity') || 'Quantity'}</div>
+                          <div>{t('procurement.unit') || 'Unit'}</div>
                           <div>{t('bom.customer') || 'Supplier'}</div>
-                          <div className="text-right">Est. Cost</div>
-                          <div className="text-center">Actions</div>
+                          <div className="text-right">{t('procurement.estCost') || 'Est. Cost'}</div>
+                          <div className="text-center">{t('procurement.actions') || 'Actions'}</div>
                         </div>
 
                         {/* Body Rows */}
@@ -653,7 +676,7 @@ export default function CreateProcurementPage() {
                                         : 'border-neutral-200 dark:border-slate-700/80 text-neutral-800 dark:text-neutral-200 focus:ring-indigo-500'
                                         }`}
                                     >
-                                      {inventoryMaterials.map(m => {
+                                      {inventoryMaterials.map((m: any) => {
                                         const optionShort = m.available < m.required;
                                         return (
                                           <option
@@ -701,9 +724,13 @@ export default function CreateProcurementPage() {
                                       onChange={(e) => handleMaterialUpdate(index, 'supplier', e.target.value)}
                                       className="w-full h-9 px-3 py-1.5 border border-neutral-200 dark:border-slate-700/80 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 text-neutral-800 dark:text-neutral-200 shadow-sm"
                                     >
-                                      {mockSuppliers.map((sup, idx) => (
-                                        <option key={idx} value={sup.name}>{sup.name}</option>
-                                      ))}
+                                      {isLoadingSuppliers ? (
+                                        <option>{t('procurement.loading') || 'Loading...'}</option>
+                                      ) : (
+                                        suppliers.map((sup, idx) => (
+                                          <option key={idx} value={sup.name}>{sup.name}</option>
+                                        ))
+                                      )}
                                     </select>
                                   </div>
                                 </div>
@@ -754,7 +781,7 @@ export default function CreateProcurementPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                      Upload Purchase Order (PO)
+                      {t('procurement.uploadPoLabel') || 'Upload Purchase Order (PO)'}
                     </label>
                     <textarea
                       name="notes"
@@ -772,7 +799,7 @@ export default function CreateProcurementPage() {
                       onClick={() => advanceStage('/procurement', 'Procurement')}
                       className="px-5 py-2.5 text-neutral-600 dark:text-neutral-400 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
                     >
-                      {t('back') || 'Cancel'}
+                      {t('common.cancel') || 'Cancel'}
                     </button>
                     <button
                       type="submit"
@@ -799,7 +826,7 @@ export default function CreateProcurementPage() {
               <div className="p-5 space-y-4">
                 <div>
                   <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                    Total Unique Items
+                    {t('procurement.totalUniqueItems') || 'Total Unique Items'}
                   </span>
                   <p className="text-2xl font-extrabold text-indigo-900">
                     {requestedMaterials.length}
@@ -809,7 +836,7 @@ export default function CreateProcurementPage() {
                 <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-slate-800">
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                      Total Volume
+                      {t('procurement.totalVolume') || 'Total Volume'}
                     </span>
                     <p className="text-md font-semibold text-neutral-700 dark:text-neutral-300">
                       {totalItemsCount.toLocaleString()} units
@@ -817,7 +844,7 @@ export default function CreateProcurementPage() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                      Est. Cost
+                      {t('procurement.estCost') || 'Est. Cost'}
                     </span>
                     <p className="text-md font-bold text-red-600">
                       ₹{estimatedCost.toLocaleString()}
@@ -828,7 +855,7 @@ export default function CreateProcurementPage() {
                 {requestedMaterials.length > 0 && (
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                      Shortage Breakdown
+                      {t('procurement.shortageBreakdown') || 'Shortage Breakdown'}
                     </span>
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {requestedMaterials.map((item, idx) => {
@@ -855,26 +882,76 @@ export default function CreateProcurementPage() {
                 </h3>
               </div>
               <div className="p-5 space-y-4">
-                {Array.from(new Set(requestedMaterials.map(m => m.supplier))).map((supplierName, idx) => {
-                  const sup = mockSuppliers.find(s => s.name === supplierName) || mockSuppliers[0];
-                  return (
-                    <div key={idx} className="border-b border-neutral-100 dark:border-slate-800 last:border-b-0 pb-3 last:pb-0 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100">{sup.name}</h4>
-                          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">{sup.materials}</p>
-                        </div>
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                          {sup.performance}% Rel.
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
-                        <span>Lead Time: {sup.leadTime}</span>
-                        <span className="text-emerald-600 font-bold uppercase">{sup.status}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-neutral-200 dark:border-slate-700 bg-neutral-50/50 dark:bg-slate-800/50">
+                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Supplier Name</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Material Specialities</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Leadtime</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Performance</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                      {/* Left completely blank intentionally to await dynamic backend data */}
+                      {!isLoadingSuppliers && suppliers.map((sup, idx) => (
+                        <tr key={sup.id || idx} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
+                          {/* Column 1: Customer Name */}
+                          <td className="px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                            <div className="flex items-center gap-1.5">
+                              {sup.name}
+                              {sup.isFavorite !== false && (
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                              )}
+                            </div>
+                          </td>
+                          {/* Column 2: Material Specialities */}
+                          <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                            {sup.materials}
+                          </td>
+                          {/* Column 3: Leadtime */}
+                          <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                            {sup.leadTime}
+                          </td>
+                          {/* Column 4: Performance */}
+                          <td className="px-6 py-4 text-sm">
+                            <div className="flex flex-col gap-1 w-24">
+                              <div className="w-full bg-neutral-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full ${getPerformanceBarColor(sup.performance || 90)}`}
+                                  style={{ width: `${sup.performance || 90}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-400">
+                                {sup.performance}%
+                              </span>
+                            </div>
+                          </td>
+                          {/* Column 5: Status Badge & Actions */}
+                          <td className="px-6 py-4 text-sm">
+                            <div className="flex flex-col items-start gap-1.5">
+                              <span className="text-[10px] font-extrabold tracking-wide px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 uppercase">
+                                {sup.status}
+                              </span>
+                              <div className="flex items-center gap-2 text-neutral-400">
+                                <button type="button" className="hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+                                  <Mail className="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" className="hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+                                  <Phone className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {isLoadingSuppliers && (
+                    <p className="p-4 text-xs text-neutral-500 dark:text-neutral-400">{t('procurement.loadingSuppliers') || 'Loading active suppliers...'}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

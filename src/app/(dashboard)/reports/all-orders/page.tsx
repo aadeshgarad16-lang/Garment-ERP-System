@@ -12,16 +12,8 @@ import {
 import Link from 'next/link';
 
 // --- MOCK DATA GENERATION ---
-const recentDates = ['2026-05-23', '2026-05-24', '2026-05-25', '2026-05-26'];
-const totalOrdersData = Array.from({ length: 1495 }).map((_, i) => ({
-  id: `PO-2026-${String(i + 1).padStart(4, '0')}`,
-  customer: ['Acme Retail', 'Global Fashion', 'Urban Styles', 'Boutique XYZ', 'Mega Mart'][i % 5],
-  poDate: recentDates[i % 4],
-  deliveryDate: `2026-06-${String((i % 10) + 10).padStart(2, '0')}`,
-  status: ['In Production', 'Pending', 'Delivered', 'Cutting'][i % 4],
-  amount: `₹${(Math.random() * 20000 + 5000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-  items: `${Math.floor(Math.random() * 2000 + 100)} units`
-}));
+
+const totalOrdersData: any[] = [];
 
 export default function AllOrdersPage() {
   const router = useRouter();
@@ -165,3 +157,4 @@ export default function AllOrdersPage() {
     </div>
   );
 }
+

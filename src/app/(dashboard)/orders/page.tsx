@@ -12,9 +12,13 @@ import {
   ShoppingBag,
   X,
   Eye,
+  Calendar,
 } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useOrders } from "@/contexts/order-context";
+import { usePermission } from "@/hooks/usePermission";
+import { PermissionGuard } from "@/components/PermissionGuard";
+import { formatDateDisplay } from "@/utils/dateUtils";
 
 interface GarmentSpec {
   id: string;
@@ -86,6 +90,7 @@ const inputStyle = getInputStyle();
 function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isReadOnly } = usePermission("Order Initiation");
   const { reloadOrders } = useOrders();
   const resumeId = searchParams.get("resumeId");
 
@@ -95,6 +100,32 @@ function OrdersPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; base64: string } | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  
+  // Presentation Wrappers for Date Inputs
+  const [poDateDisplay, setPoDateDisplay] = useState("");
+  const [deliveryDateDisplay, setDeliveryDateDisplay] = useState("");
+  
+  // Initialize display dates when formState updates from external sources (e.g. edit mode)
+  useEffect(() => {
+    if (formState.poDate && poDateDisplay.length !== 10) setPoDateDisplay(formatDateDisplay(formState.poDate));
+    if (formState.deliveryDate && deliveryDateDisplay.length !== 10) setDeliveryDateDisplay(formatDateDisplay(formState.deliveryDate));
+  }, [formState.poDate, formState.deliveryDate]);
+
+  const handleDateMask = (field: "poDate" | "deliveryDate", rawValue: string) => {
+    let val = rawValue.replace(/\D/g, "");
+    if (val.length > 2) val = val.substring(0, 2) + "/" + val.substring(2);
+    if (val.length > 5) val = val.substring(0, 5) + "/" + val.substring(5, 9);
+    
+    if (field === "poDate") setPoDateDisplay(val);
+    else setDeliveryDateDisplay(val);
+
+    if (val.length === 10) {
+      const [d, m, y] = val.split("/");
+      handleInputChange(field, `${y}-${m}-${d}`);
+    } else {
+      handleInputChange(field, "");
+    }
+  };
   const [specs, setSpecs] = useState<GarmentSpec[]>([
     { id: "1", itemDescription: "", size: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null },
   ]);
@@ -224,6 +255,9 @@ function OrdersPageContent() {
         if (!cleanVal || Number(cleanVal) <= 0) return "Must be greater than 0";
         break;
       }
+      case "paymentTerm":
+        if (!strVal || strVal === "Select term...") return "Required";
+        break;
     }
     return undefined;
   }, [formState]);
@@ -448,6 +482,19 @@ function OrdersPageContent() {
     }, 0);
   };
 
+  const formatDateForInput = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr.split("T")[0];
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${month}-${day}`;
+    } catch {
+      return dateStr.split("T")[0];
+    }
+  };
+
   const totalAmountCalculations = useMemo(() => {
     const totalAmount = Number(String(formState.poAmount || 0).replace(/[^0-9.]/g, "")) || 0;
     const remainingAmount = Math.max(0, totalAmount - (Number(String(formState.advancedAmount || 0).replace(/[^0-9.]/g, "")) || 0));
@@ -586,11 +633,11 @@ function OrdersPageContent() {
                   </label>
                   <input
                     id="poNumber"
-
                     type="text"
                     value={formState.poNumber}
                     readOnly
-                    className={`${getInputStyle(errors.poNumber)} bg-neutral-100 dark:bg-slate-800 cursor-not-allowed`}
+                    disabled={isReadOnly}
+                    className={`${getInputStyle(errors.poNumber)} bg-neutral-100 dark:bg-slate-800 cursor-not-allowed disabled:opacity-60`}
                   />
                   {errors.poNumber && <p className="text-red-500 text-xs mt-1">{errors.poNumber}</p>}
 
@@ -617,14 +664,30 @@ function OrdersPageContent() {
                   <label htmlFor="poDate" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     PO Date <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="poDate"
-                    type="date"
-                    value={formState.poDate ? formState.poDate.split("T")[0] : ""}
-                    onBlur={() => handleBlur("poDate")}
-                    onChange={(e) => handleInputChange("poDate", e.target.value)}
-                    className={`${getInputStyle(errors.poDate)} h-[42px]`}
-                  />
+                  <div className="relative">
+                    <input
+                      id="poDate"
+                      type="text"
+                      placeholder="dd/mm/yyyy"
+                      value={poDateDisplay}
+                      readOnly
+                      disabled={isReadOnly}
+                      className={`${getInputStyle(errors.poDate)} h-[42px] disabled:opacity-60 disabled:cursor-not-allowed pr-10`}
+                    />
+                    <input
+                      type="date"
+                      value={formState.poDate}
+                      onChange={(e) => handleInputChange("poDate", e.target.value)}
+                      onClick={(e) => {
+                        try {
+                          (e.target as HTMLInputElement).showPicker();
+                        } catch (err) {}
+                      }}
+                      disabled={isReadOnly}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                  </div>
                   {errors.poDate && <p className="text-red-500 text-xs mt-1">{errors.poDate}</p>}
                 </div>
 
@@ -632,14 +695,30 @@ function OrdersPageContent() {
                   <label htmlFor="deliveryDate" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     Delivery Date <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    id="deliveryDate"
-                    type="date"
-                    value={formState.deliveryDate ? formState.deliveryDate.split("T")[0] : ""}
-                    onBlur={() => handleBlur("deliveryDate")}
-                    onChange={(e) => handleInputChange("deliveryDate", e.target.value)}
-                    className={`${getInputStyle(errors.deliveryDate)} h-[42px]`}
-                  />
+                  <div className="relative">
+                    <input
+                      id="deliveryDate"
+                      type="text"
+                      placeholder="dd/mm/yyyy"
+                      value={deliveryDateDisplay}
+                      readOnly
+                      disabled={isReadOnly}
+                      className={`${getInputStyle(errors.deliveryDate)} h-[42px] disabled:opacity-60 disabled:cursor-not-allowed pr-10`}
+                    />
+                    <input
+                      type="date"
+                      value={formState.deliveryDate}
+                      onChange={(e) => handleInputChange("deliveryDate", e.target.value)}
+                      onClick={(e) => {
+                        try {
+                          (e.target as HTMLInputElement).showPicker();
+                        } catch (err) {}
+                      }}
+                      disabled={isReadOnly}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                  </div>
                   {errors.deliveryDate && <p className="text-red-500 text-xs mt-1">{errors.deliveryDate}</p>}
                 </div>
 
@@ -654,7 +733,8 @@ function OrdersPageContent() {
                     onBlur={() => handleBlur("customerName")}
                     onChange={(e) => handleInputChange("customerName", e.target.value)}
                     placeholder="Enter customer name"
-                    className={getInputStyle(errors.customerName)}
+                    disabled={isReadOnly}
+                    className={`${getInputStyle(errors.customerName)} disabled:opacity-60 disabled:cursor-not-allowed`}
                   />
                   {errors.customerName && <p className="text-red-500 text-xs mt-1">{errors.customerName}</p>}
                 </div>
@@ -703,7 +783,7 @@ function OrdersPageContent() {
                                 />
                               </td>
                               <td className="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{po.poNumber}</td>
-                              <td className="px-4 py-3">{po.poDate ? po.poDate.split("T")[0] : "—"}</td>
+                              <td className="px-4 py-3">{po.poDate ? formatDateDisplay(po.poDate) : "—"}</td>
                               <td className="px-4 py-3">{po.customerName}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${po.status === 'SUBMITTED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
@@ -1194,9 +1274,9 @@ function OrdersPageContent() {
                 type="button"
                 onClick={handleSubmitOrder}
                 disabled={isSaving}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+                className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2"
               >
-                {isSaving ? "Submitting..." : "Submit and Go to Specification →"}
+                {isSaving ? "Submitting..." : "Submit & Go to Specification →"}
               </button>
             </div>
           </div>

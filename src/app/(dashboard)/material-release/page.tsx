@@ -23,12 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 
 // Mock Data representing Frozen materials from Material Allocation
-const mockFrozenMaterials = [
-  { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', frozenQty: 1000, unit: 'meters', destination: 'Line 1 - Stitching' },
-  { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', frozenQty: 100, unit: 'spools', destination: 'Line 1 - Stitching' },
-  { id: 'MAT-004', name: 'Plastic Buttons (Black)', category: 'Buttons', frozenQty: 5000, unit: 'pieces', destination: 'Line 2 - Assembly' },
-  { id: 'MAT-006', name: 'Standard Collar (White)', category: 'Collar/Cuff', frozenQty: 600, unit: 'pieces', destination: 'Line 1 - Stitching' },
-];
+const mockFrozenMaterials: any[] = [];
 
 const floorSupervisorsMap: Record<string, string[]> = {
   'Floor 1 - Cutting': ['Amit Sharma', 'Priya Patel'],
@@ -203,7 +198,7 @@ export default function MaterialReleasePage() {
         </div>
         <div>
           <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><Clock className="h-3.5 w-3.5" /> {t('procurement.releaseDate') || 'Release Date'}</label>
-          <input type="date" className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500" value={releaseInfo.date} onChange={e => setReleaseInfo({ ...releaseInfo, date: e.target.value })} disabled={releaseCompleted} />
+          <input type="date" lang="en-GB" className="w-full px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 border rounded-lg border-neutral-300 dark:border-slate-600 focus:ring-indigo-500 focus:border-indigo-500" value={releaseInfo.date} onChange={e => setReleaseInfo({ ...releaseInfo, date: e.target.value })} disabled={releaseCompleted} />
         </div>
         <div>
           <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-1 mb-1"><Clock className="h-3.5 w-3.5" /> {t('procurement.releaseTime') || 'Release Time'}</label>
@@ -425,3 +420,4 @@ export default function MaterialReleasePage() {
     </div>
   );
 }
+

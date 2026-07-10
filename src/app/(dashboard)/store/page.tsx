@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Store,
@@ -8,7 +8,6 @@ import {
   AlertCircle,
   CheckCircle2,
   AlertTriangle,
-  Box,
   Package,
   Eye,
   Edit,
@@ -18,13 +17,51 @@ import {
   Search,
   Filter,
   ChevronDown,
+  ChevronRight,
+  List,
+  ChevronLeft,
 } from "lucide-react";
+
+import { getAuthHeaders } from "@/lib/api";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
+
+// --- Utility Functions ---
+export const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2
+  }).format(Number(amount) || 0);
+};
+
+export const calculateTotalPrice = (availableQty: number | string, blockedQty: number | string, unitPrice: number | string): number => {
+  const avail = Number(availableQty) || 0;
+  // Per user requirements, do not add blockedQty to Total Price formula
+  const price = Number(unitPrice) || 0;
+  return avail * price;
+};
+// -------------------------
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 // ==========================================
 // MAIN DASHBOARD PAGE
 // ==========================================
 export default function StorePage() {
   const [activeTab, setActiveTab] = useState("raw");
+  const [editRequest, setEditRequest] = useState<{ type: string, item: any } | null>(null);
 
   return (
     <div className="max-w-full mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
@@ -41,14 +78,13 @@ export default function StorePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setActiveTab("raw")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${
-              activeTab === "raw"
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
-            }`}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              }`}
           >
             Raw Material
           </button>
@@ -62,12 +98,26 @@ export default function StorePage() {
           >
             Pre-Stitched
           </button>
+
+          <button
+            onClick={() => setActiveTab("list")}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "list"
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              }`}
+          >
+            Material List
+          </button>
         </div>
       </div>
 
       {/* Dynamic Module Rendering */}
-      {activeTab === "raw" && <RawMaterialModule />}
-      {activeTab === "pre" && <PreStitchedModule />}
+      {activeTab === "raw" && <RawMaterialModule editRequest={editRequest?.type === 'Material' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
+      {activeTab === "pre" && <PreStitchedModule editRequest={editRequest?.type === 'Garment' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
+      {activeTab === "list" && <MaterialListModule onEdit={(type, item) => {
+        setEditRequest({ type, item });
+        setActiveTab(type === 'Material' ? 'raw' : 'pre');
+      }} />}
     </div>
   );
 }
@@ -75,28 +125,37 @@ export default function StorePage() {
 // ==========================================
 // RAW MATERIAL MODULE
 // ==========================================
-function RawMaterialModule() {
+function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any, onEditConsumed?: () => void }) {
   const [selectedCard, setSelectedCard] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [rawColumnFilters, setRawColumnFilters] = useState({
+
+  const [filters, setFilters] = useState({
     hsnCode: "all",
     materialName: "all",
-  });
-
-  // Filters state
-  const [filters, setFilters] = useState({
-    category: "all",
-    supplier: "all",
-    dateRange: "all",
+    quantityRange: "all",
   });
   const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [activeDescriptionId, setActiveDescriptionId] = useState<number | null>(null);
   const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState('material_name');
+  const [sortOrder, setSortOrder] = useState('ASC');
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const [metrics, setMetrics] = useState({ total: 0, available: 0, low_stock: 0, out_of_stock: 0 });
+  const [filterOptions, setFilterOptions] = useState({ categories: [], hsn_codes: [], material_names: [] });
+  const [loading, setLoading] = useState(true);
+  const [uiError, setUiError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -130,50 +189,108 @@ function RawMaterialModule() {
     };
   }, []);
 
-  const [materials, setMaterials] = useState([
-    {
-      id: 1,
-      hsnCode: "520811",
-      materialName: "Cotton Fabric",
-      description: "16*12 Drill Cotton Beige",
-      unit: "Mtrs",
-      rate: 120,
-      availableQty: 500,
-      blockedQty: 25,
-      unitPrice: 120,
-      minimumRequired: 200,
-      category: "Plastics",
-      dateCreated: "2026-06-18",
-    },
-    {
-      id: 2,
-      hsnCode: "520812",
-      materialName: "Buttons",
-      description: "White Plastic Button",
-      unit: "Nos",
-      rate: 2,
-      availableQty: 80,
-      blockedQty: 25,
-      unitPrice: 2,
-      minimumRequired: 100,
-      category: "Metals",
-      dateCreated: "2026-06-01",
-    },
-    {
-      id: 3,
-      hsnCode: "520813",
-      materialName: "Labels",
-      description: "Brand Label",
-      unit: "Nos",
-      rate: 5,
-      availableQty: 0,
-      blockedQty: 25,
-      unitPrice: 5,
-      minimumRequired: 50,
-      category: "Packaging",
-      dateCreated: "2026-05-20",
-    },
-  ]);
+  // Fetch metrics & dropdown dynamic filtering criteria from DB configuration endpoints
+  const fetchDashboardMeta = useCallback(() => {
+    fetch(`${BACKEND_URL}/store_materials/dashboard`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(setMetrics)
+      .catch(console.error);
+    fetch(`${BACKEND_URL}/store_materials/filters`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(setFilterOptions)
+      .catch(console.error);
+  }, []);
+
+  const fetchMaterials = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      search: debouncedSearchTerm,
+      hsnCode: filters.hsnCode,
+      materialName: filters.materialName,
+      quantityRange: filters.quantityRange,
+      status: statusFilter !== "all" ? statusFilter : selectedCard,
+      sortBy,
+      sortOrder
+    });
+
+    fetch(`${BACKEND_URL}/store_materials/view?${params.toString()}`, {
+      headers: getAuthHeaders()
+    })
+      .then(res => res.json())
+      .then(data => {
+        const mappedData = Array.isArray(data.data) ? data.data.map((item: any) => ({
+          ...item,
+          hsnCode: item.hsn_code !== undefined ? item.hsn_code : (item.hsnCode || ""),
+          materialName: item.material_name !== undefined ? item.material_name : (item.materialName || ""),
+          availableQty: item.available_qty !== undefined ? item.available_qty : (item.availableQty || 0),
+          blockedQty: item.blocked_qty !== undefined ? item.blocked_qty : (item.blockedQty || 0),
+          unitPrice: item.unit_price !== undefined ? item.unit_price : (item.unitPrice || 0),
+          minimumRequired: item.min_required !== undefined ? item.min_required : (item.minimumRequired || 0),
+          totalPrice: item.total_price !== undefined ? item.total_price : (item.totalPrice || 0),
+        })) : [];
+        setMaterials(mappedData);
+        setTotalRecords(data.totalRecords || 0);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch materials:", err);
+        setMaterials([]);
+        setLoading(false);
+        setUiError("Unable to connect to the server. Working in offline mode.");
+      });
+  }, [page, limit, debouncedSearchTerm, statusFilter, selectedCard, filters, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchDashboardMeta();
+  }, [fetchDashboardMeta]);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, [fetchMaterials]);
+
+  // Recalculate metrics based on actual array volume
+  useEffect(() => {
+    let totalItems = 0;
+    let totalAvailable = 0;
+    let lowCount = 0;
+    let outCount = 0;
+
+    materials.forEach(item => {
+      const avail = Number(item.availableQty) || 0;
+      const minReq = Number(item.minimumRequired) || 0;
+
+      totalItems += avail;
+      totalAvailable += avail;
+
+      if (avail <= 0) {
+        outCount += 1;
+      } else if (avail <= minReq) {
+        lowCount += 1;
+      }
+    });
+
+    setMetrics({
+      total: totalItems,
+      available: totalAvailable,
+      low_stock: lowCount,
+      out_of_stock: outCount
+    });
+  }, [materials]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchDashboardMeta();
+      fetchMaterials();
+    };
+    window.addEventListener("orders-updated", handleUpdate);
+    window.addEventListener("inventory-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("orders-updated", handleUpdate);
+      window.removeEventListener("inventory-updated", handleUpdate);
+    };
+  }, [fetchDashboardMeta, fetchMaterials]);
 
   const [formData, setFormData] = useState({
     hsnCode: "",
@@ -188,54 +305,44 @@ function RawMaterialModule() {
     category: "Chemicals",
   });
 
+  const [userRole, setUserRole] = useState("");
+  useEffect(() => {
+    const session = localStorage.getItem('sason_active_session');
+    if (session) {
+      try {
+        const parsed = JSON.parse(session);
+        setUserRole(parsed.role || "");
+      } catch (e) { }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (editRequest && onEditConsumed) {
+      setEditingId(editRequest.id || editRequest.material_id);
+      setFormData({
+        hsnCode: editRequest.hsn_code || "",
+        materialName: editRequest.name || editRequest.material_name || "",
+        description: editRequest.description || "",
+        unit: editRequest.unit || "",
+        rate: editRequest.unit_price ? editRequest.unit_price.toString() : "",
+        availableQty: editRequest.available_qty ? editRequest.available_qty.toString() : "",
+        blockedQty: editRequest.blocked_qty ? editRequest.blocked_qty.toString() : "",
+        minimumRequired: editRequest.min_required ? editRequest.min_required.toString() : "",
+        unitPrice: editRequest.unit_price ? editRequest.unit_price.toString() : "",
+        category: editRequest.category || "Chemicals",
+      });
+      setShowModal(true);
+      onEditConsumed();
+    }
+  }, [editRequest, onEditConsumed]);
+
   const getStatus = (item: any) => {
-    if (item.availableQty === 0) return "out";
-    if (item.availableQty <= item.minimumRequired) return "low";
+    const qty = Number(item.availableQty || 0);
+    const min = Number(item.minimumRequired || 0);
+    if (qty <= 0) return "out";
+    if (qty <= min) return "low";
     return "available";
   };
-
-  const filteredMaterials = materials.filter((item) => {
-    const status = getStatus(item);
-    const matchesSearch =
-      item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.materialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter = statusFilter === "all" || status === statusFilter;
-    const matchesCard = selectedCard === "all" || status === selectedCard;
-    const matchesHsn =
-      rawColumnFilters.hsnCode === "all" ||
-      item.hsnCode === rawColumnFilters.hsnCode;
-    const matchesMaterial =
-      rawColumnFilters.materialName === "all" ||
-      item.materialName === rawColumnFilters.materialName;
-
-    const matchesCategory =
-      filters.category === "all" || item.hsnCode === filters.category;
-    const matchesSupplier =
-      filters.supplier === "all" || item.materialName === filters.supplier;
-
-    let matchesDate = true;
-    if (filters.dateRange !== "all") {
-      if (filters.dateRange === "high") {
-        matchesDate = item.availableQty > 100;
-      } else if (filters.dateRange === "medium") {
-        matchesDate = item.availableQty >= 50 && item.availableQty <= 100;
-      } else if (filters.dateRange === "low") {
-        matchesDate = item.availableQty < 50;
-      }
-    }
-    return (
-      matchesSearch &&
-      matchesFilter &&
-      matchesCard &&
-      matchesHsn &&
-      matchesMaterial &&
-      matchesCategory &&
-      matchesSupplier &&
-      matchesDate
-    );
-  });
 
   const handleSave = () => {
     if (
@@ -247,55 +354,75 @@ function RawMaterialModule() {
       !formData.unitPrice ||
       !formData.minimumRequired
     ) {
-      alert("Please fill all mandatory fields");
+      setUiError("Please fill all mandatory fields");
       return;
     }
+    setUiError(null);
     const payload = {
-      id: editingId ?? Date.now(),
-      hsnCode: formData.hsnCode,
-      materialName: formData.materialName,
+      hsn_code: formData.hsnCode,
+      material_name: formData.materialName,
       description: formData.description,
       unit: formData.unit,
       rate: Number(formData.rate || formData.unitPrice),
-      availableQty: Number(formData.availableQty),
-      blockedQty: Number(formData.blockedQty || 0),
-      unitPrice: Number(formData.unitPrice),
-      minimumRequired: Number(formData.minimumRequired),
-      category: formData.category || "Chemicals",
-      dateCreated: editingId
-        ? (materials.find((m) => m.id === editingId) as any)?.dateCreated ||
-        "2026-06-22"
-        : "2026-06-22",
+      available_qty: Number(formData.availableQty),
+      blocked_qty: Number(formData.blockedQty || 0),
+      unit_price: Number(formData.unitPrice),
+      min_required: Number(formData.minimumRequired),
+      category: formData.category || "Chemicals"
     };
 
-    if (editingId) {
-      setMaterials(materials.map((m) => (m.id === editingId ? payload : m)));
-    } else {
-      setMaterials([...materials, payload]);
-    }
+    const targetUrl = editingId
+      ? `${BACKEND_URL}/store_materials/edit/${editingId}`
+      : `${BACKEND_URL}/store_materials/add`;
 
-    setShowModal(false);
-    setEditingId(null);
-    setFormData({
-      hsnCode: "",
-      materialName: "",
-      description: "",
-      unit: "",
-      rate: "",
-      availableQty: "",
-      blockedQty: "",
-      unitPrice: "",
-      minimumRequired: "",
-      category: "Chemicals",
-    });
+    fetch(targetUrl, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: getAuthHeaders(true),
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || "Failed to save material");
+        }
+        return res.json();
+      })
+      .then(() => {
+        fetchMaterials();
+        fetchDashboardMeta();
+        setShowModal(false);
+        setEditingId(null);
+        setFormData({
+          hsnCode: "",
+          materialName: "",
+          description: "",
+          unit: "",
+          rate: "",
+          availableQty: "",
+          blockedQty: "",
+          unitPrice: "",
+          minimumRequired: "",
+          category: "Chemicals",
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        setUiError("Unable to connect to the server. Working in offline mode.");
+      });
   };
 
   return (
     <div className="space-y-6">
-      {/* Cards */}
+      {uiError && (
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <span>{uiError}</span>
+        </div>
+      )}
+      {/* Cards driven completely live by API Metrics variable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
-          onClick={() => setSelectedCard("all")}
+          onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
             ? "border-blue-400 dark:border-blue-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-800"
@@ -310,17 +437,17 @@ function RawMaterialModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {materials.length}
+                {metrics.total}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {materials.length === 1 ? "Material" : "Materials"}
+                {metrics.total === 1 ? "Material" : "Materials"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("available")}
+          onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
             ? "border-emerald-400 dark:border-emerald-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
@@ -335,20 +462,17 @@ function RawMaterialModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {materials.filter((m) => getStatus(m) === "available").length}
+                {metrics.available}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {materials.filter((m) => getStatus(m) === "available")
-                  .length === 1
-                  ? "Item"
-                  : "Items"}
+                {metrics.available === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("low")}
+          onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
             ? "border-amber-400 dark:border-amber-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
@@ -363,19 +487,17 @@ function RawMaterialModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {materials.filter((m) => getStatus(m) === "low").length}
+                {metrics.low_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {materials.filter((m) => getStatus(m) === "low").length === 1
-                  ? "Item"
-                  : "Items"}
+                {metrics.low_stock === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("out")}
+          onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
             ? "border-red-400 dark:border-red-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
@@ -390,12 +512,10 @@ function RawMaterialModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {materials.filter((m) => getStatus(m) === "out").length}
+                {metrics.out_of_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {materials.filter((m) => getStatus(m) === "out").length === 1
-                  ? "Item"
-                  : "Items"}
+                {metrics.out_of_stock === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
@@ -440,14 +560,14 @@ function RawMaterialModule() {
                         HSN Code
                       </label>
                       <select
-                        value={filters.category}
-                        onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                        value={filters.hsnCode}
+                        onChange={(e) => setFilters({ ...filters, hsnCode: e.target.value })}
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="all">All HSN Codes</option>
-                        <option value="520811">520811 (Cotton Fabric)</option>
-                        <option value="520812">520812 (Buttons)</option>
-                        <option value="520813">520813 (Labels)</option>
+                        {Array.isArray(filterOptions.hsn_codes) && filterOptions.hsn_codes.map((code) => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -455,14 +575,14 @@ function RawMaterialModule() {
                         Material Name
                       </label>
                       <select
-                        value={filters.supplier}
-                        onChange={(e) => setFilters({ ...filters, supplier: e.target.value })}
+                        value={filters.materialName}
+                        onChange={(e) => setFilters({ ...filters, materialName: e.target.value })}
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
-                        <option value="all">All Materials</option>
-                        <option value="Cotton Fabric">Cotton Fabric</option>
-                        <option value="Buttons">Buttons</option>
-                        <option value="Labels">Labels</option>
+                        <option value="all">All Material Names</option>
+                        {Array.isArray(filterOptions.material_names) && filterOptions.material_names.map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -470,8 +590,8 @@ function RawMaterialModule() {
                         Available Quantity
                       </label>
                       <select
-                        value={filters.dateRange}
-                        onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
+                        value={filters.quantityRange}
+                        onChange={(e) => setFilters({ ...filters, quantityRange: e.target.value })}
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="all">All Quantities</option>
@@ -482,13 +602,13 @@ function RawMaterialModule() {
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-slate-800">
                       <button
-                        onClick={() => setFilters({ category: "all", supplier: "all", dateRange: "all" })}
+                        onClick={() => setFilters({ hsnCode: "all", materialName: "all", quantityRange: "all" })}
                         className="text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                       >
                         Clear
                       </button>
                       <button
-                        onClick={() => setShowFiltersDropdown(false)}
+                        onClick={() => { fetchMaterials(); setShowFiltersDropdown(false); }}
                         className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium text-xs transition-colors shadow-sm"
                       >
                         Apply Filters
@@ -533,6 +653,7 @@ function RawMaterialModule() {
                       key={item.value}
                       onClick={() => {
                         setStatusFilter(item.value);
+                        setSelectedCard(item.value);
                         setShowStatusDropdown(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-neutral-50 dark:hover:bg-slate-800 ${statusFilter === item.value
@@ -574,143 +695,158 @@ function RawMaterialModule() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table Structure mapping real dynamic list */}
       <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
-                <th className="px-5 py-3.5 text-right">HSN Code</th>
-                <th className="px-5 py-3.5 text-right">Material Name</th>
-                <th className="px-5 py-3.5 text-right">Description</th>
-                <th className="px-5 py-3.5 text-right">Unit</th>
-                <th className="px-5 py-3.5 text-right">Available Qty</th>
-                <th className="px-5 py-3.5 text-right">Blocked Qty</th>
-                <th className="px-5 py-3.5 text-right">Unit Price</th>
-                <th className="px-5 py-3.5 text-right">Total Price</th>
-                <th className="px-5 py-3.5 text-right">Minimum Required</th>
-                <th className="px-5 py-3.5 text-right">Action</th>
+                <th className="px-4 py-3.5 text-left">HSN Code</th>
+                <th className="px-4 py-3.5 text-left">Material Name</th>
+                <th className="px-4 py-3.5 text-left">Description</th>
+                <th className="px-4 py-3.5 text-left">Unit</th>
+                <th className="px-4 py-3.5 text-left">Available Qty</th>
+                <th className="px-4 py-3.5 text-left">Blocked Qty</th>
+                <th className="px-4 py-3.5 text-left">Unit Price</th>
+                <th className="px-4 py-3.5 text-left">Total Price</th>
+                <th className="px-4 py-3.5 text-left">Minimum Required</th>
+                <th className="px-4 py-3.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredMaterials.map((item) => {
-                const totalPrice = item.availableQty * item.unitPrice;
-                const status = getStatus(item);
-                return (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-muted/60 transition-colors"
-                  >
-                    <td className="px-5 py-4 font-bold text-foreground text-right">
-                      {item.hsnCode}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-foreground text-right">
-                      {item.materialName}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground relative description-cell text-right">
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const isCurrentlyActive = activeDescriptionId === item.id;
-                          if (isCurrentlyActive) {
-                            setActiveDescriptionId(null);
-                            setPopoverPosition(null);
-                          } else {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setActiveDescriptionId(item.id);
-                            setPopoverPosition({
-                              top: rect.bottom,
-                              left: rect.left + (rect.width - 240) / 2,
-                            });
-                          }
-                        }}
-                        className="cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors truncate max-w-[180px] block underline decoration-dotted underline-offset-4 decoration-neutral-400 hover:decoration-neutral-600 dark:decoration-slate-600 dark:hover:decoration-slate-400 text-right ml-auto"
-                        title="Click to view full description"
-                      >
-                        {item.description}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      {item.unit || "Nos"}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-bold text-foreground">
-                          {item.availableQty}
-                        </span>
-                        {status === "available" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Available
-                          </span>
-                        )}
-                        {status === "low" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Low Stock
-                          </span>
-                        )}
-                        {status === "out" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Out Of Stock
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      {item.blockedQty || 0}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      ₹{item.unitPrice}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-primary text-right">
-                      ₹{totalPrice.toLocaleString()}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      {item.minimumRequired}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setFormData({
-                              hsnCode: item.hsnCode,
-                              materialName: item.materialName,
-                              description: item.description,
-                              unit: item.unit,
-                              rate: item.rate
-                                ? item.rate.toString()
-                                : item.unitPrice.toString(),
-                              availableQty: item.availableQty.toString(),
-                              blockedQty: item.blockedQty?.toString() || "",
-                              unitPrice: item.unitPrice.toString(),
-                              minimumRequired: item.minimumRequired.toString(),
-                              category: item.category || "Chemicals",
-                            });
-                            setShowModal(true);
-                          }}
-                          className="p-1.5 bg-transparent text-amber-600 dark:text-amber-500 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm("do you want to delete this item")) {
-                              setMaterials(
-                                materials.filter((m) => m.id !== item.id),
-                              );
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-sm text-neutral-500">
+                    Loading materials from live server...
+                  </td>
+                </tr>
+              ) : materials.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-sm text-neutral-500">
+                    No materials found in the database matching selected query filters.
+                  </td>
+                </tr>
+              ) : (
+                materials.map((item) => {
+                  const totalPrice = calculateTotalPrice(item.availableQty, item.blockedQty, item.unitPrice);
+                  const status = getStatus(item);
+                  return (
+                    <tr
+                      key={item.id || item.material_id || Math.random()}
+                      className="hover:bg-muted/60 transition-colors align-middle"
+                    >
+                      <td className="px-4 py-4 font-bold text-foreground text-left align-middle">
+                        {item.hsnCode}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-foreground text-left align-middle">
+                        {item.materialName}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground relative description-cell text-left align-middle">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isCurrentlyActive = activeDescriptionId === item.id;
+                            if (isCurrentlyActive) {
+                              setActiveDescriptionId(null);
+                              setPopoverPosition(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setActiveDescriptionId(item.id);
+                              setPopoverPosition({
+                                top: rect.bottom,
+                                left: rect.left + (rect.width - 240) / 2,
+                              });
                             }
                           }}
-                          className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="Delete"
+                          className="cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors truncate max-w-[180px] block underline decoration-dotted underline-offset-4 decoration-neutral-400 hover:decoration-neutral-600 dark:decoration-slate-600 dark:hover:decoration-slate-400 text-left"
+                          title="Click to view full description"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          {item.description}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.unit || "Nos"}
+                      </td>
+                      <td className="px-4 py-4 text-left align-middle">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className="text-sm font-bold text-foreground">
+                            {item.availableQty}
+                          </span>
+                          {status === "available" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Available
+                            </span>
+                          )}
+                          {status === "low" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Low Stock
+                            </span>
+                          )}
+                          {status === "out" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Out Of Stock
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.blockedQty || 0}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {formatCurrency(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold text-primary text-left align-middle">
+                        {formatCurrency(totalPrice)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.minimumRequired}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <div className="flex justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingId(item.id || item.material_id);
+                              setFormData({
+                                hsnCode: item.hsnCode || "",
+                                materialName: item.materialName || "",
+                                description: item.description || "",
+                                unit: item.unit || "",
+                                rate: item.rate ? item.rate.toString() : (item.unitPrice ? item.unitPrice.toString() : ""),
+                                availableQty: item.availableQty ? item.availableQty.toString() : "",
+                                blockedQty: item.blockedQty ? item.blockedQty.toString() : "",
+                                minimumRequired: item.minimumRequired ? item.minimumRequired.toString() : "",
+                                unitPrice: item.unitPrice ? item.unitPrice.toString() : "",
+                                category: item.category || "Chemicals",
+                              });
+                              setShowModal(true);
+                            }}
+                            className="p-1.5 bg-transparent text-amber-600 dark:text-amber-500 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("Do you want to delete this database entry?")) {
+                                fetch(`${BACKEND_URL}/store_materials/delete/${item.id || item.material_id}`, {
+                                  method: 'PUT',
+                                  headers: getAuthHeaders(true)
+                                })
+                                  .then(() => { fetchMaterials(); fetchDashboardMeta(); })
+                                  .catch(err => console.error(err));
+                              }
+                            }}
+                            className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -862,13 +998,14 @@ function RawMaterialModule() {
                   placeholder="Minimum Required"
                   type="number"
                   value={formData.minimumRequired}
+                  disabled={editingId !== null && userRole !== 'Super Admin'}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
                       minimumRequired: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className={`w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-neutral-100 dark:bg-slate-800' : ''}`}
                 />
               </div>
             </div>
@@ -906,7 +1043,6 @@ function RawMaterialModule() {
           <p className="text-xs text-neutral-800 dark:text-neutral-200 leading-relaxed font-normal">
             {materials.find((m) => m.id === activeDescriptionId)?.description}
           </p>
-          {/* Small tail arrow pointing to cell */}
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 bg-white dark:bg-slate-900 border-l border-t border-neutral-200 dark:border-slate-700 rotate-45 translate-y-1"></div>
         </div>,
         document.body
@@ -918,7 +1054,7 @@ function RawMaterialModule() {
 // ==========================================
 // PRE-STITCHED MODULE
 // ==========================================
-function PreStitchedModule() {
+function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any, onEditConsumed?: () => void }) {
   const [selectedCard, setSelectedCard] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -934,53 +1070,123 @@ function PreStitchedModule() {
   });
   const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
-  const [garments, setGarments] = useState([
-    {
-      id: 1,
-      skuNo: "PG-001",
-      hsnCode: "620520",
-      description: "School Shirt",
-      pattern: "Half Sleeve",
-      category: "Shirt",
-      gender: "Male",
-      size: "M",
-      colour: "White",
-      availableQty: 120,
-      blockedQty: 15,
-      unitPrice: 350,
-      image: "",
-    },
-    {
-      id: 2,
-      skuNo: "PG-002",
-      hsnCode: "620530",
-      description: "Corporate Shirt",
-      pattern: "Full Sleeve",
-      category: "Shirt",
-      gender: "Male",
-      size: "L",
-      colour: "Blue",
-      availableQty: 20,
-      blockedQty: 10,
-      unitPrice: 450,
-      image: "",
-    },
-    {
-      id: 3,
-      skuNo: "PG-003",
-      hsnCode: "620540",
-      description: "School Pant",
-      pattern: "Regular Fit",
-      category: "Pant",
-      gender: "Female",
-      size: "S",
-      colour: "Navy",
-      availableQty: 0,
-      blockedQty: 10,
-      unitPrice: 550,
-      image: "",
-    },
-  ]);
+  const [garments, setGarments] = useState<any[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState('sku_no');
+  const [sortOrder, setSortOrder] = useState('ASC');
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const [metrics, setMetrics] = useState({ total: 0, available: 0, low_stock: 0, out_of_stock: 0 });
+  const [filterOptions, setFilterOptions] = useState({ categories: [], genders: [], sizes: [], colours: [] });
+  const [loading, setLoading] = useState(true);
+  const [uiError, setUiError] = useState<string | null>(null);
+
+  const fetchDashboardMeta = useCallback(() => {
+    fetch(`${BACKEND_URL}/store_garments/dashboard`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(setMetrics)
+      .catch(console.error);
+    fetch(`${BACKEND_URL}/store_garments/filters`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(setFilterOptions)
+      .catch(console.error);
+  }, []);
+
+  const fetchGarments = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      search: debouncedSearchTerm,
+      category: columnFilters.category,
+      gender: columnFilters.gender,
+      size: columnFilters.size,
+      colour: columnFilters.colour,
+      status: statusFilter !== "all" ? statusFilter : selectedCard,
+      sortBy,
+      sortOrder
+    });
+
+    fetch(`${BACKEND_URL}/store_garments/view?${params.toString()}`, {
+      headers: getAuthHeaders()
+    })
+      .then(res => res.json())
+      .then(data => {
+        const mappedData = Array.isArray(data.data) ? data.data.map((item: any) => ({
+          ...item,
+          skuNo: item.sku_no !== undefined ? item.sku_no : (item.skuNo || ""),
+          hsnCode: item.hsn_code !== undefined ? item.hsn_code : (item.hsnCode || ""),
+          imageUrl: item.image_url !== undefined ? item.image_url : (item.imageUrl || ""),
+          availableQty: item.available_qty !== undefined ? item.available_qty : (item.availableQty || 0),
+          blockedQty: item.blocked_qty !== undefined ? item.blocked_qty : (item.blockedQty || 0),
+          unitPrice: item.unit_price !== undefined ? item.unit_price : (item.unitPrice || 0),
+          minimumRequired: item.min_required !== undefined ? item.min_required : (item.minimumRequired || 0),
+          totalPrice: item.total_price !== undefined ? item.total_price : (item.totalPrice || 0),
+        })) : [];
+        setGarments(mappedData);
+        setTotalRecords(data.totalRecords || 0);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch garments:", err);
+        setGarments([]);
+        setLoading(false);
+        setUiError("Unable to connect to the server. Working in offline mode.");
+      });
+  }, [page, limit, debouncedSearchTerm, statusFilter, selectedCard, columnFilters, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchDashboardMeta();
+  }, [fetchDashboardMeta]);
+
+  useEffect(() => {
+    fetchGarments();
+  }, [fetchGarments]);
+
+  // Recalculate metrics based on actual array volume
+  useEffect(() => {
+    let totalItems = 0;
+    let totalAvailable = 0;
+    let lowCount = 0;
+    let outCount = 0;
+
+    garments.forEach(item => {
+      const avail = Number(item.availableQty) || 0;
+      const minReq = Number(item.minimumRequired || item.min_required) || 0;
+
+      totalItems += avail;
+      totalAvailable += avail;
+
+      if (avail <= 0) {
+        outCount += 1;
+      } else if (avail <= minReq) {
+        lowCount += 1;
+      }
+    });
+
+    setMetrics({
+      total: garments.length,
+      available: garments.length - outCount,
+      low_stock: lowCount,
+      out_of_stock: outCount
+    });
+  }, [garments]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchDashboardMeta();
+      fetchGarments();
+    };
+    window.addEventListener("orders-updated", handleUpdate);
+    window.addEventListener("inventory-updated", handleUpdate);
+    return () => {
+      window.removeEventListener("orders-updated", handleUpdate);
+      window.removeEventListener("inventory-updated", handleUpdate);
+    };
+  }, [fetchDashboardMeta, fetchGarments]);
 
   const [formData, setFormData] = useState({
     skuNo: "",
@@ -993,47 +1199,52 @@ function PreStitchedModule() {
     colour: "",
     availableQty: "",
     blockedQty: "",
+    minimumRequired: "",
     unitPrice: "",
     image: "",
   });
 
+  const [userRole, setUserRole] = useState("");
+  useEffect(() => {
+    const session = localStorage.getItem('sason_active_session');
+    if (session) {
+      try {
+        const parsed = JSON.parse(session);
+        setUserRole(parsed.role || "");
+      } catch (e) { }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (editRequest && onEditConsumed) {
+      setEditingId(editRequest.id || editRequest.garment_id);
+      setFormData({
+        skuNo: editRequest.name || editRequest.sku_no || "",
+        hsnCode: editRequest.hsn_code || "",
+        description: editRequest.description || "",
+        pattern: editRequest.pattern || "",
+        category: editRequest.category || "Shirt",
+        gender: editRequest.gender || "Male",
+        size: editRequest.size || "M",
+        colour: editRequest.color || editRequest.colour || "",
+        availableQty: editRequest.available_qty ? editRequest.available_qty.toString() : "",
+        blockedQty: editRequest.blocked_qty ? editRequest.blocked_qty.toString() : "",
+        minimumRequired: editRequest.min_required ? editRequest.min_required.toString() : "",
+        unitPrice: editRequest.unit_price ? editRequest.unit_price.toString() : "",
+        image: editRequest.image_url || "",
+      });
+      setShowModal(true);
+      onEditConsumed();
+    }
+  }, [editRequest, onEditConsumed]);
+
   const getStatus = (item: any) => {
-    if (item.availableQty === 0) return "out";
-    if (item.availableQty <= 50) return "low";
+    const qty = Number(item.availableQty || 0);
+    const min = Number(item.minimumRequired || 0);
+    if (qty <= 0) return "out";
+    if (qty <= min) return "low";
     return "available";
   };
-
-  const filteredGarments = garments.filter((item) => {
-    const status = getStatus(item);
-    const matchesSearch =
-      item.skuNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.colour.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter = statusFilter === "all" || status === statusFilter;
-    const matchesCard = selectedCard === "all" || status === selectedCard;
-
-    const matchesCategory =
-      columnFilters.category === "all" ||
-      item.category === columnFilters.category;
-    const matchesGender =
-      columnFilters.gender === "all" || item.gender === columnFilters.gender;
-    const matchesSize =
-      columnFilters.size === "all" || item.size === columnFilters.size;
-    const matchesColour =
-      columnFilters.colour === "all" || item.colour === columnFilters.colour;
-
-    return (
-      matchesSearch &&
-      matchesFilter &&
-      matchesCard &&
-      matchesCategory &&
-      matchesGender &&
-      matchesSize &&
-      matchesColour
-    );
-  });
 
   const handleSave = () => {
     if (
@@ -1047,13 +1258,13 @@ function PreStitchedModule() {
       !formData.colour ||
       !formData.availableQty ||
       !formData.unitPrice ||
-      (!formData.image && !editingId)
+      !formData.minimumRequired
     ) {
-      alert("Please fill all mandatory fields");
+      setUiError("Please fill all mandatory fields");
       return;
     }
+    setUiError(null);
     const payload = {
-      id: editingId ?? Date.now(),
       skuNo: formData.skuNo,
       hsnCode: formData.hsnCode,
       description: formData.description,
@@ -1064,26 +1275,51 @@ function PreStitchedModule() {
       colour: formData.colour,
       availableQty: Number(formData.availableQty),
       blockedQty: Number(formData.blockedQty || 0),
+      minimumRequired: Number(formData.minimumRequired),
       unitPrice: Number(formData.unitPrice),
       image: formData.image,
     };
 
-    if (editingId) {
-      setGarments(garments.map((g) => (g.id === editingId ? payload : g)));
-    } else {
-      setGarments([...garments, payload]);
-    }
+    const targetUrl = editingId
+      ? `${BACKEND_URL}/store_garments/edit/${editingId}`
+      : `${BACKEND_URL}/store_garments/add`;
 
-    setShowModal(false);
-    setEditingId(null);
+    fetch(targetUrl, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: getAuthHeaders(true),
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || "Failed to save garment");
+        }
+        return res.json();
+      })
+      .then(() => {
+        fetchGarments();
+        fetchDashboardMeta();
+        setShowModal(false);
+        setEditingId(null);
+      })
+      .catch(err => {
+        console.error(err);
+        setUiError("Unable to connect to the server. Working in offline mode.");
+      });
   };
 
   return (
     <div className="space-y-6">
-      {/* Cards Setup */}
+      {uiError && (
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <span>{uiError}</span>
+        </div>
+      )}
+      {/* Dynamic DB Status Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
-          onClick={() => setSelectedCard("all")}
+          onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
             ? "border-indigo-400 dark:border-indigo-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800"
@@ -1098,17 +1334,17 @@ function PreStitchedModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {garments.length}
+                {metrics.total}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {garments.length === 1 ? "Garment" : "Garments"}
+                {metrics.total === 1 ? "Garment" : "Garments"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("available")}
+          onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
             ? "border-emerald-400 dark:border-emerald-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
@@ -1123,20 +1359,17 @@ function PreStitchedModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {garments.filter((g) => getStatus(g) === "available").length}
+                {metrics.available}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {garments.filter((g) => getStatus(g) === "available").length ===
-                  1
-                  ? "Item"
-                  : "Items"}
+                {metrics.available === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("low")}
+          onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
             ? "border-amber-400 dark:border-amber-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
@@ -1151,19 +1384,17 @@ function PreStitchedModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {garments.filter((g) => getStatus(g) === "low").length}
+                {metrics.low_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {garments.filter((g) => getStatus(g) === "low").length === 1
-                  ? "Item"
-                  : "Items"}
+                {metrics.low_stock === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
         </div>
 
         <div
-          onClick={() => setSelectedCard("out")}
+          onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
           className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
             ? "border-red-400 dark:border-red-700"
             : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
@@ -1178,12 +1409,10 @@ function PreStitchedModule() {
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {garments.filter((g) => getStatus(g) === "out").length}
+                {metrics.out_of_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
-                {garments.filter((g) => getStatus(g) === "out").length === 1
-                  ? "Item"
-                  : "Items"}
+                {metrics.out_of_stock === 1 ? "Item" : "Items"}
               </span>
             </div>
           </div>
@@ -1232,7 +1461,7 @@ function PreStitchedModule() {
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Categories</option>
-                        {Array.from(new Set(garments.map((g) => g.category))).map((c) => (
+                        {Array.isArray(filterOptions.categories) && filterOptions.categories.map((c) => (
                           <option key={String(c)} value={String(c)}>
                             {String(c)}
                           </option>
@@ -1249,7 +1478,7 @@ function PreStitchedModule() {
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Genders</option>
-                        {Array.from(new Set(garments.map((g) => g.gender))).map((c) => (
+                        {Array.isArray(filterOptions.genders) && filterOptions.genders.map((c) => (
                           <option key={String(c)} value={String(c)}>
                             {String(c)}
                           </option>
@@ -1266,7 +1495,7 @@ function PreStitchedModule() {
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Sizes</option>
-                        {Array.from(new Set(garments.map((g) => g.size))).map((c) => (
+                        {Array.isArray(filterOptions.sizes) && filterOptions.sizes.map((c) => (
                           <option key={String(c)} value={String(c)}>
                             {String(c)}
                           </option>
@@ -1283,7 +1512,7 @@ function PreStitchedModule() {
                         className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Colours</option>
-                        {Array.from(new Set(garments.map((g) => g.colour))).map((c) => (
+                        {Array.isArray(filterOptions.colours) && filterOptions.colours.map((c) => (
                           <option key={String(c)} value={String(c)}>
                             {String(c)}
                           </option>
@@ -1298,7 +1527,7 @@ function PreStitchedModule() {
                         Clear
                       </button>
                       <button
-                        onClick={() => setShowFiltersDropdown(false)}
+                        onClick={() => { fetchGarments(); setShowFiltersDropdown(false); }}
                         className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium text-xs transition-colors shadow-sm"
                       >
                         Apply Filters
@@ -1315,7 +1544,7 @@ function PreStitchedModule() {
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setSelectedCard(e.target.value); }}
               className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
             >
               <option value="all">All Status</option>
@@ -1340,6 +1569,7 @@ function PreStitchedModule() {
                 availableQty: "",
                 blockedQty: "",
                 unitPrice: "",
+                minimumRequired: "",
                 image: "",
               });
               setShowModal(true);
@@ -1358,128 +1588,150 @@ function PreStitchedModule() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium align-middle">
-                <th className="px-5 py-3.5 text-right">Category</th>
-                <th className="pl-5 pr-2 py-3.5 text-right">Gender</th>
-                <th className="pl-2 pr-6 py-3.5 text-right">Size</th>
-                <th className="pl-6 pr-16 py-3.5 text-right">Colour</th>
-                <th className="px-5 py-3.5 text-right">Available Qty</th>
-                <th className="px-5 py-3.5 text-right">Blocked Qty</th>
-                <th className="px-5 py-3.5 text-right">Unit Price</th>
-                <th className="px-5 py-3.5 text-right">Total Price</th>
-                <th className="px-5 py-3.5 text-right">More</th>
-                <th className="px-5 py-3.5 text-right">Action</th>
+                <th className="px-4 py-3.5 text-left">Category</th>
+                <th className="px-4 py-3.5 text-left">Gender</th>
+                <th className="px-4 py-3.5 text-left">Size</th>
+                <th className="px-4 py-3.5 text-left">Colour</th>
+                <th className="px-4 py-3.5 text-left">Available Qty</th>
+                <th className="px-4 py-3.5 text-left">Blocked Qty</th>
+                <th className="px-4 py-3.5 text-left">Unit Price</th>
+                <th className="px-4 py-3.5 text-left">Available Value</th>
+                <th className="px-4 py-3.5 text-left">Min Required</th>
+                <th className="px-4 py-3.5 text-center">More</th>
+                <th className="px-4 py-3.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredGarments.map((item) => {
-                const totalPrice = item.availableQty * item.unitPrice;
-                const status = getStatus(item);
-                return (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-muted/60 transition-colors"
-                  >
-                    <td className="px-5 py-4 text-sm text-foreground text-right">
-                      {item.category}
-                    </td>
-                    <td className="pl-5 pr-2 py-4 text-sm text-muted-foreground text-right">
-                      {item.gender}
-                    </td>
-                    <td className="pl-2 pr-6 py-4 text-sm font-medium text-foreground text-right">
-                      {item.size}
-                    </td>
-                    <td className="pl-6 pr-16 py-4 text-sm text-muted-foreground text-right">
-                      {item.colour}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-bold text-foreground">
-                          {item.availableQty}
-                        </span>
-                        {status === "available" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Available
+              {loading ? (
+                <tr>
+                  <td colSpan={11} className="py-8 text-center text-sm text-neutral-500">
+                    Loading garments from live server...
+                  </td>
+                </tr>
+              ) : garments.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="py-8 text-center text-sm text-neutral-500">
+                    No garments found in the database.
+                  </td>
+                </tr>
+              ) : (
+                garments.map((item) => {
+                  const totalPrice = calculateTotalPrice(item.availableQty, item.blockedQty, item.unitPrice);
+                  const status = getStatus(item);
+                  return (
+                    <tr
+                      key={item.id || item.garment_id || Math.random()}
+                      className="hover:bg-muted/60 transition-colors align-middle"
+                    >
+                      <td className="px-4 py-4 text-sm text-foreground text-left align-middle">
+                        {item.category}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.gender}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium text-foreground text-left align-middle">
+                        {item.size}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.colour}
+                      </td>
+                      <td className="px-4 py-4 text-left align-middle">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className="text-sm font-bold text-foreground">
+                            {item.availableQty}
                           </span>
-                        )}
-                        {status === "low" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Low Stock
-                          </span>
-                        )}
-                        {status === "out" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
-                            Out Of Stock
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      {item.blockedQty || 0}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground text-right">
-                      ₹{item.unitPrice}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-primary text-right">
-                      ₹{totalPrice.toLocaleString()}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            setSelectedGarment(item);
-                            setShowViewModal(true);
-                          }}
-                          className="p-1.5 bg-transparent text-blue-600 dark:text-blue-500 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors inline-flex justify-center"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setFormData({
-                              skuNo: item.skuNo,
-                              hsnCode: item.hsnCode,
-                              description: item.description,
-                              pattern: item.pattern,
-                              category: item.category,
-                              gender: item.gender,
-                              size: item.size,
-                              colour: item.colour,
-                              availableQty: item.availableQty.toString(),
-                              blockedQty: item.blockedQty?.toString() || "",
-                              unitPrice: item.unitPrice.toString(),
-                              image: item.image || "",
-                            });
-                            setShowModal(true);
-                          }}
-                          className="p-1.5 bg-transparent text-amber-600 dark:text-amber-500 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm("do you want to delete this item")) {
-                              setGarments(
-                                garments.filter((g) => g.id !== item.id),
-                              );
-                            }
-                          }}
-                          className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          {status === "available" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Available
+                            </span>
+                          )}
+                          {status === "low" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Low Stock
+                            </span>
+                          )}
+                          {status === "out" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] uppercase tracking-wider font-semibold">
+                              Out Of Stock
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.blockedQty || 0}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {formatCurrency(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold text-primary text-left align-middle">
+                        {formatCurrency(totalPrice)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground text-left align-middle">
+                        {item.minimumRequired || item.min_required || 0}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => {
+                              setSelectedGarment(item);
+                              setShowViewModal(true);
+                            }}
+                            className="p-1.5 bg-transparent text-blue-600 dark:text-blue-500 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors inline-flex justify-center"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <div className="flex justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingId(item.id || item.garment_id);
+                              setFormData({
+                                skuNo: item.skuNo || "",
+                                hsnCode: item.hsnCode || "",
+                                description: item.description || "",
+                                pattern: item.pattern || "",
+                                category: item.category || "Shirt",
+                                gender: item.gender || "Male",
+                                size: item.size || "M",
+                                colour: item.colour || "",
+                                availableQty: item.availableQty ? item.availableQty.toString() : "",
+                                blockedQty: item.blockedQty ? item.blockedQty.toString() : "",
+                                minimumRequired: item.minimumRequired ? item.minimumRequired.toString() : (item.min_required ? item.min_required.toString() : ""),
+                                unitPrice: item.unitPrice ? item.unitPrice.toString() : "",
+                                image: item.image || "",
+                              });
+                              setShowModal(true);
+                            }}
+                            className="p-1.5 bg-transparent text-amber-600 dark:text-amber-500 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("Do you want to delete this database entry?")) {
+                                fetch(`${BACKEND_URL}/store_garments/delete/${item.id || item.garment_id}`, {
+                                  method: 'PUT',
+                                  headers: getAuthHeaders(true)
+                                })
+                                  .then(() => { fetchGarments(); fetchDashboardMeta(); })
+                                  .catch(err => console.error(err));
+                              }
+                            }}
+                            className="p-1.5 bg-transparent text-red-600 dark:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -1488,7 +1740,7 @@ function PreStitchedModule() {
       {/* Creation/Edit Setup Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl border border-neutral-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-neutral-200 dark:border-slate-700">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
                 {editingId ? "Edit Garment" : "Add Garment"}
@@ -1646,6 +1898,22 @@ function PreStitchedModule() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                  Minimum Qty <span className="text-red-500">*</span>
+                </label>
+                <input
+                  placeholder="Quantity"
+                  type="number"
+                  min="0"
+                  value={formData.minimumRequired}
+                  disabled={editingId !== null && userRole !== 'Super Admin'}
+                  onChange={(e) =>
+                    setFormData({ ...formData, minimumRequired: e.target.value })
+                  }
+                  className={`w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-neutral-100 dark:bg-slate-800' : ''}`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Blocked Qty
                 </label>
                 <input
@@ -1672,12 +1940,12 @@ function PreStitchedModule() {
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
-              <div className="sm:col-span-2 lg:col-span-2">
+              <div>
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Image
                   <span className="ml-1 text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <input
                     type="file"
                     accept="image/*"
@@ -1693,7 +1961,7 @@ function PreStitchedModule() {
                       };
                       reader.readAsDataURL(file);
                     }}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                    className="w-full min-w-0 px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                   />
                   {formData.image && (
                     <div className="relative w-12 h-12 flex-shrink-0">
@@ -1805,6 +2073,14 @@ function PreStitchedModule() {
                       {selectedGarment.pattern || "N/A"}
                     </span>
                   </div>
+                  <div>
+                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                      Min Required Qty
+                    </span>
+                    <span className="text-base text-neutral-900 dark:text-neutral-100 font-medium">
+                      {selectedGarment.minimumRequired || selectedGarment.min_required || "0"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1817,6 +2093,153 @@ function PreStitchedModule() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// MATERIAL LIST MODULE
+// ==========================================
+function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => void }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [userRole, setUserRole] = useState("");
+  useEffect(() => {
+    const session = localStorage.getItem('sason_active_session');
+    if (session) {
+      try {
+        const parsed = JSON.parse(session);
+        setUserRole(parsed.role || "");
+      } catch (e) { }
+    }
+  }, []);
+
+  const fetchItems = useCallback(() => {
+    setLoading(true);
+    fetch(`${BACKEND_URL}/store_items/view?page=${page}&limit=${limit}&search=${encodeURIComponent(searchTerm)}`, {
+      headers: getAuthHeaders()
+    })
+      .then(res => res.json())
+      .then(data => {
+        setItems(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch items:", err);
+        setItems([]);
+        setLoading(false);
+      });
+  }, [page, limit, searchTerm]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <List className="h-5 w-5 text-indigo-500" />
+          Unified Material List
+        </h2>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search by name, code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-neutral-500 dark:text-neutral-400 uppercase bg-neutral-50 dark:bg-slate-800/50">
+            <tr>
+              <th className="px-4 py-3 font-medium rounded-tl-lg">Type</th>
+              <th className="px-4 py-3 font-medium">Code/SKU</th>
+              <th className="px-4 py-3 font-medium">Name/Desc</th>
+              <th className="px-4 py-3 font-medium">Category</th>
+              <th className="px-4 py-3 font-medium text-right">Available</th>
+              <th className="px-4 py-3 font-medium text-right">Min Required</th>
+              <th className="px-4 py-3 font-medium text-right">Unit Price</th>
+              <th className="px-4 py-3 font-medium text-right rounded-tr-lg">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">Loading...</td>
+              </tr>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">No items found.</td>
+              </tr>
+            ) : (
+              items.map((item, index) => (
+                <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {item.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{item.hsn_code || item.name}</td>
+                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.name}</td>
+                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.category}</td>
+                  <td className="px-4 py-3 text-right font-medium">{item.available_qty}</td>
+                  <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
+                  <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
+                  <td className="px-4 py-3 text-right">
+                    {userRole === 'Super Admin' && (
+                      <button
+                        onClick={() => onEdit(item.type, item)}
+                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between border-t border-neutral-100 dark:border-slate-800 pt-4">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            Page {page} of {totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}

@@ -30,24 +30,16 @@ interface InventoryItem {
   unit: string;
 }
 
-const mockInventory: InventoryItem[] = [
-  { id: 'MAT-001', name: 'Cotton Fabric (White)', category: 'Fabric', available: 1250, required: 1000, unit: 'meters' },
-  { id: 'MAT-002', name: 'Polyester Thread (Navy)', category: 'Thread', available: 120, required: 200, unit: 'spools' },
-  { id: 'MAT-003', name: 'Metal Zippers 15cm', category: 'Zippers', available: 45, required: 0, unit: 'units' },
-  { id: 'MAT-004', name: 'Plastic Buttons (Black)', category: 'Buttons', available: 5000, required: 5000, unit: 'pieces' },
-  { id: 'MAT-005', name: 'Denim Fabric (Blue)', category: 'Fabric', available: 0, required: 800, unit: 'meters' },
-  { id: 'MAT-006', name: 'Standard Collar (White)', category: 'Collar/Cuff', available: 800, required: 600, unit: 'pieces' },
-  { id: 'MAT-007', name: 'Metal Hooks (Silver)', category: 'Hooks', available: 150, required: 300, unit: 'pieces' },
-  { id: 'MAT-008', name: 'Linen Fabric (Beige)', category: 'Fabric', available: 320, required: 0, unit: 'meters' },
-];
+const mockInventory: InventoryItem[] = [];
 
 const categories = ['All Categories', 'Fabric', 'Thread', 'Buttons', 'Zippers', 'Collar/Cuff', 'Hooks'];
 
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case 'Sufficient': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60';
+    case 'Available': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60';
+    case 'Partially Available': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60';
     case 'Low Stock': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60';
-    case 'Critical': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60';
+    case 'Out of Stock': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60';
     default: return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
   }
 };
@@ -57,7 +49,38 @@ export default function InventoryPage() {
   const { user } = useAuth();
   const [currentOrder, setCurrentOrder] = useState<any>(null);
 
+  const [storeInventoryData, setStoreInventoryData] = useState<any[]>([]);
+  const [poInventoryData, setPoInventoryData] = useState<any[]>([]);
+  const [apiAvailableMaterials, setApiAvailableMaterials] = useState<any[]>([]);
+
   React.useEffect(() => {
+    const fetchPOInventory = async (poNumber: string) => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const res = await fetch(`${BACKEND_URL}/api/check-inventory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poNumber })
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+           const formatted = data.data.map((item: any) => ({
+             id: item.id || item.material_id || `MAT-${Math.floor(Math.random()*1000)}`,
+             name: item.name || item.material_name || `Unknown Material`,
+             category: item.category || 'Fabric',
+             available: item.available_qty || 0,
+             required: item.required_qty || 0,
+             unit: item.unit || 'units',
+             min_required: item.min_required || 0,
+             original_status: item.original_status || 'Available'
+           }));
+           setPoInventoryData(formatted);
+        }
+      } catch (err) {
+        console.error('Failed to fetch PO inventory:', err);
+      }
+    };
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
@@ -68,8 +91,66 @@ export default function InventoryPage() {
           const found = orders.find((o: any) => o.poNumber === po);
           if (found) setCurrentOrder(found);
         }
+        fetchPOInventory(po);
       }
     }
+    
+    const fetchAvailableMaterials = async (poNumber: string | null) => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const url = poNumber 
+          ? `${BACKEND_URL}/api/inventory/available-materials?poNumber=${poNumber}`
+          : `${BACKEND_URL}/api/inventory/available-materials`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          setApiAvailableMaterials(data.data);
+        } else {
+          setApiAvailableMaterials([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch available materials:', err);
+        setApiAvailableMaterials([]);
+      }
+    };
+    
+    const params = new URLSearchParams(window.location.search);
+    const poNumber = params.get('poNumber');
+    fetchAvailableMaterials(poNumber);
+    
+    // Fetch real store materials for fallback display
+    const fetchStoreMaterials = async () => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const res = await fetch(`${BACKEND_URL}/store_materials/view?limit=1000`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': 'sasons_read_only_key_2026_abc'
+          },
+          cache: 'no-store'
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+           const formatted = data.data.map((item: any) => ({
+             id: item.id || item.material_id || `MAT-${Math.floor(Math.random()*1000)}`,
+             name: item.name || item.material_name || `Unknown Material`,
+             category: item.category || 'Fabric',
+             available: item.available_qty || 0,
+             required: 0,
+             unit: item.unit || 'units',
+             min_required: item.min_required || 0,
+             original_status: item.original_status || 'Available'
+           }));
+           setStoreInventoryData(formatted);
+        }
+      } catch (err) {
+        console.error('Failed to fetch store materials:', err);
+      }
+    };
+    fetchStoreMaterials();
   }, []);
 
   const advanceStage = (nextPath: string, nextStage: string, generateShortages: boolean = false) => {
@@ -81,20 +162,27 @@ export default function InventoryPage() {
       const existingReqsStr = localStorage.getItem('autoGeneratedProcurementRequests');
       let reqs = existingReqsStr ? JSON.parse(existingReqsStr) : [];
       
-      const newReqs = validationData.filter((item: any) => item.shortage > 0).map((item: any) => ({
-        id: `PR-${Date.now().toString().slice(-4)}-${Math.floor(Math.random()*1000)}`,
-        material: item.name,
-        category: item.category,
-        required: item.required,
-        available: item.available,
-        shortage: item.shortage,
-        unit: item.unit,
-        supplier: 'Pending Assignment',
-        cost: item.shortage * (currentOrder.specs?.find((s:any) => item.name.includes(s.itemDescription))?.unitPrice || 10),
-        priority: item.available === 0 ? 'Critical' : 'High',
-        status: 'Pending Procurement',
-        linkedPO: currentOrder.poNumber
-      }));
+      const newReqs = validationData.filter((item: any) => item.shortage > 0).map((item: any) => {
+        const fuzzyMatch = currentOrder.specs?.find((s:any) => {
+          const sDesc = (s.itemDescription || '').toLowerCase();
+          const iName = (item.name || '').toLowerCase();
+          return sDesc && iName && (iName.includes(sDesc) || sDesc.includes(iName));
+        });
+        return {
+          id: `PR-${Date.now().toString().slice(-4)}-${Math.floor(Math.random()*1000)}`,
+          material: item.name,
+          category: item.category,
+          required: item.required,
+          available: item.available,
+          shortage: item.shortage,
+          unit: item.unit,
+          supplier: 'Pending Assignment',
+          cost: item.shortage * (fuzzyMatch?.unitPrice || 10),
+          priority: item.available === 0 ? 'Critical' : 'High',
+          status: 'Pending Procurement',
+          linkedPO: currentOrder.poNumber
+        };
+      });
       
       if (newReqs.length > 0) {
         reqs = [...newReqs, ...reqs.filter((r: any) => r.linkedPO !== currentOrder.poNumber)];
@@ -113,6 +201,11 @@ export default function InventoryPage() {
   };
 
   const { t } = useTranslation();
+  const safeT = (key: string, fallback: string) => {
+    const res = t(key);
+    return res === key || !res ? fallback : res;
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
@@ -122,40 +215,64 @@ export default function InventoryPage() {
     let partiallyAvailableCount = 0;
     let criticalCount = 0;
 
-    const sourceData = currentOrder?.specs && currentOrder.specs.length > 0 
-      ? currentOrder.specs.map((spec: any) => ({
-          id: spec.id || `MAT-${Math.floor(Math.random()*1000)}`,
-          name: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
-          category: 'Fabric',
-          available: spec.stockAvailable || 0,
-          required: spec.quantity || 0,
-          unit: 'pieces'
-        }))
-      : mockInventory.map(item => ({...item, required: 0}));
+    const sourceData = poInventoryData.length > 0 
+      ? poInventoryData 
+      : storeInventoryData.map(item => ({...item, required: 0}));
 
     const computedData = sourceData.map((item: any) => {
-      const shortage = Math.max(0, item.required - item.available);
-      let status = 'Sufficient';
+      let name = item.name || item.material_name;
+      let category = item.category;
+      let unit = item.unit;
 
-      if (shortage > 0) {
-        status = item.available === 0 ? 'Critical' : 'Low Stock';
+      if (!name || name.includes('Unknown')) {
+         const realItem = storeInventoryData.find(s => s.id.toString() === item.id?.toString());
+         if (realItem) {
+           name = realItem.name;
+           category = realItem.category;
+           unit = realItem.unit;
+         }
+      }
+
+      const available = parseFloat(item.available_qty || item.available || 0);
+      const required = parseFloat(item.required_qty || item.required || 0);
+      const minRequired = parseFloat(item.min_required || 0);
+
+      const shortage = Math.max(0, required - available);
+      
+      let status = 'Available';
+      
+      if (required > 0) {
+        if (shortage > 0) {
+          status = available === 0 ? 'Out of Stock' : 'Partially Available';
+        }
+      } else if (item.original_status || item.status) {
+        // Fallback to store material status if no PO is active
+        if (available <= 0) {
+           status = 'Out of Stock';
+        } else if (available <= minRequired) {
+           status = 'Low Stock';
+        } else {
+           status = 'Available';
+        }
+      } else {
+        if (available <= 0) status = 'Out of Stock';
       }
 
       // Populate summary analytics parameters concurrently
-      if (item.required > 0) {
-        if (status === 'Sufficient') fullyAvailableCount++;
-        else if (status === 'Low Stock') partiallyAvailableCount++;
-        else if (status === 'Critical') criticalCount++;
+      if (required > 0) {
+        if (status === 'Available') fullyAvailableCount++;
+        else if (status === 'Partially Available') partiallyAvailableCount++;
+        else if (status === 'Out of Stock') criticalCount++;
       }
 
-      return { ...item, shortage, status };
+      return { ...item, name, category, unit, available, required, shortage, status };
     });
 
     return {
       validationData: computedData,
       summary: { fullyAvailableCount, partiallyAvailableCount, criticalCount }
     };
-  }, [currentOrder]);
+  }, [currentOrder, storeInventoryData, poInventoryData]);
 
   const hasShortage = summary.partiallyAvailableCount > 0 || summary.criticalCount > 0;
 
@@ -172,7 +289,51 @@ export default function InventoryPage() {
   }, [searchTerm, categoryFilter, validationData]);
 
   const shortageMaterials = filteredInventory.filter((item: any) => item.shortage > 0);
-  const availableMaterials = filteredInventory.filter((item: any) => item.shortage === 0);
+  
+  const filteredAvailableMaterials = useMemo(() => {
+    const cleanSearch = searchTerm.toLowerCase().trim();
+    return storeInventoryData.filter((item: any) => {
+      const available = parseFloat(item.available_qty || item.available || 0);
+      const matchesSearch = !cleanSearch ||
+        item.name?.toLowerCase().includes(cleanSearch) ||
+        item.id?.toString().toLowerCase().includes(cleanSearch);
+      
+      let matchesOrder = false;
+      if (currentOrder && currentOrder.specs) {
+        matchesOrder = currentOrder.specs.some((spec: any) => {
+          const specName = (spec.itemDescription || spec.name || '').toLowerCase();
+          const itemName = (item.name || item.material_name || '').toLowerCase();
+          return specName && itemName && (itemName.includes(specName) || specName.includes(itemName));
+        });
+      } else {
+        matchesOrder = true;
+      }
+
+      return matchesSearch && available > 0 && matchesOrder;
+    }).map((item: any) => {
+      const available = parseFloat(item.available_qty || item.available || 0);
+      
+      let required = parseFloat(item.required_qty || item.required || 0);
+      if (currentOrder && currentOrder.specs) {
+        const matchedSpec = currentOrder.specs.find((spec: any) => {
+          const specName = (spec.itemDescription || spec.name || '').toLowerCase();
+          const itemName = (item.name || item.material_name || '').toLowerCase();
+          return specName && itemName && (itemName.includes(specName) || specName.includes(itemName));
+        });
+        if (matchedSpec) {
+           required = parseFloat(matchedSpec.quantity || matchedSpec.required_qty || matchedSpec.total_qty || required);
+        }
+      }
+
+      return {
+        ...item,
+        available,
+        required,
+        allocatableQty: Math.min(required, available),
+        computedStatus: item.original_status || item.status || 'Available'
+      };
+    });
+  }, [searchTerm, storeInventoryData, currentOrder]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
@@ -269,7 +430,7 @@ export default function InventoryPage() {
                 >
                   {categories.map(cat => (
                     <option key={cat} value={cat}>
-                      {cat === 'All Categories' ? (t('inventory.categories.allcategories') || 'All Categories') : (t(`inventory.categories.${cat.toLowerCase()}`) || cat)}
+                      {cat === 'All Categories' ? safeT('inventory.categories.allcategories', 'All Categories') : safeT(`inventory.categories.${cat.toLowerCase()}`, cat)}
                     </option>
                   ))}
                 </select>
@@ -307,7 +468,7 @@ export default function InventoryPage() {
                       <td className="px-6 py-3 min-w-[200px]">
                         <div className="flex flex-col">
                           <span className={`text-sm font-semibold ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>
-                            {t(`inventory.materials.items.${item.id}`) || item.name}
+                            {safeT(`inventory.materials.items.${item.id}`, item.name)}
                           </span>
                           <span className={`text-xs ${isShortage ? 'text-red-500/80 dark:text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
                             {item.id}
@@ -315,7 +476,7 @@ export default function InventoryPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">
-                        {t(`inventory.categories.${item.category.toLowerCase()}`) || item.category}
+                        {safeT(`inventory.categories.${item.category?.toLowerCase() || 'unknown'}`, item.category)}
                       </td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">
                         {item.required.toLocaleString()}
@@ -328,14 +489,14 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-4 py-3 text-[13px] text-neutral-500 dark:text-neutral-400">
                         {item.unit === 'meters'
-                          ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters')
+                          ? safeT('dashboard.stockAlerts.footer.metersRemaining', 'meters')
                           : item.unit === 'spools'
-                            ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools')
-                            : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}
+                            ? safeT('dashboard.stockAlerts.footer.spoolsRemaining', 'spools')
+                            : safeT('dashboard.stockAlerts.footer.unitsRemaining', 'units')}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                          {item.status === 'Sufficient' ? (t('inventoryVal.status.sufficient') || 'Sufficient') : item.status === 'Low Stock' ? (t('inventoryVal.status.lowstock') || 'Low Stock') : (t('inventoryVal.status.critical') || 'Critical')}
+                          {item.status === 'Available' ? safeT('inventoryVal.status.available', 'Available') : item.status === 'Partially Available' ? safeT('inventoryVal.status.partiallyAvailable', 'Partially Available') : safeT('inventoryVal.status.outofstock', 'Out of Stock')}
                         </span>
                       </td>
                       <td className="px-6 py-3 text-center">
@@ -391,59 +552,67 @@ export default function InventoryPage() {
       </div>
 
       {/* Available Materials Table */}
-      {availableMaterials.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-6">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Available Materials</h2>
-          </div>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
-                  <th scope="col" className="px-6 py-3 min-w-[200px]">Material Name</th>
-                  <th scope="col" className="px-4 py-3 text-right">Required Qty</th>
-                  <th scope="col" className="px-4 py-3 text-right">Available Qty</th>
-                  <th scope="col" className="px-4 py-3 text-right">Allocatable Qty</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
-                {availableMaterials.map((item: any) => (
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-6">
+        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Available Materials</h2>
+        </div>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse table-fixed">
+            <thead>
+              <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+                <th scope="col" className="px-6 py-4 w-1/5 text-left">Material Name</th>
+                <th scope="col" className="px-6 py-4 w-1/5 text-left">Required Qty</th>
+                <th scope="col" className="px-6 py-4 w-1/5 text-left">Available Qty</th>
+                <th scope="col" className="px-6 py-4 w-1/5 text-left">Allocatable Qty</th>
+                <th scope="col" className="px-6 py-4 w-1/5 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
+              {filteredAvailableMaterials.length > 0 ? (
+                filteredAvailableMaterials.map((item: any) => (
                   <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-3 min-w-[200px]">
+                    <td className="px-6 py-4 truncate text-left">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.name}</span>
                         <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.id}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    <td className="px-6 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate text-left">
                       {item.required.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-neutral-600 dark:text-neutral-400">
+                    <td className="px-6 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate text-left">
                       {item.available.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-emerald-600">
-                      {Math.min(item.required, item.available).toLocaleString()}
+                    <td className="px-6 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate text-left">
+                      {item.allocatableQty.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
-                        {item.status === 'Sufficient' ? 'Sufficient' : item.status}
+                    <td className="px-6 py-4 truncate text-left">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.computedStatus === 'Available' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60'}`}>
+                        {item.computedStatus}
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                    <div className="flex flex-col items-center justify-center">
+                      <p>{t('inventoryVal.noMaterialsFound') || 'No materials found matching your criteria.'}</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* Bottom Actions Row */}
       <div className="flex justify-end pt-2 gap-3 mt-4">
         <button
           onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
-          disabled={availableMaterials.length === 0}
-          className={`w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${availableMaterials.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={filteredAvailableMaterials.length === 0}
+          className={`w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${filteredAvailableMaterials.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <ListChecks className="h-4 w-4" />
           {t('inventoryVal.allocate') || 'Material Allocation'}
