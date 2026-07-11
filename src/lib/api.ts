@@ -199,7 +199,7 @@ export const saveOrderAPI = async (orderData: Partial<Order>): Promise<{ success
       transport_cost: orderData.transportCost || "Customer",
       payment_term: orderData.paymentTerm || "30 Days Net",
       advance_amount: Number(orderData.advanceAmount ?? orderData.advancedAmount ?? 0),
-      stage: orderData.stage || "Order Initiation"
+      stage: orderData.stage === "Order Initiation" ? "Initiation" : (orderData.stage || "Initiation")
     };
 
     const poRes = await fetch(`${BACKEND_URL}/purchase_orders/add`, {
@@ -433,11 +433,11 @@ export const getCustomerAddressesAPI = async (customerName: string): Promise<Cus
     const list = await res.json();
     const match = list.find((c: any) => c.customer_name.toLowerCase() === customerName.trim().toLowerCase());
     
-    if (match && match.shipping_address) {
+    if (match && (match.delivery_address || match.shipping_address)) {
       return [{
         id: `addr-${match.customer_id}`,
-        address: match.shipping_address,
-        pinCode: match.phone || "000000" // fallback pin representation
+        address: match.delivery_address || match.shipping_address,
+        pinCode: match.pin_code || match.phone || "000000" // fallback pin representation
       }];
     }
     return [];
@@ -446,14 +446,49 @@ export const getCustomerAddressesAPI = async (customerName: string): Promise<Cus
   }
 };
 
-export const saveCustomerAddressAPI = async (customerName: string, address: string, pinCode: string): Promise<{ success: boolean; data: CustomerAddress }> => {
-  // Customer address auto-saves as part of custom metadata lookup
-  const newAddr: CustomerAddress = {
-    id: "addr-" + Date.now(),
-    address: address.trim(),
-    pinCode: pinCode.trim()
-  };
-  return { success: true, data: newAddr };
+export const saveCustomerAddressAPI = async (customerName: string, address: string, pinCode: string): Promise<{ success: boolean; data?: CustomerAddress }> => {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/customers/update_address`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        customer_name: customerName,
+        address: address.trim(),
+        pin_code: pinCode.trim()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) return { success: false };
+    
+    return { 
+      success: true, 
+      data: {
+        id: "addr-" + Date.now(),
+        address: address.trim(),
+        pinCode: pinCode.trim()
+      }
+    };
+  } catch (err) {
+    return { success: false };
+  }
+};
+
+export const validateCustomerAddressAPI = async (address: string, pinCode: string): Promise<{ exists: boolean; customerName?: string }> => {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/customers/validate_address`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        address: address.trim(),
+        pin_code: pinCode.trim()
+      })
+    });
+    if (!res.ok) return { exists: false };
+    const data = await res.json();
+    return { exists: data.exists, customerName: data.data?.customer_name };
+  } catch (err) {
+    return { exists: false };
+  }
 };
 
 

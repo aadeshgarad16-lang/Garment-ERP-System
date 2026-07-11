@@ -1,9 +1,18 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { saveOrderAPI, getOrderByIdAPI, getLatestPoSequenceAPI, getAllOrdersAPI, Order, getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress } from "@/lib/api";
+import { 
+  saveOrderAPI, 
+  getOrderByIdAPI, 
+  getLatestPoSequenceAPI, 
+  getAllOrdersAPI, 
+  Order, 
+  getCustomerAddressesAPI, 
+  saveCustomerAddressAPI, 
+  validateCustomerAddressAPI,
+  CustomerAddress 
+} from "@/lib/api";
 import {
   CreditCard,
   FileText,
@@ -91,7 +100,7 @@ function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isReadOnly } = usePermission("Order Initiation");
-  const { reloadOrders } = useOrders();
+  const { reloadOrders, updateOrderState } = useOrders();
   const resumeId = searchParams.get("resumeId");
 
   const [formState, setFormState] = useState<InitialFormState>(DEFAULT_FORM_STATE);
@@ -197,8 +206,7 @@ function OrdersPageContent() {
 
     switch (field) {
       case "poNumber":
-        if (!strVal) return "Required";
-        if (!/^PO-\d{4}-\d+$/.test(strVal)) return "Must match PO-YYYY-Number";
+        if (!strVal.trim()) return "Required";
         break;
       case "customerName":
       case "billingCompany":
@@ -213,8 +221,7 @@ function OrdersPageContent() {
         if (!/^[6-9]\d{9}$/.test(strVal)) return "Please enter a valid 10-digit mobile number.";
         break;
       case "contactEmail":
-        if (!strVal) return "Required";
-        if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(strVal)) {
+        if (strVal.trim() && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(strVal.trim())) {
           return "Please enter a valid email address (e.g., corporate@domain.com)";
         }
         break;
@@ -243,8 +250,9 @@ function OrdersPageContent() {
         break;
       }
       case "cinNumber": {
-        if (!strVal) return "Required";
-        const cleanCin = strVal.replace(/[\s\u200B-\u200D\uFEFF]+/g, "").toUpperCase();
+        const trimmedCin = strVal.trim();
+        if (!trimmedCin) break; // explicitly allow empty
+        const cleanCin = trimmedCin.replace(/[\s\u200B-\u200D\uFEFF]+/g, "").toUpperCase();
         if (!/^[LU]{1}[0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/.test(cleanCin)) {
           return "Please enter a valid 21-character alphanumeric CIN.";
         }
@@ -262,13 +270,14 @@ function OrdersPageContent() {
     return undefined;
   }, [formState]);
 
-  const validateForm = useCallback((isDraft = false): boolean => {
+  const validateForm = useCallback((isDraft = false): { isValid: boolean, newErrors: Partial<Record<keyof InitialFormState, string>> } => {
     if (isDraft) {
       if (!formState.poNumber.trim()) {
-        setErrors({ poNumber: "A PO number is required even for draft saves." });
-        return false;
+        const errs = { poNumber: "A PO number is required even for draft saves." };
+        setErrors(errs);
+        return { isValid: false, newErrors: errs };
       }
-      return true;
+      return { isValid: true, newErrors: {} };
     }
 
     let isValid = true;
@@ -289,7 +298,7 @@ function OrdersPageContent() {
       alert("Please upload a valid Purchase Order file before submission.");
     }
 
-    return isValid;
+    return { isValid, newErrors };
   }, [formState, uploadedFile, validateField]);
 
   const handleBlur = (field: keyof InitialFormState) => {
@@ -305,21 +314,18 @@ function OrdersPageContent() {
     setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
-  const handleAddressBlur = () => {
-    handleBlur("deliveryAddress");
-
+  const checkAndPromptSaveAddress = async () => {
     const enteredAddr = formState.deliveryAddress.trim();
+    const enteredPin = formState.deliveryPin.trim();
     const custName = formState.customerName.trim();
 
-    if (!enteredAddr || !custName) return;
+    if (!enteredAddr || !enteredPin || !custName) return;
 
-    // Check if it's already saved under this customer
-    const isSaved = customerAddresses.some(
-      (addr) => addr.address.trim().toLowerCase() === enteredAddr.toLowerCase()
-    );
+    // Check if it's already saved via API Validation
+    const { exists } = await validateCustomerAddressAPI(enteredAddr, enteredPin);
 
     // If not saved and not recently declined, trigger the modal
-    if (!isSaved && enteredAddr.toLowerCase() !== lastDeclinedAddress.current.toLowerCase()) {
+    if (!exists && enteredAddr.toLowerCase() !== lastDeclinedAddress.current.toLowerCase()) {
       setShowSaveNewAddressModal(true);
     }
   };
@@ -336,12 +342,7 @@ function OrdersPageContent() {
     let isMounted = true;
 
     if (!resumeId) {
-      getLatestPoSequenceAPI().then((nextNumber) => {
-        if (!isMounted) return;
-        const currentYear = new Date().getFullYear();
-        const formattedPo = `PO-${currentYear}-${String(nextNumber).padStart(3, "0")}`;
-        setFormState((prev) => ({ ...prev, poNumber: formattedPo }));
-      });
+      // Intentionally not auto-populating PO Number per user request
     } else {
       setOrderId(resumeId);
 
@@ -541,7 +542,8 @@ function OrdersPageContent() {
   });
 
   const handleSaveDraft = async () => {
-    if (!validateForm(true)) return;
+    const { isValid } = validateForm(true);
+    if (!isValid) return;
     setIsSaving(true);
     try {
       const response = await saveOrderAPI(getPayload("DRAFT", "Order Initiation"));
@@ -563,11 +565,9 @@ function OrdersPageContent() {
       console.group("🚀 Debugging Form Submission");
       console.log("Submit clicked. Form values payload:", formState);
 
-      const isValid = validateForm(false);
+      const { isValid, newErrors } = validateForm(false);
       if (!isValid) {
-        console.error("❌ CRITICAL SUBMIT FAILURE: Validation blocked submission.");
-        console.table(errors);
-        alert("Form submission blocked! Check console logs for validation errors.");
+        console.warn("Validation incomplete. Collecting state errors:", newErrors);
         console.groupEnd();
         return;
       }
@@ -585,14 +585,17 @@ function OrdersPageContent() {
         console.log("✅ Step 1 Saved Successfully. Redirecting to Specifications...");
         const targetPo = encodeURIComponent(formState.poNumber);
         const targetCust = encodeURIComponent(formState.customerName);
-        router.push(`/order-specifications?poNumber=${targetPo}&customerName=${targetCust}`);
+        
+        // Sync local context state immediately before route transition
+        updateOrderState(formState.poNumber, { stage: "Order Specifications", status: "SUBMITTED" });
+        
+        router.push(`/order-specifications?poNumber=${targetPo}&customerName=${targetCust}&stage=Order%20Specifications`);
       } else {
         console.error("❌ API returned success: false", response);
         alert("Form submission failed on the server. Check logs.");
       }
     } catch (error) {
-      console.error("CRITICAL SUBMIT FAILURE:", error);
-      alert("Form submission blocked! Check console logs for validation errors.");
+      console.warn("Submit handler exception caught:", error);
     } finally {
       setIsSaving(false);
       console.groupEnd();
@@ -635,9 +638,11 @@ function OrdersPageContent() {
                     id="poNumber"
                     type="text"
                     value={formState.poNumber}
-                    readOnly
+                    onChange={(e) => handleInputChange("poNumber", e.target.value)}
+                    onBlur={() => handleBlur("poNumber")}
                     disabled={isReadOnly}
-                    className={`${getInputStyle(errors.poNumber)} bg-neutral-100 dark:bg-slate-800 cursor-not-allowed disabled:opacity-60`}
+                    className={`${getInputStyle(errors.poNumber)} disabled:opacity-60 disabled:cursor-not-allowed`}
+                    placeholder="Enter PO Number"
                   />
                   {errors.poNumber && <p className="text-red-500 text-xs mt-1">{errors.poNumber}</p>}
 
@@ -879,7 +884,7 @@ function OrdersPageContent() {
                     {errors.contactPhone && <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>}
                   </div>
                   <div>
-                    <label htmlFor="contactEmail" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Email ID <span className="text-red-500">*</span></label>
+                    <label htmlFor="contactEmail" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Email ID</label>
                     <input
                       id="contactEmail"
                       type="email"
@@ -944,7 +949,7 @@ function OrdersPageContent() {
                             setShowAddressDropdown(true);
                           }
                         }}
-                        onBlur={handleAddressBlur}
+                        onBlur={() => handleBlur("deliveryAddress")}
                         onChange={(e) => {
                           handleInputChange("deliveryAddress", e.target.value);
                           if (formState.customerName.trim() && customerAddresses.length > 0) {
@@ -1002,7 +1007,10 @@ function OrdersPageContent() {
                         id="deliveryPin"
                         type="text"
                         value={formState.deliveryPin}
-                        onBlur={() => handleBlur("deliveryPin")}
+                        onBlur={() => {
+                          handleBlur("deliveryPin");
+                          checkAndPromptSaveAddress();
+                        }}
                         onChange={(e) => handleInputChange("deliveryPin", e.target.value)}
                         placeholder="e.g. 422001"
                         className={`${getInputStyle(errors.deliveryPin)} mt-1`}
@@ -1087,7 +1095,7 @@ function OrdersPageContent() {
                   {errors.gstNumber && <p className="text-red-500 text-xs mt-1">{errors.gstNumber}</p>}
                 </div>
                 <div>
-                  <label htmlFor="cinNumber" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">CIN <span className="text-red-500">*</span></label>
+                  <label htmlFor="cinNumber" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">CIN</label>
                   <input
                     id="cinNumber"
                     type="text"

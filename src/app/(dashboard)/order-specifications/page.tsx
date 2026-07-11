@@ -80,7 +80,7 @@ const INITIAL_TEMPLATES: AddressTemplate[] = [
 const INPUT_STYLE =
   "w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 border-neutral-300 dark:border-slate-700 focus:ring-blue-500 transition shadow-sm";
 
-const SIZE_OPTIONS = ["28", "30", "32", "34", "36", "38", "40", "42", "44", "XS", "S", "M", "L", "XL", "XXL", "XXXL"].map(s => ({ label: s, value: s }));
+const SIZE_OPTIONS = ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "XS", "S", "M", "L", "XL", "XXL", "XXXL"].map(s => ({ label: s, value: s }));
 
 const COLOR_OPTIONS = [
   { label: "Red", value: "Red", colorCode: "#EF4444" },
@@ -313,7 +313,7 @@ function GarmentSpecsContent() {
   const [singlePin, setSinglePin] = useState("");
 
   const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>([]);
-  const [detailedAllocations, setDetailedAllocations] = useState<DetailedAllocation[]>([]);
+  const [detailedAllocations, setDetailedAllocations] = useState<DetailedAllocation[]>([{ id: Date.now().toString(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
   const [isLiveOrder, setIsLiveOrder] = useState(false);
 
   // --- UI STATE MANAGEMENT ---
@@ -403,12 +403,12 @@ function GarmentSpecsContent() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const targetNode = event.target as Node;
-      
+
       // If clicking inside the portal dropdown container, do nothing
       if (addressDropdownRef.current && addressDropdownRef.current.contains(targetNode)) {
         return;
       }
-      
+
       // If clicking the active textarea itself, do nothing
       if (showAddressDropdownRowId) {
         const activeInput = document.getElementById(`address-input-${showAddressDropdownRowId}`);
@@ -416,7 +416,7 @@ function GarmentSpecsContent() {
           return;
         }
       }
-      
+
       setShowAddressDropdownRowId(null);
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -454,14 +454,13 @@ function GarmentSpecsContent() {
 
   // ─── Load PO data: localStorage first (instant), then backend (authoritative) ───
   useEffect(() => {
-    if (!currentPoNumber) return;
-
+    // unconditional load effect
     // ── Helper: apply a loaded order object to state ──
     const applyOrder = (order: any, source: 'local' | 'backend') => {
       setIsLiveOrder(true);
       const dType: 'single' | 'multi' = order.deliveryType || order.delivery_type || 'single';
-      const addr  = order.deliveryAddress  || order.delivery_address  || '';
-      const pin   = order.deliveryPin      || order.delivery_pin      || '';
+      const addr = order.deliveryAddress || order.delivery_address || '';
+      const pin = order.deliveryPin || order.delivery_pin || '';
 
       // Collect all delivery addresses for this PO
       // (Order Initiation stores them in deliveryAddresses[] for multi mode)
@@ -476,8 +475,10 @@ function GarmentSpecsContent() {
       setSingleAddress(addr);
       setSinglePin(pin);
 
-      if (order.specs && Array.isArray(order.specs)) {
+      if (order.specs && Array.isArray(order.specs) && order.specs.length > 0) {
         setSpecs(order.specs);
+      } else {
+        setSpecs([{ id: generateId(), category: "", gender: "", itemDescription: "", hsnCode: "", size: "", color: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null, productionType: "In House" }]);
       }
 
       if (order.deliveryAddresses && order.deliveryAddresses.length > 0) {
@@ -521,7 +522,9 @@ function GarmentSpecsContent() {
             });
           });
         });
-        setDetailedAllocations(parsedAllocations);
+        setDetailedAllocations(parsedAllocations.length > 0 ? parsedAllocations : [{ id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
+      } else {
+        setDetailedAllocations([{ id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
       }
     };
 
@@ -549,9 +552,9 @@ function GarmentSpecsContent() {
 
         // Backend uses snake_case; build a unified order-like object
         const backendOrder: any = {
-          deliveryType:      data.delivery_type      || 'single',
-          deliveryAddress:   data.delivery_address   || '',
-          deliveryPin:       data.delivery_pin       || '',
+          deliveryType: data.delivery_type || 'single',
+          deliveryAddress: data.delivery_address || '',
+          deliveryPin: data.delivery_pin || '',
           // deliveryAddresses may be stored as a JSON column or separate table
           deliveryAddresses: Array.isArray(data.deliveryAddresses)
             ? data.deliveryAddresses
@@ -565,8 +568,8 @@ function GarmentSpecsContent() {
 
         // Only override address fields; don't wipe user-edited allocations
         const dType: 'single' | 'multi' = backendOrder.deliveryType;
-        const addr  = backendOrder.deliveryAddress;
-        const pin   = backendOrder.deliveryPin;
+        const addr = backendOrder.deliveryAddress;
+        const pin = backendOrder.deliveryPin;
 
         setDeliveryType(dType);
         setSingleAddress(addr);
@@ -599,16 +602,16 @@ function GarmentSpecsContent() {
 
           prev.forEach((alloc) => {
             let rowAddr = alloc.deliveryAddress;
-            let rowPin  = alloc.pinCode || '';
+            let rowPin = alloc.pinCode || '';
 
             if (!rowAddr || rowAddr.trim() === '') {
               if (isSingle) {
                 rowAddr = addr;
-                rowPin  = pin;
+                rowPin = pin;
               } else if (multiAddrs.length > 0) {
                 const picked = multiAddrs[addrIdx % multiAddrs.length];
                 rowAddr = picked.address || '';
-                rowPin  = picked.pinCode || '';
+                rowPin = picked.pinCode || '';
                 addrIdx++;
               }
             }
@@ -850,7 +853,7 @@ function GarmentSpecsContent() {
       const data = await response.json();
       if (data.success || response.ok) {
         window.dispatchEvent(new Event("orders-updated"));
-        
+
         // Log legacy UI helper (will be deprecated)
         updateOrderAndLog(currentPoNumber, user?.name || "System User", "Updated", "Saved Garment Specifications to DB", (orders) => {
           const existingIndex = orders.findIndex((o: { poNumber: string }) => o.poNumber === currentPoNumber);
@@ -1020,9 +1023,6 @@ function GarmentSpecsContent() {
               <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
                 {currentPoNumber.startsWith("PO") ? currentPoNumber : `#${currentPoNumber}`}
               </span>
-              <span className="ml-auto text-xs font-semibold text-neutral-400 uppercase tracking-widest bg-neutral-200/50 dark:bg-slate-700 px-2.5 py-1 rounded-md">
-                View Only
-              </span>
             </div>
           </div>
           <div className="space-y-8">
@@ -1111,9 +1111,12 @@ function GarmentSpecsContent() {
                     <div>
                       <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Quantity <span className="text-red-500">*</span></label>
                       <input
-                        type="number"
-                        value={spec.quantity || ""}
-                        onChange={(e) => updateRow(spec.id, "quantity", Number(e.target.value))}
+                        type="text"
+                        value={spec.quantity === 0 ? "" : spec.quantity}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, "");
+                          updateRow(spec.id, "quantity", val ? Number(val) : 0);
+                        }}
                         className={`${INPUT_STYLE} h-[44px] shadow-sm`}
                         placeholder="0"
                       />
@@ -1121,9 +1124,12 @@ function GarmentSpecsContent() {
                     <div>
                       <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Unit Price <span className="text-red-500">*</span></label>
                       <input
-                        type="number"
-                        value={spec.unitPrice || ""}
-                        onChange={(e) => updateRow(spec.id, "unitPrice", Number(e.target.value))}
+                        type="text"
+                        value={spec.unitPrice === 0 ? "" : spec.unitPrice}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, "");
+                          updateRow(spec.id, "unitPrice", val ? Number(val) : 0);
+                        }}
                         className={`${INPUT_STYLE} h-[44px] shadow-sm`}
                         placeholder="0.00"
                       />
@@ -1182,7 +1188,7 @@ function GarmentSpecsContent() {
                           setItemSearchQueries(prev => ({ ...prev, [spec.id]: val }));
                           if (val === "") {
                             setSpecs(prevSpecs => prevSpecs.map(s => s.id === spec.id ? {
-                                ...s, itemDescription: "", category: "", gender: "", size: "", color: "", hsnCode: "", unitPrice: 0, pattern: ""
+                              ...s, itemDescription: "", category: "", gender: "", size: "", color: "", hsnCode: "", unitPrice: 0, pattern: ""
                             } : s));
                           }
                         }}
@@ -1378,10 +1384,10 @@ function GarmentSpecsContent() {
                   const rowQuery = alloc.deliveryAddress.trim().toLowerCase();
                   const rowFilteredAddresses = rowQuery
                     ? customerAddresses.filter(
-                        (addr) =>
-                          addr.address.toLowerCase().includes(rowQuery) ||
-                          addr.pinCode.includes(rowQuery)
-                      )
+                      (addr) =>
+                        addr.address.toLowerCase().includes(rowQuery) ||
+                        addr.pinCode.includes(rowQuery)
+                    )
                     : customerAddresses;
 
                   return (
@@ -1472,8 +1478,8 @@ function GarmentSpecsContent() {
                             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
                           >
                             <option value="">Select Item</option>
-                            {specs.filter((s) => s.itemDescription.trim()).map((s) => (
-                              <option key={s.id} value={s.id}>{s.itemDescription}</option>
+                            {specs.filter((s) => s.category?.trim()).map((s) => (
+                              <option key={s.id} value={s.id}>{s.category}</option>
                             ))}
                           </select>
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
@@ -1543,10 +1549,12 @@ function GarmentSpecsContent() {
                       )}
                       <td className="px-2 py-3">
                         <input
-                          type="number"
-                          min="0"
-                          value={alloc.quantity || ""}
-                          onChange={(e) => updateAllocationRow(alloc.id, "quantity", Number(e.target.value))}
+                          type="text"
+                          value={alloc.quantity === 0 ? "" : alloc.quantity}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, "");
+                            updateAllocationRow(alloc.id, "quantity", val ? Number(val) : 0);
+                          }}
                           placeholder="0"
                           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 transition-shadow ${isExceeding ? "border-red-500 ring-1 ring-red-500" : isExact ? "border-green-500 ring-1 ring-green-500" : "border-neutral-300 dark:border-slate-600"}`}
                         />
@@ -1814,7 +1822,7 @@ function GarmentSpecsContent() {
                         pinCode = pinMatch[1];
                         cleanAddress = pendingSaveAddress.replace(/-\s*PIN:\s*[1-9][0-9]{5}/i, "").trim();
                       }
-                      
+
                       await saveCustomerAddressAPI(
                         currentCustomerName,
                         cleanAddress,

@@ -606,69 +606,66 @@ function StockCalculationContent() {
               )}
             </div>
 
-            {isFullyAvailable ? (
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => handleCalculateBOM('quality-packing')}
-                  disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                      ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
-                    }`}
-                >
-                  Go to Quality & Packing
-                  <Package className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleCalculateBOM('calculate-bom')}
-                  disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                      ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                      : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
-                    }`}
-                >
-                  Force Calculate BOM
-                  <Calculator className="h-4 w-4" />
-                </button>
-              </div>
-            ) : isNotAvailableAtAll ? (
-              <button
-                onClick={() => handleCalculateBOM('calculate-bom')}
-                disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                    ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
-                  }`}
-              >
-                Calculate BOM
-                <Calculator className="h-4 w-4" />
-              </button>
-            ) : isPartiallyAvailable ? (
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => handleCalculateBOM('split-quality-packing')}
-                  disabled={!selectedOrder || orderAnalysis.totalQuantity === 0 || allocatedToPacking}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0 || allocatedToPacking
-                      ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 active:transform active:scale-[0.99]'
-                    }`}
-                >
-                  Go to Quality & Packing ({totalAvailableStock})
-                  <Package className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleCalculateBOM('split-bom-calculation')}
-                  disabled={!selectedOrder || orderAnalysis.totalQuantity === 0 || allocatedToBOM}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0 || allocatedToBOM
-                      ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
-                    }`}
-                >
-                  Calculate BOM ({Math.max(0, totalRequiredQty - totalAvailableStock)})
-                  <Calculator className="h-4 w-4" />
-                </button>
-              </div>
-            ) : null}
+            {(() => {
+              const isUniform = displayOrder?.specs?.some((s: any) => {
+                const specText = s.order_specifications || s.itemDescription || s.item_description || s.garment_name || "";
+                const category = s.category || s.item_category || s.garmentType || "";
+                
+                const isUniformApparel = 
+                  (category.toLowerCase().includes('shirt') || category.toLowerCase().includes('pant') || specText.toLowerCase().includes('shirt') || specText.toLowerCase().includes('pant')) && 
+                  specText.toLowerCase().includes('uniform');
+                
+                return s.is_uniform === true || s.isUniform === true || isUniformApparel;
+              });
+
+              return (
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  {isUniform ? (
+                    <button
+                      onClick={() => handleCalculateBOM('calculate-bom')}
+                      disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                      className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                          ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                          : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
+                        }`}
+                    >
+                      Go to BOM Calculation
+                      <Calculator className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <>
+                      {(isFullyAvailable || isPartiallyAvailable) && (
+                        <button
+                          onClick={() => handleCalculateBOM('quality-packing')}
+                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                              ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
+                            }`}
+                        >
+                          Go to Quality & Packing
+                          <Package className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {(isNotAvailableAtAll || isPartiallyAvailable) && (
+                        <button
+                          onClick={() => handleCalculateBOM('purchase-request')}
+                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                              ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                              : 'bg-white text-red-600 border border-red-200 hover:bg-red-50 active:transform active:scale-[0.99]'
+                            }`}
+                        >
+                          Create Purchase Request
+                          <AlertCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

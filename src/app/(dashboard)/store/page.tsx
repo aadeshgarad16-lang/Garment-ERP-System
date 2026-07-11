@@ -250,34 +250,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
     fetchMaterials();
   }, [fetchMaterials]);
 
-  // Recalculate metrics based on actual array volume
-  useEffect(() => {
-    let totalItems = 0;
-    let totalAvailable = 0;
-    let lowCount = 0;
-    let outCount = 0;
 
-    materials.forEach(item => {
-      const avail = Number(item.availableQty) || 0;
-      const minReq = Number(item.minimumRequired) || 0;
-
-      totalItems += avail;
-      totalAvailable += avail;
-
-      if (avail <= 0) {
-        outCount += 1;
-      } else if (avail <= minReq) {
-        lowCount += 1;
-      }
-    });
-
-    setMetrics({
-      total: totalItems,
-      available: totalAvailable,
-      low_stock: lowCount,
-      out_of_stock: outCount
-    });
-  }, [materials]);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -1147,33 +1120,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
   }, [fetchGarments]);
 
   // Recalculate metrics based on actual array volume
-  useEffect(() => {
-    let totalItems = 0;
-    let totalAvailable = 0;
-    let lowCount = 0;
-    let outCount = 0;
 
-    garments.forEach(item => {
-      const avail = Number(item.availableQty) || 0;
-      const minReq = Number(item.minimumRequired || item.min_required) || 0;
-
-      totalItems += avail;
-      totalAvailable += avail;
-
-      if (avail <= 0) {
-        outCount += 1;
-      } else if (avail <= minReq) {
-        lowCount += 1;
-      }
-    });
-
-    setMetrics({
-      total: garments.length,
-      available: garments.length - outCount,
-      low_stock: lowCount,
-      out_of_stock: outCount
-    });
-  }, [garments]);
 
   useEffect(() => {
     const handleUpdate = () => {
