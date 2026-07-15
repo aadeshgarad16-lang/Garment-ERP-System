@@ -4,13 +4,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, ShieldCheck, LogOut, Camera, Image as ImageIcon } from 'lucide-react';
+import { User, Mail, ShieldCheck, LogOut, Camera, Image as ImageIcon, Phone } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { user, logout, deleteAccount } = useAuth();
+
+  // Bind to session state as requested
+  const currentUser = user ? { ...user, userRole: user.role, loginPhoneNumber: user.contactNo } : null;
+
+  // Clean Text Formatter
+  const formatRole = (role?: string) => {
+    if (!role) return 'Unassigned';
+    return role
+      .split(/[-_ ]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
   const router = useRouter();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -55,7 +67,7 @@ export default function ProfilePage() {
               <div className="relative" ref={optionsRef}>
                 <div className="h-24 w-24 rounded-full bg-white dark:bg-slate-900 p-1 shadow-md">
                   <div className="h-full w-full rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                 </div>
                 <button
@@ -100,8 +112,8 @@ export default function ProfilePage() {
             {/* Profile Details */}
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{user?.name || "John Doe"}</h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t(`${user?.role?.toLowerCase()}`) || user?.role || "Role"}</p>
+                <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{currentUser?.name || "John Doe"}</h2>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatRole(currentUser?.userRole)}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-100 dark:border-slate-800">
@@ -110,7 +122,7 @@ export default function ProfilePage() {
                     <User className="h-3.5 w-3.5" />
                     {t('fullName') || 'Full Name'}
                   </label>
-                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{user?.name || "N/A"}</p>
+                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{currentUser?.name || "N/A"}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -118,7 +130,7 @@ export default function ProfilePage() {
                     <Mail className="h-3.5 w-3.5" />
                     {t('email') || 'Email Address'}
                   </label>
-                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{user?.email || "No email provided"}</p>
+                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{currentUser?.email || "No email provided"}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -127,8 +139,22 @@ export default function ProfilePage() {
                     {t('userRole') || 'User Role'}
                   </label>
                   <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    {t(`${user?.role?.toLowerCase()}`) || user?.role || "Unassigned"}
+                    {formatRole(currentUser?.userRole)}
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5" />
+                    {t('phoneNumber') || 'Phone Number'}
+                  </label>
+                  <input
+                    type="text"
+                    value={currentUser?.loginPhoneNumber || "N/A"}
+                    disabled
+                    readOnly
+                    className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
+                  />
                 </div>
               </div>
             </div>

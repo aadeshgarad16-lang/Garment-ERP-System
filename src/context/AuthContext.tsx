@@ -23,6 +23,7 @@ type AuthContextType = {
   isAuthorized: (moduleName: string) => boolean;
   hasWriteAccess: (moduleName: string) => boolean;
   updateUser: (user: Partial<User>) => void;
+  deleteAccount: (email: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,14 +83,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   };
 
+  const deleteAccount = (email: string) => {
+    // TODO: Add backend API call to delete user account
+    console.log("Account deletion requested for:", email);
+    logout();
+  };
+
   const isAuthorized = (moduleName: string): boolean => {
     if (!user) return false;
+    if (user.role?.toLowerCase() === 'super admin') return true;
     if (!user.modules_access) return false;
     return user.modules_access.includes(moduleName);
   };
 
   const hasWriteAccess = (moduleName: string): boolean => {
     if (!user) return false;
+    if (user.role?.toLowerCase() === 'super admin') return true;
     if (!user.modules_access) return false;
     return user.modules_access.includes(moduleName);
   };
@@ -104,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthorized, hasWriteAccess, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthorized, hasWriteAccess, updateUser, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

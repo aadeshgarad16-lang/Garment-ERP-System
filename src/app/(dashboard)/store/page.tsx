@@ -56,12 +56,25 @@ export function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+import { useSearchParams } from "next/navigation";
+
 // ==========================================
 // MAIN DASHBOARD PAGE
 // ==========================================
 export default function StorePage() {
-  const [activeTab, setActiveTab] = useState("raw");
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'raw';
+  
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [editRequest, setEditRequest] = useState<{ type: string, item: any } | null>(null);
+
+  // Sync tab state if the URL parameter changes directly
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list')) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   return (
     <div className="max-w-full mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
@@ -70,7 +83,7 @@ export default function StorePage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
-            Store Dashboard
+            {activeTab === 'raw' ? 'Raw Material' : activeTab === 'pre' ? 'Pre-Stitched' : 'Material List'}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
             Manage inventory and stock availability

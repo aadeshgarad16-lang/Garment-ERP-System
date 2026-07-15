@@ -1,0 +1,78 @@
+C:\Users\USER\Pictures\Garment__WEB\Sasons_Clone1\clone1\Garment-ERP-System\src
+├── app
+|  ├── (dashboard)
+|  |  ├── accounts
+|  |  ├── bom-calculation
+|  |  ├── dashboard
+|  |  ├── drafts
+|  |  ├── inventory
+|  |  ├── layout.tsx
+|  |  ├── logistics
+|  |  ├── logs
+|  |  ├── manage-user
+|  |  ├── material-allocation
+|  |  ├── material-release
+|  |  ├── order-list
+|  |  ├── order-specifications
+|  |  ├── orders
+|  |  ├── out-source
+|  |  ├── procurement
+|  |  ├── production
+|  |  ├── production-dashboard
+|  |  ├── quality-packing
+|  |  ├── reports
+|  |  ├── settings
+|  |  ├── stock-calculation
+|  |  ├── store
+|  |  ├── store-dashboard
+|  |  └── textile-specifications
+|  ├── favicon.ico
+|  ├── globals.css
+|  ├── language
+|  |  └── page.tsx
+|  ├── layout.tsx
+|  ├── login
+|  |  └── page.tsx
+|  ├── page.tsx
+|  ├── profile
+|  |  └── page.tsx
+|  └── register
+|     └── page.tsx
+├── components
+|  ├── DashboardLayout.tsx
+|  ├── language-switcher.tsx
+|  ├── logistics
+|  |  ├── ApprovalSection.tsx
+|  |  ├── ComplianceDocs.tsx
+|  |  ├── DispatchSection.tsx
+|  |  ├── FinancialClosure.tsx
+|  |  ├── LogisticsWorkflowHeader.tsx
+|  |  ├── PackingVerification.tsx
+|  |  └── ProofOfDelivery.tsx
+|  ├── PermissionGuard.tsx
+|  ├── ProductionStatus.tsx
+|  ├── ThemeProvider.tsx
+|  └── WorkflowIndicator.tsx
+├── context
+|  └── AuthContext.tsx
+├── contexts
+|  ├── language-context.tsx
+|  └── order-context.tsx
+├── hooks
+|  ├── usePermission.ts
+|  └── useTranslation.ts
+├── i18n.ts
+├── lib
+|  ├── api.ts
+|  ├── logger.ts
+|  └── orderService.ts
+├── locales
+|  ├── en.json
+|  ├── hi.json
+|  └── mr.json
+└── utils
+   ├── dateUtils.ts
+   └── orderUtils.ts
+
+directory: 38 file: 36
+

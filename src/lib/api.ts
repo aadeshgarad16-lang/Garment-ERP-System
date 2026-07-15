@@ -437,7 +437,7 @@ export const getCustomerAddressesAPI = async (customerName: string): Promise<Cus
       return [{
         id: `addr-${match.customer_id}`,
         address: match.delivery_address || match.shipping_address,
-        pinCode: match.pin_code || match.phone || "000000" // fallback pin representation
+        pinCode: match.pin_code || match.delivery_pin || ""
       }];
     }
     return [];

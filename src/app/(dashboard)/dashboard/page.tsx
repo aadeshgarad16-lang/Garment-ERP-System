@@ -58,6 +58,17 @@ const STATUS_THEME_MAP: Record<string, string> = {
   cutting: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30',
 };
 
+const STAGE_DISPLAY_MAP: Record<string, string> = {
+  "Order Specifications": "Specifications",
+  "Stock Calculation": "Stock Check",
+  "BOM Calculation": "BOM Calculation",
+  "Inventory Check": "Inventory Check",
+  "Material Allocation": "Material Allocation",
+  "Procurement": "Procurement",
+  "Material Release": "Material Release",
+  "Production": "Production",
+};
+
 // Global memoized currency formatter utilizing standard 'en-IN' locale structure
 const indianCurrencyFormatter = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -167,26 +178,26 @@ export default function DashboardHomePage({
 
       return (
         <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
-          <td className="pl-6 pr-2 py-[18px] text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{order.poNumber}</td>
-          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400 truncate max-w-[150px]">{order.customerName}</td>
-          <td className="px-2 py-[18px] whitespace-nowrap">
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.currentStage] || STATUS_THEME_MAP.pending}`}>
-              {order.currentStage}
+          <td className="px-3 py-[18px] text-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate align-middle" title={order.poNumber}>{order.poNumber}</td>
+          <td className="px-3 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 truncate align-middle" title={order.customerName}>{order.customerName}</td>
+          <td className="px-3 py-[18px] align-middle text-center">
+            <span className={`inline-block max-w-full truncate px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.currentStage] || STATUS_THEME_MAP.pending}`}>
+              {STAGE_DISPLAY_MAP[order.currentStage] || order.currentStage}
             </span>
           </td>
-          <td className="px-2 py-[18px] whitespace-nowrap">
-            <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+          <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
+            <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               <span>{order.poDate ? order.poDate.split('T')[0] : '—'}</span>
             </div>
           </td>
-          <td className="px-2 py-[18px] whitespace-nowrap">
-            <div className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+          <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
+            <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               <span>{order.deliveryDate ? order.deliveryDate.split(' ')[0].split('T')[0] : '—'}</span>
             </div>
           </td>
-          <td className="px-2 py-[18px] text-sm font-medium whitespace-nowrap">
+          <td className="px-2 py-[18px] text-center text-sm font-medium whitespace-nowrap align-middle">
             {delayDays ? (
               <span className="text-red-600 bg-red-50 border border-red-100 dark:bg-red-900/20 dark:border-red-800/30 dark:text-red-400 px-2.5 py-1 rounded-md">
                 {delayDays}
@@ -195,7 +206,7 @@ export default function DashboardHomePage({
               <span className="text-neutral-400">-</span>
             )}
           </td>
-          <td className="px-2 py-[18px] text-sm text-neutral-600 dark:text-neutral-400">
+          <td className="px-2 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 align-middle">
             {editingReasonId === order.poNumber ? (
               <div className="flex flex-col gap-2">
                 <input
@@ -203,7 +214,7 @@ export default function DashboardHomePage({
                   value={tempReason}
                   onChange={(e) => setTempReason(e.target.value)}
                   placeholder="Type custom reason..."
-                  className="w-full px-3 py-1.5 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-800 dark:text-neutral-200"
+                  className="w-full text-center px-3 py-1.5 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-800 dark:text-neutral-200"
                   autoFocus
                 />
                 <div className="flex items-center justify-between">
@@ -227,7 +238,7 @@ export default function DashboardHomePage({
                     setDelayReasons(prev => ({ ...prev, [order.id]: e.target.value }));
                   }
                 }}
-                className="w-full truncate px-3 py-1.5 text-sm border border-neutral-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-slate-600 transition-colors bg-white cursor-pointer"
+                className="w-full truncate text-center px-3 py-1.5 text-sm border border-neutral-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-slate-600 transition-colors bg-white cursor-pointer"
               >
                 <option value="">None</option>
                 <option value="Fabric Sourcing Delay">Fabric Sourcing Delay</option>
@@ -241,7 +252,7 @@ export default function DashboardHomePage({
               </select>
             )}
           </td>
-          <td className="pr-6 pl-2 py-[18px] text-right font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap">
+          <td className="px-2 py-[18px] text-center font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap align-middle">
             {indianCurrencyFormatter.format(order.amount)}
           </td>
         </tr>
@@ -324,17 +335,17 @@ export default function DashboardHomePage({
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('dashboard.recentOrders.title')}</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed text-left border-collapse">
+            <table className="w-full table-fixed text-center border-collapse">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold bg-neutral-50/30 dark:bg-slate-900">
-                  <th scope="col" className="w-[12%] pl-6 pr-2 py-4">{t('dashboard.recentOrders.headers.poNumber')}</th>
-                  <th scope="col" className="w-[16%] px-2 py-4">{t('dashboard.recentOrders.headers.customer')}</th>
-                  <th scope="col" className="w-[12%] px-2 py-4">{t('dashboard.recentOrders.headers.status')}</th>
-                  <th scope="col" className="w-[10%] px-2 py-4">PO Date</th>
-                  <th scope="col" className="w-[10%] px-2 py-4">{t('dashboard.recentOrders.headers.deliveryDate')}</th>
-                  <th scope="col" className="w-[8%] px-2 py-4">Delay Days</th>
-                  <th scope="col" className="w-[22%] px-2 py-4">Delay Reason</th>
-                  <th scope="col" className="w-[10%] pl-2 pr-6 py-4 text-right">{t('dashboard.recentOrders.headers.amount')}</th>
+                  <th scope="col" className="w-[13%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.poNumber')}</th>
+                  <th scope="col" className="w-[11%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.customer')}</th>
+                  <th scope="col" className="w-[16%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.status')}</th>
+                  <th scope="col" className="w-[11%] px-2 py-4 align-middle whitespace-nowrap text-center">PO Date</th>
+                  <th scope="col" className="w-[11%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.deliveryDate')}</th>
+                  <th scope="col" className="w-[9%] px-2 py-4 align-middle whitespace-nowrap text-center">Delay Days</th>
+                  <th scope="col" className="w-[17%] px-2 py-4 align-middle whitespace-nowrap text-center">Delay Reason</th>
+                  <th scope="col" className="w-[12%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.amount')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
@@ -343,43 +354,8 @@ export default function DashboardHomePage({
             </table>
           </div>
         </div>
-
-        {/* Manufacturing Execution System (MES) Progress Trackers */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-800 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('dashboard.productionStatus.title')}</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {normalizedProductionStages.map((stage) => {
-                const StageIcon = stage.icon;
-                const percentage = stage.capacity > 0 ? Math.round((stage.count / stage.capacity) * 100) : 0;
-                return (
-                  <div key={stage.tKey}>
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2">
-                        <StageIcon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-                        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                          {t(`dashboard.productionStatus.steps.${stage.tKey}`)}
-                        </span>
-                      </div>
-                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">{stage.count.toLocaleString()}</span> / {stage.capacity.toLocaleString()} {t('dashboard.metrics.units').toLowerCase()}
-                      </span>
-                    </div>
-                    <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className={`h-2.5 rounded-full ${stage.color} transition-all duration-500 ease-out`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
+      {/* Clean base of return - Recent Orders is now the last item */}
     </div>
   );
 }

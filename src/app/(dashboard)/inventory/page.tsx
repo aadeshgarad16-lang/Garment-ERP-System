@@ -36,6 +36,7 @@ const categories = ['All Categories', 'Fabric', 'Thread', 'Buttons', 'Zippers', 
 
 const getStatusStyle = (status: string) => {
   switch (status) {
+    case 'Fully Available': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60';
     case 'Available': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60';
     case 'Partially Available': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60';
     case 'Low Stock': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60';
@@ -46,7 +47,9 @@ const getStatusStyle = (status: string) => {
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthorized } = useAuth();
+  const canAdvanceAlloc = isAuthorized("Material Allocation");
+  const canAdvanceProcurement = isAuthorized("Procurement");
   const [currentOrder, setCurrentOrder] = useState<any>(null);
 
   const [storeInventoryData, setStoreInventoryData] = useState<any[]>([]);
@@ -191,8 +194,8 @@ export default function InventoryPage() {
     }
 
     if (po) {
-      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
-        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
+      updateOrderAndLog(po, user?.name || 'System User', 'Updated', `Inventory Check Completed → ${nextStage}`, (orders) => {
+        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage, status: nextStage } : o);
       });
       router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
     } else {
@@ -244,6 +247,8 @@ export default function InventoryPage() {
       if (required > 0) {
         if (shortage > 0) {
           status = available === 0 ? 'Out of Stock' : 'Partially Available';
+        } else {
+          status = 'Fully Available';
         }
       } else if (item.original_status || item.status) {
         // Fallback to store material status if no PO is active
@@ -260,7 +265,7 @@ export default function InventoryPage() {
 
       // Populate summary analytics parameters concurrently
       if (required > 0) {
-        if (status === 'Available') fullyAvailableCount++;
+        if (status === 'Fully Available' || status === 'Available') fullyAvailableCount++;
         else if (status === 'Partially Available') partiallyAvailableCount++;
         else if (status === 'Out of Stock') criticalCount++;
       }
@@ -292,48 +297,42 @@ export default function InventoryPage() {
   
   const filteredAvailableMaterials = useMemo(() => {
     const cleanSearch = searchTerm.toLowerCase().trim();
+    
     return storeInventoryData.filter((item: any) => {
       const available = parseFloat(item.available_qty || item.available || 0);
       const matchesSearch = !cleanSearch ||
         item.name?.toLowerCase().includes(cleanSearch) ||
         item.id?.toString().toLowerCase().includes(cleanSearch);
       
-      let matchesOrder = false;
-      if (currentOrder && currentOrder.specs) {
-        matchesOrder = currentOrder.specs.some((spec: any) => {
-          const specName = (spec.itemDescription || spec.name || '').toLowerCase();
-          const itemName = (item.name || item.material_name || '').toLowerCase();
-          return specName && itemName && (itemName.includes(specName) || specName.includes(itemName));
-        });
-      } else {
-        matchesOrder = true;
-      }
+      const isRequiredForPO = validationData.some((v: any) => {
+         const vName = (v.name || v.material_name || '').toLowerCase();
+         const iName = (item.name || item.material_name || '').toLowerCase();
+         return v.id?.toString() === item.id?.toString() ||
+                (vName && iName && (vName.includes(iName) || iName.includes(vName)));
+      });
 
-      return matchesSearch && available > 0 && matchesOrder;
+      return matchesSearch && available > 0 && isRequiredForPO;
     }).map((item: any) => {
       const available = parseFloat(item.available_qty || item.available || 0);
       
-      let required = parseFloat(item.required_qty || item.required || 0);
-      if (currentOrder && currentOrder.specs) {
-        const matchedSpec = currentOrder.specs.find((spec: any) => {
-          const specName = (spec.itemDescription || spec.name || '').toLowerCase();
-          const itemName = (item.name || item.material_name || '').toLowerCase();
-          return specName && itemName && (itemName.includes(specName) || specName.includes(itemName));
-        });
-        if (matchedSpec) {
-           required = parseFloat(matchedSpec.quantity || matchedSpec.required_qty || matchedSpec.total_qty || required);
-        }
-      }
+      const poItem = validationData.find((v: any) => {
+         const vName = (v.name || v.material_name || '').toLowerCase();
+         const iName = (item.name || item.material_name || '').toLowerCase();
+         return v.id?.toString() === item.id?.toString() ||
+                (vName && iName && (vName.includes(iName) || iName.includes(vName)));
+      });
+      
+      const required = poItem ? parseFloat(poItem.required || 0) : 0;
 
       return {
         ...item,
         available,
         required,
         allocatableQty: Math.min(required, available),
-        computedStatus: item.original_status || item.status || 'Available'
+        computedStatus: available >= required ? 'Fully Available' : (available > 0 ? 'Partially Available' : 'Out of Stock')
       };
     });
-  }, [searchTerm, storeInventoryData, currentOrder]);
+  }, [searchTerm, storeInventoryData, validationData]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
@@ -460,8 +459,8 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
-              {shortageMaterials.length > 0 ? (
-                shortageMaterials.map((item: any) => {
+              {filteredInventory.length > 0 ? (
+                filteredInventory.map((item: any) => {
                   const isShortage = item.shortage > 0;
                   return (
                     <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
@@ -496,7 +495,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                          {item.status === 'Available' ? safeT('inventoryVal.status.available', 'Available') : item.status === 'Partially Available' ? safeT('inventoryVal.status.partiallyAvailable', 'Partially Available') : safeT('inventoryVal.status.outofstock', 'Out of Stock')}
+                          {item.status === 'Fully Available' ? safeT('inventoryVal.status.fullyAvailable', 'Fully Available') : item.status === 'Available' ? safeT('inventoryVal.status.available', 'Available') : item.status === 'Partially Available' ? safeT('inventoryVal.status.partiallyAvailable', 'Partially Available') : safeT('inventoryVal.status.outofstock', 'Out of Stock')}
                         </span>
                       </td>
                       <td className="px-6 py-3 text-center">
@@ -528,15 +527,15 @@ export default function InventoryPage() {
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             {t('inventoryVal.showing') || 'Showing'}{' '}
             <span className="font-medium text-neutral-900 dark:text-neutral-100">
-              {shortageMaterials.length === 0 ? 0 : 1}
+              {filteredInventory.length === 0 ? 0 : 1}
             </span>{' '}
             {t('inventoryVal.to') || 'to'}{' '}
             <span className="font-medium text-neutral-900 dark:text-neutral-100">
-              {shortageMaterials.length}
+              {filteredInventory.length}
             </span>{' '}
             {t('inventoryVal.of') || 'of'}{' '}
             <span className="font-medium text-neutral-900 dark:text-neutral-100">
-              {mockInventory.length}
+              {filteredInventory.length}
             </span>
           </p>
           <div className="flex items-center gap-2">
@@ -587,7 +586,7 @@ export default function InventoryPage() {
                       {item.allocatableQty.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 truncate text-left">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.computedStatus === 'Available' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.computedStatus === 'Fully Available' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : item.computedStatus === 'Partially Available' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60' : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60'}`}>
                         {item.computedStatus}
                       </span>
                     </td>
@@ -609,25 +608,48 @@ export default function InventoryPage() {
 
       {/* Bottom Actions Row */}
       <div className="flex justify-end pt-2 gap-3 mt-4">
-        <button
-          onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
-          disabled={filteredAvailableMaterials.length === 0}
-          className={`w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${filteredAvailableMaterials.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <ListChecks className="h-4 w-4" />
-          {t('inventoryVal.allocate') || 'Material Allocation'}
-        </button>
-        <button
-          onClick={() => advanceStage('/procurement', 'Procurement', true)}
-          disabled={shortageMaterials.length === 0}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${shortageMaterials.length === 0
-              ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 dark:text-slate-500 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
-              : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white'
-            }`}
-        >
-          <Truck className="h-4 w-4" />
-          {t('inventoryVal.purchaseRequest') || 'Create Purchase Request'}
-        </button>
+        {canAdvanceAlloc ? (
+          <button
+            onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
+            disabled={hasShortage || filteredInventory.length === 0}
+            className={`w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasShortage || filteredInventory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <ListChecks className="h-4 w-4" />
+            {t('inventoryVal.allocate') || 'Material Allocation'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="You do not have permission to access Material Allocation."
+            className="w-full sm:w-auto px-5 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-400 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+          >
+            Max Stage Reached
+          </button>
+        )}
+
+        {canAdvanceProcurement ? (
+          <button
+            onClick={() => advanceStage('/procurement', 'Procurement', true)}
+            disabled={!hasShortage}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${!hasShortage
+                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 dark:text-slate-500 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white'
+              }`}
+          >
+            <Truck className="h-4 w-4" />
+            {t('inventoryVal.purchaseRequest') || 'Create Purchase Request'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="You do not have permission to access Procurement."
+            className="w-full sm:w-auto px-5 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-400 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+          >
+            Max Stage Reached
+          </button>
+        )}
       </div>
 
     </div>

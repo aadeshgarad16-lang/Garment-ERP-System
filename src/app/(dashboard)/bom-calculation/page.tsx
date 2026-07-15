@@ -136,7 +136,8 @@ const mockMaterials = [
 export default function BOMCalculationPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isAuthorized } = useAuth();
+  const canAdvance = isAuthorized("Inventory Check");
   const { orders } = useOrders();
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -623,68 +624,79 @@ export default function BOMCalculationPage() {
               <Download className="h-4 w-4" />
               {t('bom.export')}
             </button>
-            <button
-              onClick={async () => {
-                if (currentOrder) {
-                    try {
-                      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+            {canAdvance ? (
+              <button
+                onClick={async () => {
+                  if (currentOrder) {
+                      try {
+                        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+                        
+                        const bomLines = calculatedMaterials.map(m => ({
+                          material_id: m.id,
+                          material_name: m.name,
+                          category: m.category,
+                          unit: m.unit,
+                          per_piece_qty: m.perPiece,
+                          final_qty: m.finalQuantity,
+                          amount: m.finalQuantity * (m.category === 'Fabric' ? 5 : 0.5)
+                        }));
+
+                        const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeaders(true)
+                          },
+                          body: JSON.stringify({
+                            poNumber: currentOrder.poNumber,
+                            bomLines: bomLines,
+                            wastagePct: wastage
+                          })
+                        });
+
+                        const data = await res.json();
                       
-                      const bomLines = calculatedMaterials.map(m => ({
-                        material_id: m.id,
-                        material_name: m.name,
-                        category: m.category,
-                        unit: m.unit,
-                        per_piece_qty: m.perPiece,
-                        final_qty: m.finalQuantity,
-                        amount: m.finalQuantity * (m.category === 'Fabric' ? 5 : 0.5)
-                      }));
+                      if (res.ok && data.success !== false) {
+                        window.dispatchEvent(new Event("orders-updated"));
 
-                      const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          ...getAuthHeaders(true)
-                        },
-                        body: JSON.stringify({
-                          poNumber: currentOrder.poNumber,
-                          bomLines: bomLines,
-                          wastagePct: wastage
-                        })
-                      });
+                        const targetPoNumber = currentOrder.poNumber;
 
-                      const data = await res.json();
-                    
-                    if (res.ok && data.success !== false) {
-                      window.dispatchEvent(new Event("orders-updated"));
-
-                      const targetPoNumber = currentOrder.poNumber;
-
-                      setSelectedCustomer('');
-                      setSelectedPODate('');
-                      setSelectedPONumber('');
-                      setWastage(5);
-                      localStorage.removeItem('bomCalculationDraft');
-                      
-                      window.history.replaceState(null, '', window.location.pathname);
-                      router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
-                    } else {
-                      alert(data.error || "Failed to process order");
+                        setSelectedCustomer('');
+                        setSelectedPODate('');
+                        setSelectedPONumber('');
+                        setWastage(5);
+                        localStorage.removeItem('bomCalculationDraft');
+                        
+                        window.history.replaceState(null, '', window.location.pathname);
+                        router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
+                      } else {
+                        alert(data.error || "Failed to process order");
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      alert("Network error. Please try again.");
                     }
-                  } catch (err) {
-                    console.error(err);
-                    alert("Network error. Please try again.");
                   }
-                }
-              }}
-              disabled={totalProductionRequired === 0}
-              className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0
-                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                }`}
-            >
-              {t('bom.checkInventory')}
-              <ArrowRight className="h-4 w-4" />
-            </button>
+                }}
+                disabled={totalProductionRequired === 0}
+                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0
+                  ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+              >
+                {t('bom.checkInventory')}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="You do not have permission to access Inventory Check."
+                className="w-full sm:w-auto px-8 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2"
+              >
+                Max Stage Reached
+              </button>
+            )}
           </div>
         </div>
 

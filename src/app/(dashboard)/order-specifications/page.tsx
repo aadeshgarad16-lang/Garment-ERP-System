@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown, Eye } from "lucide-react";
+import { Plus, Trash2, Upload, MapPin, Save, X, Search, Check, ChevronDown, Eye, ClipboardCheck } from "lucide-react";
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/contexts/order-context";
@@ -283,7 +283,8 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
 function GarmentSpecsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAuthorized } = useAuth();
+  const canAdvance = isAuthorized("Stock Check");
   const { reloadOrders } = useOrders();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -511,12 +512,15 @@ function GarmentSpecsContent() {
               addrIdx++;
             }
 
+            const colors = s.color ? s.color.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
+            const autoColor = colors.length === 1 ? colors[0] : "";
+
             parsedAllocations.push({
               id: generateId(),
               deliveryAddress: rowAddr,
               pinCode: rowPin,
               itemId: s.id,
-              color: '',
+              color: autoColor,
               size: sz,
               quantity: sizes.length === 1 ? (s.quantity || 0) : 0,
             });
@@ -637,12 +641,15 @@ function GarmentSpecsContent() {
           const sizes = s.size ? s.size.split(",").map((sz) => sz.trim()).filter(Boolean) : ["Standard"];
           sizes.forEach((sz) => {
             const existing = prev.find((a) => a.itemId === s.id && a.size === sz);
+            const colors = s.color ? s.color.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
+            const autoColor = colors.length === 1 ? colors[0] : "";
+            
             newAllocations.push({
               id: existing ? existing.id : generateId(),
               deliveryAddress: singleAddress,
               pinCode: singlePin,
               itemId: s.id,
-              color: existing ? existing.color || "" : "",
+              color: existing && existing.color ? existing.color : autoColor,
               size: sz,
               quantity: sizes.length === 1 ? s.quantity : (existing ? existing.quantity : 0),
             });
@@ -651,7 +658,7 @@ function GarmentSpecsContent() {
 
         const isSame = prev.length === newAllocations.length && prev.every((p, i) => {
           const n = newAllocations[i];
-          return p.itemId === n.itemId && p.size === n.size && p.quantity === n.quantity && p.deliveryAddress === n.deliveryAddress && p.pinCode === n.pinCode;
+          return p.itemId === n.itemId && p.size === n.size && p.quantity === n.quantity && p.deliveryAddress === n.deliveryAddress && p.pinCode === n.pinCode && p.color === n.color;
         });
 
         return isSame ? prev : newAllocations;
@@ -732,9 +739,12 @@ function GarmentSpecsContent() {
         const hasEmptyAlloc = prev.some(a => a.itemId === spec.id && a.deliveryAddress === "");
         if (hasEmptyAlloc) return prev;
 
+        const colors = spec.color ? spec.color.split(",").map(c => c.trim()).filter(Boolean) : [];
+        const autoColor = colors.length === 1 ? colors[0] : "";
+
         return [
           ...prev,
-          { id: generateId(), deliveryAddress: "", itemId: spec.id, color: "", size: "", quantity: 0 },
+          { id: generateId(), deliveryAddress: "", itemId: spec.id, color: autoColor, size: "", quantity: 0 },
         ];
       });
       setTimeout(() => {
@@ -1302,6 +1312,82 @@ function GarmentSpecsContent() {
         </div>
       </div>
 
+      {/* COMPLETE SPECIFICATION OVERVIEW */}
+      <div className="mt-8 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
+            <ClipboardCheck className="w-5 h-5 text-indigo-500" />
+            Complete Specification Overview
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-neutral-50 dark:bg-slate-800/80 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                <th className="px-4 py-3 text-left">Garment / Desc</th>
+                <th className="px-4 py-3 text-left">Category / Pattern</th>
+                <th className="px-4 py-3 text-left">Production Type</th>
+                <th className="px-4 py-3 text-center">Size / Color</th>
+                <th className="px-4 py-3 text-center">Total Qty</th>
+                <th className="px-4 py-3 text-left">Allocations & Delivery</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-slate-700">
+              {specs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-500">
+                    No specifications added yet.
+                  </td>
+                </tr>
+              ) : (
+                specs.map((spec) => {
+                  const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id);
+                  return (
+                    <tr key={spec.id} className="bg-white dark:bg-slate-900 hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                        {spec.itemDescription}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        {spec.gender} • {spec.category} <br/>
+                        <span className="text-xs text-neutral-400">{spec.pattern}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        {spec.productionType}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300 text-center">
+                        <div>Sz: {spec.size || "-"}</div>
+                        <div className="text-xs text-neutral-400">Clr: {spec.color || "-"}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100 text-center">
+                        {spec.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300">
+                        {specAllocations.length === 0 ? (
+                          <span className="text-neutral-400 italic">No allocations</span>
+                        ) : (
+                          <ul className="space-y-1">
+                            {specAllocations.map(alloc => (
+                              <li key={alloc.id} className="flex flex-col border border-neutral-100 dark:border-slate-800 rounded p-1.5 bg-neutral-50 dark:bg-slate-800/30">
+                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                                  {alloc.quantity} units {alloc.size ? `(Sz: ${alloc.size})` : ''} {alloc.color ? `(Clr: ${alloc.color})` : ''}
+                                </span>
+                                <span className="text-neutral-500 truncate max-w-[200px]" title={alloc.deliveryAddress}>
+                                  To: {alloc.deliveryAddress || "Unassigned"}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* DETAIL SPEC ALLOCATIONS */}
       <div id="multi-delivery-allocations" className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
         <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
@@ -1592,7 +1678,6 @@ function GarmentSpecsContent() {
       </div>
 
 
-
       {/* FOOTER WIDGET BUTTONS */}
       <div className="w-full flex justify-between items-center mt-6 border-t border-neutral-200 dark:border-slate-700 pt-6">
         <button
@@ -1611,14 +1696,25 @@ function GarmentSpecsContent() {
           >
             View Saved Drafts {savedDrafts.length > 0 && `(${savedDrafts.length})`}
           </button>
-          <button
-            type="button"
-            onClick={handleFinalSubmit}
-            disabled={hasExceedingItems}
-            className={`px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm ${hasExceedingItems ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            Submit
-          </button>
+          {canAdvance ? (
+            <button
+              type="button"
+              onClick={handleFinalSubmit}
+              disabled={hasExceedingItems}
+              className={`px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm ${hasExceedingItems ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              Submit
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="You do not have permission to access Stock Check."
+              className="px-5 py-2.5 bg-neutral-400 text-white rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed shadow-sm"
+            >
+              Max Stage Reached
+            </button>
+          )}
         </div>
       </div>
 

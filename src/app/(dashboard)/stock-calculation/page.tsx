@@ -141,7 +141,10 @@ function StockCalculationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isAuthorized } = useAuth();
+  const canAdvanceBOM = isAuthorized("BOM Calculation");
+  const canAdvanceQuality = isAuthorized("Quality & Packing");
+  const canAdvanceProcurement = isAuthorized("Procurement");
   const { orders, updateOrderState, reloadOrders } = useOrders();
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -487,20 +490,20 @@ function StockCalculationContent() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <SearchableDropdown
-              label="Customer Name"
+              label="PO Number"
               options={customers}
               value={selectedCustomer}
-              placeholder="Select a Customer..."
+              placeholder="Select a PO Number..."
               onChange={(val) => {
                 setSelectedCustomer(val);
                 setSelectedPONumber('');
               }}
             />
             <SearchableDropdown
-              label="PO Number"
+              label="Customer Name"
               options={poNumbers}
               value={selectedPONumber}
-              placeholder="Select a PO Number..."
+              placeholder="Select a Customer Name..."
               disabled={!selectedCustomer}
               onChange={(val) => setSelectedPONumber(val)}
             />
@@ -533,7 +536,7 @@ function StockCalculationContent() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     <tr className="text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50/30 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">{displayOrder.poNumber || displayOrder.po_number}</td>
+                      <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400 whitespace-normal break-words max-w-[200px]">{displayOrder.poNumber || displayOrder.po_number}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.poDate || displayOrder.order_date)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.deliveryDate || displayOrder.delivery_date)}</td>
                       <td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400 space-y-2">
@@ -553,19 +556,30 @@ function StockCalculationContent() {
                           displayOrder.specs.map((spec: any) => {
                             const avail = spec.stockAvailable || 0;
                             const req = spec.quantity || 0;
-                            const status = spec.stockStatus || 'Out of Stock'; // Use exact backend status
-                            const isAvailable = status === 'Available';
+                            
+                            // Dynamic validation: 'Pending Selection' if not explicitly set/calculated yet
+                            const hasMaterials = spec.rawMaterialsSelected || (spec.materials && spec.materials.length > 0) || spec.stockStatus;
+                            const status = hasMaterials 
+                              ? (avail >= req ? 'In Stock' : (avail > 0 ? 'Low Stock' : 'Out of Stock')) 
+                              : 'Pending Selection';
+                              
+                            const isAvailable = status === 'In Stock' || status === 'Available';
                             const isLowStock = status === 'Low Stock';
-                            const isOut = status === 'Out of Stock' || avail === 0;
+                            const isPending = status === 'Pending Selection';
+                            const isOut = status === 'Out of Stock';
 
                             return (
                               <div key={`status-${spec.id || spec.spec_id}`} className="flex items-center justify-between border-b border-transparent last:border-0 pb-1.5 last:pb-0 min-h-[24px]">
                                 <div>
-                                  {isAvailable && !isOut ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                      Available ({avail})
+                                  {isPending ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-slate-800 dark:text-neutral-400 border border-neutral-200 dark:border-slate-700">
+                                      Pending Selection
                                     </span>
-                                  ) : isLowStock && !isOut ? (
+                                  ) : isAvailable ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                      In Stock ({avail})
+                                    </span>
+                                  ) : isLowStock ? (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                                       Low Stock ({avail})
                                     </span>
@@ -621,45 +635,78 @@ function StockCalculationContent() {
               return (
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   {isUniform ? (
-                    <button
-                      onClick={() => handleCalculateBOM('calculate-bom')}
-                      disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                      className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                          ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                          : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
-                        }`}
-                    >
-                      Go to BOM Calculation
-                      <Calculator className="h-4 w-4" />
-                    </button>
+                    canAdvanceBOM ? (
+                      <button
+                        onClick={() => handleCalculateBOM('calculate-bom')}
+                        disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                        className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                            ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                            : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
+                          }`}
+                      >
+                        Go to BOM Calculation
+                        <Calculator className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="You do not have permission to access BOM Calculation."
+                        className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                      >
+                        Max Stage Reached
+                      </button>
+                    )
                   ) : (
                     <>
                       {(isFullyAvailable || isPartiallyAvailable) && (
-                        <button
-                          onClick={() => handleCalculateBOM('quality-packing')}
-                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                              ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                              : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
-                            }`}
-                        >
-                          Go to Quality & Packing
-                          <Package className="h-4 w-4" />
-                        </button>
+                        canAdvanceQuality ? (
+                          <button
+                            onClick={() => handleCalculateBOM('quality-packing')}
+                            disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
+                              }`}
+                          >
+                            Go to Quality & Packing
+                            <Package className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            title="You do not have permission to access Quality & Packing."
+                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                          >
+                            Max Stage Reached
+                          </button>
+                        )
                       )}
 
                       {(isNotAvailableAtAll || isPartiallyAvailable) && (
-                        <button
-                          onClick={() => handleCalculateBOM('purchase-request')}
-                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                              ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
-                              : 'bg-white text-red-600 border border-red-200 hover:bg-red-50 active:transform active:scale-[0.99]'
-                            }`}
-                        >
-                          Create Purchase Request
-                          <AlertCircle className="h-4 w-4" />
-                        </button>
+                        canAdvanceProcurement ? (
+                          <button
+                            onClick={() => handleCalculateBOM('purchase-request')}
+                            disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                                : 'bg-white text-red-600 border border-red-200 hover:bg-red-50 active:transform active:scale-[0.99]'
+                              }`}
+                          >
+                            Create Purchase Request
+                            <AlertCircle className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            title="You do not have permission to access Procurement."
+                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                          >
+                            Max Stage Reached
+                          </button>
+                        )
                       )}
                     </>
                   )}

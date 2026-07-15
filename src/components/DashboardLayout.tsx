@@ -36,32 +36,61 @@ import {
   Moon,
   Calendar,
   ClipboardList,
-  UserPlus
+  UserPlus,
+  PackageSearch,
+  Store,
+  BarChart3
 } from 'lucide-react';
 
 const navItems = [
-  { tKey: 'dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'Dashboard' },
-  { tKey: 'orderInitiation', href: '/orders', icon: ShoppingCart, module: 'Order Initiation' },
-  { tKey: 'orderSpecifications', href: '/order-specifications', icon: ClipboardList, module: 'Specifications' },
-  { tKey: 'stockCalculation', href: '/stock-calculation', icon: Package, module: 'Stock Check' },
-  { tKey: 'bomCalculation', href: '/bom-calculation', icon: Calculator, module: 'BOM Calculation' },
-  { tKey: 'inventoryCheck', href: '/inventory', icon: Box, module: 'Inventory Check' },
-  { tKey: 'materialallocation', href: '/material-allocation', icon: Layers, module: 'Material Allocation' },
-  { tKey: 'outSource', href: '/out-source', icon: PackageCheck, module: 'Out Source' },
-  { tKey: 'procurement', href: '/procurement', icon: Truck, module: 'Procurement' },
-  { tKey: 'production', href: '/production', icon: Factory, module: 'Production' },
-  { tKey: 'qualityPacking', href: '/quality-packing', icon: ShieldCheck, module: 'Quality & Packing' },
-  { tKey: 'logistics', href: '/logistics', icon: Map, module: 'Logistics' },
-  { tKey: 'accounts', href: '/accounts', icon: PieChart, module: 'Accounts' },
-  { tKey: 'store', href: '/store', icon: ShoppingCart, module: 'Store' },
-  { tKey: 'logs', href: '/logs', icon: ClipboardList, module: 'System Logs' },
-  { tKey: 'ManageUser', label: 'Manage User', href: '/manage-user', icon: UserPlus, module: 'User Management' },
-  { tKey: 'settings', href: '/settings', icon: Settings, module: 'Settings' },
+  { tKey: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'Dashboard' },
+  { 
+    tKey: 'initiateOrder', 
+    label: 'Initiate Order', 
+    icon: ShoppingCart,
+    module: 'Order Initiation',
+    children: [
+      { tKey: 'orderInitiation', label: 'Order Initiation', href: '/orders', module: 'Order Initiation' },
+      { tKey: 'orderSpecifications', label: 'Specifications', href: '/order-specifications', module: 'Specifications' },
+      { tKey: 'initiateOrderReports', label: 'Reports', href: '/reports/initiate-order', icon: BarChart3, module: 'Order Initiation' }
+    ]
+  },
+  { 
+    tKey: 'materialCheck', 
+    label: 'Material Check', 
+    icon: PackageSearch,
+    module: 'Inventory Check',
+    children: [
+      { tKey: 'stockCheck', label: 'Stock Check', href: '/stock-calculation', module: 'Stock Check' },
+      { tKey: 'bomCalc', label: 'BOM Calculation', href: '/bom-calculation', module: 'BOM Calculation' },
+      { tKey: 'inventory', label: 'Inventory Check', href: '/inventory', module: 'Inventory Check' },
+      { tKey: 'allocation', label: 'Material Allocation', href: '/material-allocation', module: 'Material Allocation' },
+      { tKey: 'materialCheckReports', label: 'Reports', href: '/reports/material-check', icon: BarChart3, module: 'Inventory Check' }
+    ]
+  },
+  { 
+    tKey: 'storeGroup', 
+    label: 'Store', 
+    icon: Store,
+    module: 'Store',
+    children: [
+      { tKey: 'storeDashboard', label: 'Store Dashboard', href: '/store-dashboard', module: 'Store' },
+      { tKey: 'rawMaterial', label: 'Raw Material', href: '/store?tab=raw', module: 'Store' },
+      { tKey: 'preStitched', label: 'Pre-stitched Material', href: '/store?tab=pre', module: 'Store' },
+      { tKey: 'storeReports', label: 'Reports', href: '/reports/store', icon: BarChart3, module: 'Store' }
+    ]
+  },
+  { tKey: 'production', label: 'Production', href: '/production-dashboard', icon: Factory, module: 'Production' },
+  { tKey: 'qualityPacking', label: 'Quality & Packing', href: '/quality-packing', icon: ShieldCheck, module: 'Quality & Packing' },
+  { tKey: 'logistics', label: 'Logistics', href: '/logistics', icon: Map, module: 'Logistics' },
+  { tKey: 'accounts', label: 'Accounts', href: '/accounts', icon: PieChart, module: 'Accounts' },
+  { tKey: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'Settings' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
   const dateInputRef = React.useRef<HTMLInputElement>(null);
@@ -98,11 +127,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Handle active state matching (e.g., if pathname is '/orders', Orders is active)
   const isItemActive = (href: string) => {
+    if (!href) return false;
     if (href === '/') {
       return pathname === '/';
     }
+    
+    // Exact match for isolated dashboard route to prevent bleeding
+    if (href === '/production-dashboard') {
+      return pathname === '/production-dashboard';
+    }
+    
+    // Alternate split match to catch nested /production links without highlighting on dashboard
+    if (href === '/production') {
+      return pathname === '/production' || (pathname?.startsWith('/production/') && !pathname.startsWith('/production-dashboard'));
+    }
+    
     return pathname?.startsWith(href);
   };
+
+  const toggleMenu = (key: string) => {
+    setOpenMenus(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  // Auto-open parent menus if a child is active
+  useEffect(() => {
+    if (!mounted) return;
+    const activeParents = navItems
+      .filter(item => item.children?.some((child: any) => isItemActive(child.href)))
+      .map(item => item.tKey);
+      
+    if (activeParents.length > 0) {
+      setOpenMenus(prev => {
+        const newOpens = activeParents.filter(p => !prev.includes(p));
+        return newOpens.length > 0 ? [...prev, ...newOpens] : prev;
+      });
+    }
+  }, [pathname, mounted]);
 
   return (
     <div className="fixed inset-0 flex bg-neutral-100 dark:bg-slate-950 font-sans">
@@ -144,28 +206,78 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className={`mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider transition-all duration-300 overflow-hidden ${sidebarCollapsed ? 'px-0 h-0 opacity-0' : 'px-4 h-auto opacity-100'}`}>
             {!sidebarCollapsed && (t('sidebar.mainMenu') || 'MAIN MENU')}
           </div>
-          <nav className={`space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'} transition-all duration-300`}>
-            {mounted ? navItems.filter(item => user?.role === 'Super Admin' || user?.modules_access?.includes(item.module)).map((item: any) => {
+          <nav className={`space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'} transition-all duration-300 pb-20`}>
+            {mounted ? navItems.filter(item => user?.role === 'Super Admin' || user?.modules_access?.includes(item.module) || (item.children && item.children.some((c:any) => user?.modules_access?.includes(c.module)))).map((item: any) => {
               const Icon = item.icon;
-              const isActive = isItemActive(item.href);
+              const hasChildren = item.children && item.children.length > 0;
+              const isParentActive = hasChildren ? item.children.some((c:any) => isItemActive(c.href)) : isItemActive(item.href);
               const itemName = item.label || t(`sidebar.${item.tKey}`);
+              const isOpen = openMenus.includes(item.tKey);
+
               return (
                 <div key={item.tKey} className="relative group">
-                  <Link
-                    href={item.href}
-                    target={item.href.startsWith('http') ? '_blank' : undefined}
-                    rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`w-full flex items-center rounded-lg text-sm font-medium transition-colors ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2'} ${isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
-                      }`}
-                  >
-                    <Icon className={`h-5 w-5 shrink-0 transition-all duration-300 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
-                    <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
-                      {itemName}
-                    </span>
-                  </Link>
+                  {hasChildren ? (
+                    <button
+                      onClick={() => toggleMenu(item.tKey)}
+                      className={`w-full flex items-center justify-between rounded-lg text-sm font-medium transition-colors ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2'} ${isParentActive
+                        ? 'bg-blue-600/10 text-blue-400'
+                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <Icon className={`h-5 w-5 shrink-0 transition-all duration-300 ${isParentActive ? 'text-blue-500' : 'text-neutral-400'}`} />
+                        <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
+                          {itemName}
+                        </span>
+                      </div>
+                      {!sidebarCollapsed && (
+                        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      target={item.href.startsWith('http') ? '_blank' : undefined}
+                      rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`w-full flex items-center rounded-lg text-sm font-medium transition-colors ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2'} ${isItemActive(item.href)
+                        ? 'bg-blue-600 text-white'
+                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
+                        }`}
+                    >
+                      <Icon className={`h-5 w-5 shrink-0 transition-all duration-300 ${isItemActive(item.href) ? 'text-white' : 'text-neutral-400'}`} />
+                      <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
+                        {itemName}
+                      </span>
+                    </Link>
+                  )}
+
+                  {hasChildren && isOpen && !sidebarCollapsed && (
+                    <div className="mt-1 space-y-1 pl-10 relative">
+                      <div className="absolute left-[22px] top-0 bottom-2 border-l border-neutral-700/50"></div>
+                      {item.children.filter((child: any) => user?.role === 'Super Admin' || user?.modules_access?.includes(child.module)).map((child: any) => {
+                        const childActive = isItemActive(child.href);
+                        return (
+                          <Link
+                            key={child.tKey}
+                            href={child.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={`block relative rounded-lg text-sm font-medium px-3 py-2 transition-colors ${childActive 
+                              ? 'text-white bg-blue-600' 
+                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
+                          >
+                            {childActive && (
+                               <div className="absolute -left-[19px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#1e293b]"></div>
+                            )}
+                            <span className="flex items-center gap-2">
+                              {child.icon && <child.icon className="w-4 h-4 shrink-0" />}
+                              {child.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Tooltip for Collapsed State */}
                   {sidebarCollapsed && (

@@ -26,6 +26,7 @@ import {
 import WorkflowIndicator from "@/components/WorkflowIndicator";
 import { useOrders } from "@/contexts/order-context";
 import { usePermission } from "@/hooks/usePermission";
+import { useAuth } from "@/context/AuthContext";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { formatDateDisplay } from "@/utils/dateUtils";
 
@@ -100,6 +101,8 @@ function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isReadOnly } = usePermission("Order Initiation");
+  const { isAuthorized } = useAuth();
+  const canAdvance = isAuthorized("Order Specifications");
   const { reloadOrders, updateOrderState } = useOrders();
   const resumeId = searchParams.get("resumeId");
 
@@ -114,11 +117,14 @@ function OrdersPageContent() {
   const [poDateDisplay, setPoDateDisplay] = useState("");
   const [deliveryDateDisplay, setDeliveryDateDisplay] = useState("");
   
-  // Initialize display dates when formState updates from external sources (e.g. edit mode)
+  // Initialize display dates when formState updates from external sources (e.g. edit mode) or user interaction
   useEffect(() => {
-    if (formState.poDate && poDateDisplay.length !== 10) setPoDateDisplay(formatDateDisplay(formState.poDate));
-    if (formState.deliveryDate && deliveryDateDisplay.length !== 10) setDeliveryDateDisplay(formatDateDisplay(formState.deliveryDate));
-  }, [formState.poDate, formState.deliveryDate]);
+    setPoDateDisplay(formState.poDate ? formatDateDisplay(formState.poDate) : "");
+  }, [formState.poDate]);
+
+  useEffect(() => {
+    setDeliveryDateDisplay(formState.deliveryDate ? formatDateDisplay(formState.deliveryDate) : "");
+  }, [formState.deliveryDate]);
 
   const handleDateMask = (field: "poDate" | "deliveryDate", rawValue: string) => {
     let val = rawValue.replace(/\D/g, "");
@@ -139,6 +145,7 @@ function OrdersPageContent() {
     { id: "1", itemDescription: "", size: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null },
   ]);
 
+  const [isPoNotRequired, setIsPoNotRequired] = useState(false);
   const [isLinkingParent, setIsLinkingParent] = useState(false);
   const [parentPOs, setParentPOs] = useState<Order[]>([]);
   const [parentSearchTerm, setParentSearchTerm] = useState("");
@@ -151,7 +158,7 @@ function OrdersPageContent() {
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   const [showSaveNewAddressModal, setShowSaveNewAddressModal] = useState(false);
   const addressDropdownRef = React.useRef<HTMLDivElement>(null);
-  const lastDeclinedAddress = React.useRef("");
+  const lastPromptedAddress = React.useRef("");
   const [isSavingNewAddress, setIsSavingNewAddress] = useState(false);
 
   // Fetch customer addresses when customerName changes
@@ -206,7 +213,16 @@ function OrdersPageContent() {
 
     switch (field) {
       case "poNumber":
-        if (!strVal.trim()) return "Required";
+        if (!isPoNotRequired && !strVal.trim()) return "Required";
+        break;
+      case "poDate":
+        if (!strVal) return "Required";
+        break;
+      case "deliveryDate":
+        if (!strVal) return "Required";
+        if (activeState.poDate && new Date(strVal) < new Date(activeState.poDate)) {
+          return "Delivery Date cannot be before PO Date.";
+        }
         break;
       case "customerName":
       case "billingCompany":
@@ -268,11 +284,11 @@ function OrdersPageContent() {
         break;
     }
     return undefined;
-  }, [formState]);
+  }, [formState, isPoNotRequired]);
 
   const validateForm = useCallback((isDraft = false): { isValid: boolean, newErrors: Partial<Record<keyof InitialFormState, string>> } => {
     if (isDraft) {
-      if (!formState.poNumber.trim()) {
+      if (!isPoNotRequired && !formState.poNumber.trim()) {
         const errs = { poNumber: "A PO number is required even for draft saves." };
         setErrors(errs);
         return { isValid: false, newErrors: errs };
@@ -321,11 +337,17 @@ function OrdersPageContent() {
 
     if (!enteredAddr || !enteredPin || !custName) return;
 
+    // Prevent cyclical prompting for the same address
+    if (enteredAddr.toLowerCase() === lastPromptedAddress.current.toLowerCase()) {
+      return;
+    }
+
     // Check if it's already saved via API Validation
     const { exists } = await validateCustomerAddressAPI(enteredAddr, enteredPin);
 
-    // If not saved and not recently declined, trigger the modal
-    if (!exists && enteredAddr.toLowerCase() !== lastDeclinedAddress.current.toLowerCase()) {
+    // If not saved, trigger the modal and record the prompt
+    if (!exists) {
+      lastPromptedAddress.current = enteredAddr;
       setShowSaveNewAddressModal(true);
     }
   };
@@ -343,6 +365,24 @@ function OrdersPageContent() {
 
     if (!resumeId) {
       // Intentionally not auto-populating PO Number per user request
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem("order_initiation_draft");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const now = Date.now();
+            if (now - parsed.timestamp < 300000) { // 5 minutes
+              if (parsed.formState) setFormState(parsed.formState);
+              if (parsed.specs) setSpecs(parsed.specs);
+              if (parsed.isPoNotRequired !== undefined) setIsPoNotRequired(parsed.isPoNotRequired);
+            } else {
+              localStorage.removeItem("order_initiation_draft");
+            }
+          }
+        } catch (e) {
+          localStorage.removeItem("order_initiation_draft");
+        }
+      }
     } else {
       setOrderId(resumeId);
 
@@ -385,6 +425,41 @@ function OrdersPageContent() {
     };
   }, [resumeId]);
 
+  // Auto-resize textareas based on content
+  useEffect(() => {
+    const autoResize = (id: string) => {
+      const el = document.getElementById(id) as HTMLTextAreaElement;
+      if (el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+    };
+    autoResize("deliveryAddress");
+    autoResize("billingAddress");
+  }, [formState.deliveryAddress, formState.billingAddress, formState.deliveryType]);
+
+  // Frontend-Only Temporary Auto-Save (5-Minute Expiration)
+  useEffect(() => {
+    if (resumeId || typeof window === 'undefined') return;
+    
+    // Skip saving empty default state
+    if (JSON.stringify(formState) === JSON.stringify(DEFAULT_FORM_STATE) && specs.length === 1 && !specs[0].itemDescription && !isPoNotRequired) {
+      return;
+    }
+
+    try {
+      const payload = {
+        formState,
+        specs,
+        isPoNotRequired,
+        timestamp: Date.now()
+      };
+      localStorage.setItem("order_initiation_draft", JSON.stringify(payload));
+    } catch (e) {
+      console.warn("Auto-save failed", e);
+    }
+  }, [formState, specs, isPoNotRequired, resumeId]);
+
   const handleInputChange = (field: keyof InitialFormState, value: string | number) => {
     setFormState((prev) => {
       const nextState = { ...prev, [field]: value };
@@ -409,6 +484,12 @@ function OrdersPageContent() {
 
         if (currentPaymentTerm === "50% Advanced, 50% on Delivery") {
           nextState.advancedAmount = parseFloat((currentPoAmount * 0.5).toFixed(2)).toString();
+        }
+      }
+
+      if (field === "poDate") {
+        if (prev.deliveryDate && value && new Date(value as string) > new Date(prev.deliveryDate)) {
+          nextState.deliveryDate = "";
         }
       }
 
@@ -522,13 +603,16 @@ function OrdersPageContent() {
     setUploadedFile(null);
     setErrors({});
     setSpecs([{ id: "1", itemDescription: "", size: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null }]);
+    setIsPoNotRequired(false);
     if (typeof window !== "undefined") {
+      localStorage.removeItem('order_initiation_draft');
       window.history.replaceState(null, "", "/orders");
     }
   };
 
   const getPayload = (status: "DRAFT" | "SUBMITTED", stage: string) => ({
     ...formState,
+    poNumber: isPoNotRequired ? formState.customerName : formState.poNumber,
     poAmount: Number(String(formState.poAmount).replace(/[^0-9.]/g, "")) || 0,
     advancedAmount: Number(String(formState.advancedAmount).replace(/[^0-9.]/g, "")) || 0,
     id: orderId || "PO-" + Date.now(),
@@ -586,6 +670,11 @@ function OrdersPageContent() {
         const targetPo = encodeURIComponent(formState.poNumber);
         const targetCust = encodeURIComponent(formState.customerName);
         
+        // Clear auto-save draft on successful submit
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('order_initiation_draft');
+        }
+        
         // Sync local context state immediately before route transition
         updateOrderState(formState.poNumber, { stage: "Order Specifications", status: "SUBMITTED" });
         
@@ -632,21 +721,40 @@ function OrdersPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 <div>
                   <label htmlFor="poNumber" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                    PO Number <span className="text-red-500">*</span>
+                    PO Number {!isPoNotRequired && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     id="poNumber"
                     type="text"
-                    value={formState.poNumber}
+                    value={isPoNotRequired ? "N/A (Auto-filled)" : formState.poNumber}
                     onChange={(e) => handleInputChange("poNumber", e.target.value)}
                     onBlur={() => handleBlur("poNumber")}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isPoNotRequired}
                     className={`${getInputStyle(errors.poNumber)} disabled:opacity-60 disabled:cursor-not-allowed`}
                     placeholder="Enter PO Number"
                   />
                   {errors.poNumber && <p className="text-red-500 text-xs mt-1">{errors.poNumber}</p>}
 
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-2">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                      <input
+                        type="checkbox"
+                        checked={isPoNotRequired}
+                        onChange={(e) => {
+                          setIsPoNotRequired(e.target.checked);
+                          if (e.target.checked) {
+                            setErrors((prev) => {
+                              const nextErrs = { ...prev };
+                              delete nextErrs.poNumber;
+                              return nextErrs;
+                            });
+                          }
+                        }}
+                        disabled={isReadOnly}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded"
+                      />
+                      PO Not Required
+                    </label>
                     <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300">
                       <input
                         type="checkbox"
@@ -658,6 +766,7 @@ function OrdersPageContent() {
                             setTempParentPo("");
                           }
                         }}
+                        disabled={isReadOnly}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded"
                       />
                       Link to Existing Parent Order
@@ -712,6 +821,7 @@ function OrdersPageContent() {
                     />
                     <input
                       type="date"
+                      min={formState.poDate || undefined}
                       value={formState.deliveryDate}
                       onChange={(e) => handleInputChange("deliveryDate", e.target.value)}
                       onClick={(e) => {
@@ -957,7 +1067,7 @@ function OrdersPageContent() {
                           }
                         }}
                         placeholder="Enter complete delivery address"
-                        className={`${getInputStyle(errors.deliveryAddress)} w-full min-h-[100px] resize-y`}
+                        className={`${getInputStyle(errors.deliveryAddress)} w-full min-h-[100px] resize-none overflow-hidden`}
                       />
                       {showAddressDropdown && formState.customerName.trim() !== "" && (
                         <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
@@ -1053,7 +1163,7 @@ function OrdersPageContent() {
                   {errors.billingCompany && <p className="text-red-500 text-xs mt-1">{errors.billingCompany}</p>}
                 </div>
                 <div>
-                  <label htmlFor="billingPin" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Billing Address (PIN)</label>
+                  <label htmlFor="billingPin" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Billing Address (PIN) <span className="text-red-500">*</span></label>
                   <input
                     id="billingPin"
                     type="text"
@@ -1066,14 +1176,14 @@ function OrdersPageContent() {
                   {errors.billingPin && <p className="text-red-500 text-xs mt-1">{errors.billingPin}</p>}
                 </div>
                 <div className="md:col-span-2">
-                  <label htmlFor="billingAddress" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Billing Address</label>
+                  <label htmlFor="billingAddress" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Billing Address <span className="text-red-500">*</span></label>
                   <textarea
                     id="billingAddress"
                     value={formState.billingAddress}
                     onBlur={() => handleBlur("billingAddress")}
                     onChange={(e) => handleInputChange("billingAddress", e.target.value)}
                     placeholder="Billing address"
-                    className={`${getInputStyle(errors.billingAddress)} min-h-[80px]`}
+                    className={`${getInputStyle(errors.billingAddress)} min-h-[80px] resize-none overflow-hidden`}
                   />
                   {errors.billingAddress && <p className="text-red-500 text-xs mt-1">{errors.billingAddress}</p>}
                 </div>
@@ -1278,14 +1388,25 @@ function OrdersPageContent() {
                 View Drafts
               </button>
 
-              <button
-                type="button"
-                onClick={handleSubmitOrder}
-                disabled={isSaving}
-                className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2"
-              >
-                {isSaving ? "Submitting..." : "Submit & Go to Specification →"}
-              </button>
+              {canAdvance ? (
+                <button
+                  type="button"
+                  onClick={handleSubmitOrder}
+                  disabled={isSaving}
+                  className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2"
+                >
+                  {isSaving ? "Submitting..." : "Submit & Go to Specification →"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="You do not have permission to access Order Specifications."
+                  className="px-8 py-2.5 bg-neutral-400 text-white rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed shadow-sm flex items-center gap-2"
+                >
+                  Max Stage Reached
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1348,11 +1469,7 @@ function OrdersPageContent() {
               <button
                 type="button"
                 onClick={() => {
-                  lastDeclinedAddress.current = formState.deliveryAddress.trim();
                   setShowSaveNewAddressModal(false);
-                  setTimeout(() => {
-                    document.getElementById("deliveryPin")?.focus();
-                  }, 0);
                 }}
                 className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               >
@@ -1379,11 +1496,7 @@ function OrdersPageContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    lastDeclinedAddress.current = formState.deliveryAddress.trim();
                     setShowSaveNewAddressModal(false);
-                    setTimeout(() => {
-                      document.getElementById("deliveryPin")?.focus();
-                    }, 0);
                   }}
                   className="px-4.5 py-2.5 border border-neutral-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
                 >
@@ -1407,9 +1520,6 @@ function OrdersPageContent() {
                     } finally {
                       setIsSavingNewAddress(false);
                       setShowSaveNewAddressModal(false);
-                      setTimeout(() => {
-                        document.getElementById("deliveryPin")?.focus();
-                      }, 0);
                     }
                   }}
                   className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
