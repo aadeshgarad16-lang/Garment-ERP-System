@@ -36,21 +36,21 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-slate-700 transition-colors text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-slate-900"
+        className="flex items-center gap-2 hover:bg-muted px-3 py-1.5 rounded-lg border border-border transition-colors text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card"
         type="button"
       >
-        <Globe className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+        <Globe className="h-4 w-4 text-muted-foreground" />
         <span>{currentLang.nativeName}</span>
         <ChevronDown className="h-3 w-3 text-neutral-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-900 rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-2 w-40 bg-card rounded-xl shadow-lg py-1 border border-border z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {languages.map((lang) => (
             <button
               key={lang.code}
               onClick={() => handleSelect(lang.code)}
-              className="flex items-center justify-between w-full px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors text-left font-medium"
+              className="flex items-center justify-between w-full px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-muted transition-colors text-left font-medium"
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-blue-700 bg-blue-100/50 px-1.5 py-0.5 rounded text-[10px] tracking-wider">{lang.label}</span>

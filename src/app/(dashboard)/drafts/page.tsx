@@ -53,11 +53,11 @@ export default function DraftsPage() {
       </button>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FileEdit className="h-6 w-6 text-amber-500" />
             Draft Orders
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Manage and resume your saved draft orders.</p>
+          <p className="text-muted-foreground text-sm mt-1">Manage and resume your saved draft orders.</p>
         </div>
         <button
           onClick={() => router.push('/orders')}
@@ -67,45 +67,45 @@ export default function DraftsPage() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-700">
-                <th scope="col" className="px-6 py-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">PO Number</th>
-                <th scope="col" className="px-6 py-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Customer</th>
-                <th scope="col" className="px-6 py-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">PO Date</th>
-                <th scope="col" className="px-6 py-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Saved On</th>
-                <th scope="col" className="px-6 py-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider text-right">Actions</th>
+              <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border">
+                <th scope="col" className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">PO Number</th>
+                <th scope="col" className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
+                <th scope="col" className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">PO Date</th>
+                <th scope="col" className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saved On</th>
+                <th scope="col" className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-slate-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                     Loading drafts...
                   </td>
                 </tr>
               ) : drafts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                     No draft orders found.
                   </td>
                 </tr>
               ) : (
                 drafts.map((draft) => (
-                  <tr key={draft.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={draft.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-neutral-900 dark:text-neutral-100">{draft.poNumber || 'N/A'}</div>
+                      <div className="font-medium text-foreground">{draft.poNumber || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-neutral-700 dark:text-neutral-300">{draft.customerName || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600 dark:text-neutral-400">{draft.poDate || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">{draft.poDate || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-neutral-600 dark:text-neutral-400">{draft.date}</div>
+                      <div className="text-sm text-muted-foreground">{draft.date}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-3">

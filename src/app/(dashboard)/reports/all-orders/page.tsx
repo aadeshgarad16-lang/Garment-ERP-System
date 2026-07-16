@@ -51,24 +51,24 @@ export default function AllOrdersPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => router.back()}
-          className="p-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+          className="p-2 bg-card border border-border rounded-lg hover:bg-muted transition-colors shadow-sm"
         >
-          <ArrowLeft className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ShoppingCart className="h-6 w-6 text-blue-600" />
             All Historical Orders
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Complete database of all 1,495 orders with full search and filtering capabilities.</p>
+          <p className="text-sm text-muted-foreground mt-1">Complete database of all 1,495 orders with full search and filtering capabilities.</p>
         </div>
       </div>
 
       {/* Main Table Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
 
         {/* Filters */}
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
@@ -76,7 +76,7 @@ export default function AllOrdersPage() {
               placeholder="Search orders..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-card focus:ring-2 focus:ring-ring outline-none transition-shadow"
             />
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -85,7 +85,7 @@ export default function AllOrdersPage() {
               <select
                 value={customerFilter}
                 onChange={(e) => setCustomerFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 appearance-none outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-lg bg-card appearance-none outline-none focus:ring-2 focus:ring-ring cursor-pointer"
               >
                 <option value="All">All Customers</option>
                 {uniqueCustomers.map(e => <option key={e} value={e}>{e}</option>)}
@@ -96,7 +96,7 @@ export default function AllOrdersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 appearance-none outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-lg bg-card appearance-none outline-none focus:ring-2 focus:ring-ring cursor-pointer"
               >
                 <option value="All">All Statuses</option>
                 {uniqueStatuses.map(s => <option key={s} value={s}>{s}</option>)}
@@ -108,7 +108,7 @@ export default function AllOrdersPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50/50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-bold">
+              <tr className="bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
                 <th className="px-4 py-3">PO Number</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Items</th>
@@ -122,24 +122,24 @@ export default function AllOrdersPage() {
               {filteredData.length > 0 ? (
                 filteredData.map((item) => (
                   <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
+                    <td className="px-4 py-3 text-[13px] font-medium text-foreground">
                       <Link href={`/orders/${item.id}`} className="text-blue-600 hover:underline">{item.id}</Link>
                     </td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.customer}</td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.items}</td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.poDate}</td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.deliveryDate}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.customer}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.items}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.poDate}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.deliveryDate}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800`}>
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100 text-right">{item.amount}</td>
+                    <td className="px-4 py-3 text-[13px] font-medium text-foreground text-right">{item.amount}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     No matching records found.
                   </td>
                 </tr>
@@ -149,7 +149,7 @@ export default function AllOrdersPage() {
         </div>
 
         {/* Footer info */}
-        <div className="bg-neutral-50 dark:bg-slate-900 px-6 py-4 border-t border-neutral-200 dark:border-slate-700 text-xs text-neutral-500 dark:text-neutral-400 flex justify-between">
+        <div className="bg-neutral-50 dark:bg-neutral-800 px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
           <p>Showing {filteredData.length.toLocaleString()} records</p>
           <p>Last updated: Just now</p>
         </div>

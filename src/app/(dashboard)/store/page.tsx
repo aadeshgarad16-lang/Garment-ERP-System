@@ -81,11 +81,11 @@ export default function StorePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
             {activeTab === 'raw' ? 'Raw Material' : activeTab === 'pre' ? 'Pre-Stitched' : 'Material List'}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Manage inventory and stock availability
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function StorePage() {
             onClick={() => setActiveTab("raw")}
             className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
             Raw Material
@@ -106,7 +106,7 @@ export default function StorePage() {
             onClick={() => setActiveTab("pre")}
             className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
             Pre-Stitched
@@ -116,7 +116,7 @@ export default function StorePage() {
             onClick={() => setActiveTab("list")}
             className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "list"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-              : "bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800"
+              : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
             Material List
@@ -409,12 +409,12 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
           onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
-            ? "border-blue-400 dark:border-blue-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-800"
+          className={`cursor-pointer bg-white dark:bg-[#11131e] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
+            ? "border-blue-400 dark:border-blue-500/50"
+            : "border-border hover:border-blue-300 dark:border-blue-500/30 dark:hover:border-blue-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 dark:bg-blue-900/80">
             <Layers className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
@@ -422,7 +422,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Total Materials
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.total}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -434,12 +434,12 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
-            ? "border-emerald-400 dark:border-emerald-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
+          className={`cursor-pointer bg-white dark:bg-[#0e1713] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
+            ? "border-emerald-400 dark:border-emerald-500/50"
+            : "border-border hover:border-emerald-300 dark:border-emerald-500/30 dark:hover:border-emerald-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/80">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
@@ -447,7 +447,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Available
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.available}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -459,20 +459,20 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
+          className={`cursor-pointer bg-card rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
             ? "border-amber-400 dark:border-amber-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
+            : "border-border hover:border-amber-300 dark:hover:border-amber-800"
             }`}
         >
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/40">
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+            <p className="text-sm font-medium text-muted-foreground">
               Low Stock
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-foreground">
                 {metrics.low_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -484,20 +484,20 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
+          className={`cursor-pointer bg-card rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
             ? "border-red-400 dark:border-red-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
+            : "border-border hover:border-red-300 dark:hover:border-red-800"
             }`}
         >
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-900/40">
             <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+            <p className="text-sm font-medium text-muted-foreground">
               Out of Stock
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-foreground">
                 {metrics.out_of_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -509,7 +509,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
       </div>
 
       {/* Search + Filter */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+      <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
         <div className="flex flex-wrap gap-4 items-center">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px]">
@@ -518,7 +518,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search raw materials..."
-              className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-slate-700 rounded-full text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-full text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-200"
             />
           </div>
 
@@ -526,7 +526,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
           <div className="relative">
             <button
               onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-              className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 dark:border-slate-700 rounded-full text-neutral-700 dark:text-neutral-300 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+              className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-full text-neutral-700 dark:text-neutral-300 bg-card text-sm font-medium hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
             >
               <Filter className="h-4 w-4 text-neutral-400" />
               <span>Filters</span>
@@ -539,16 +539,16 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
             {showFiltersDropdown && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowFiltersDropdown(false)} />
-                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-slate-700 p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2 w-72 bg-card rounded-2xl shadow-xl border border-border p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         HSN Code
                       </label>
                       <select
                         value={filters.hsnCode}
                         onChange={(e) => setFilters({ ...filters, hsnCode: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="all">All HSN Codes</option>
                         {Array.isArray(filterOptions.hsn_codes) && filterOptions.hsn_codes.map((code) => (
@@ -557,13 +557,13 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Material Name
                       </label>
                       <select
                         value={filters.materialName}
                         onChange={(e) => setFilters({ ...filters, materialName: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="all">All Material Names</option>
                         {Array.isArray(filterOptions.material_names) && filterOptions.material_names.map((name) => (
@@ -572,13 +572,13 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Available Quantity
                       </label>
                       <select
                         value={filters.quantityRange}
                         onChange={(e) => setFilters({ ...filters, quantityRange: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="all">All Quantities</option>
                         <option value="high">High (&gt; 100)</option>
@@ -586,7 +586,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                         <option value="low">Low (&lt; 50)</option>
                       </select>
                     </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-slate-800">
+                    <div className="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-neutral-700">
                       <button
                         onClick={() => setFilters({ hsnCode: "all", materialName: "all", quantityRange: "all" })}
                         className="text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -610,7 +610,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
           <div className="relative min-w-[160px]">
             <button
               onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              className="w-full flex items-center justify-between gap-2 px-5 py-2.5 border border-neutral-200 dark:border-slate-700 rounded-full text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+              className="w-full flex items-center justify-between gap-2 px-5 py-2.5 border border-border rounded-full text-foreground bg-card text-sm font-medium hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
             >
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-neutral-400" />
@@ -627,7 +627,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
             {showStatusDropdown && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowStatusDropdown(false)} />
-                <div className="absolute left-0 mt-2 w-full min-w-[180px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute left-0 mt-2 w-full min-w-[180px] bg-card rounded-2xl shadow-xl border border-border py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   {[
                     { value: "all", label: "All Status" },
                     { value: "available", label: "In Stock" },
@@ -642,7 +642,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                         setSelectedCard(item.value);
                         setShowStatusDropdown(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-neutral-50 dark:hover:bg-slate-800 ${statusFilter === item.value
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-muted ${statusFilter === item.value
                         ? "text-violet-600 dark:text-violet-400 font-semibold bg-violet-50/50 dark:bg-violet-950/20"
                         : "text-neutral-700 dark:text-neutral-300"
                         }`}
@@ -841,9 +841,9 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
       {/* Modal Setup */}
       {showModal && (
         <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-2xl shadow-2xl border border-neutral-200 dark:border-slate-700">
+          <div className="bg-card p-6 rounded-xl w-full max-w-2xl shadow-2xl border border-border">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+              <h2 className="text-xl font-bold text-foreground">
                 {editingId ? "Edit Material" : "Add Material"}
               </h2>
               <button
@@ -865,7 +865,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, hsnCode: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -878,7 +878,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, materialName: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -891,7 +891,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -903,7 +903,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="Chemicals">Chemicals</option>
                   <option value="Metals">Metals</option>
@@ -921,7 +921,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, unit: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="">Select Unit</option>
                   <option value="Nos">Nos</option>
@@ -945,7 +945,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, availableQty: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -959,7 +959,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, blockedQty: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -973,7 +973,7 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, unitPrice: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -991,15 +991,15 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       minimumRequired: e.target.value,
                     })
                   }
-                  className={`w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-neutral-100 dark:bg-slate-800' : ''}`}
+                  className={`w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-muted' : ''}`}
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-700 dark:text-neutral-300 font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 text-sm transition-colors"
+                className="px-4 py-2 border border-border rounded-lg text-neutral-700 dark:text-neutral-300 font-medium hover:bg-muted text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -1021,15 +1021,15 @@ function RawMaterialModule({ editRequest, onEditConsumed }: { editRequest?: any,
             top: `${popoverPosition.top + 8}px`,
             left: `${popoverPosition.left}px`,
           }}
-          className="description-popover w-[240px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-neutral-200 dark:border-slate-700 p-3.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200 text-left normal-case whitespace-normal"
+          className="description-popover w-[240px] bg-card rounded-xl shadow-xl border border-border p-3.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200 text-left normal-case whitespace-normal"
         >
           <div className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-1">
             Full Description
           </div>
-          <p className="text-xs text-neutral-800 dark:text-neutral-200 leading-relaxed font-normal">
+          <p className="text-xs text-card-foreground leading-relaxed font-normal">
             {materials.find((m) => m.id === activeDescriptionId)?.description}
           </p>
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 bg-white dark:bg-slate-900 border-l border-t border-neutral-200 dark:border-slate-700 rotate-45 translate-y-1"></div>
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 bg-card border-l border-t border-border rotate-45 translate-y-1"></div>
         </div>,
         document.body
       )}
@@ -1280,12 +1280,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div
           onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
-            ? "border-indigo-400 dark:border-indigo-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800"
+          className={`cursor-pointer bg-white dark:bg-[#11131e] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "all"
+            ? "border-indigo-400 dark:border-indigo-500/50"
+            : "border-border hover:border-indigo-300 dark:border-indigo-500/30 dark:hover:border-indigo-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/80">
             <Package className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
@@ -1293,7 +1293,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Total Garments
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.total}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -1305,12 +1305,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
-            ? "border-emerald-400 dark:border-emerald-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-800"
+          className={`cursor-pointer bg-white dark:bg-[#0e1713] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "available"
+            ? "border-emerald-400 dark:border-emerald-500/50"
+            : "border-border hover:border-emerald-300 dark:border-emerald-500/30 dark:hover:border-emerald-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/80">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
@@ -1318,7 +1318,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Available
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.available}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -1330,12 +1330,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
-            ? "border-amber-400 dark:border-amber-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-800"
+          className={`cursor-pointer bg-white dark:bg-[#1a1510] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "low"
+            ? "border-amber-400 dark:border-amber-500/50"
+            : "border-border hover:border-amber-300 dark:border-amber-500/30 dark:hover:border-amber-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/80">
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
@@ -1343,7 +1343,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Low Stock
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.low_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -1355,12 +1355,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <div
           onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
-          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
-            ? "border-red-400 dark:border-red-700"
-            : "border-neutral-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-800"
+          className={`cursor-pointer bg-white dark:bg-[#1d1112] rounded-xl shadow-sm border p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md h-full ${selectedCard === "out"
+            ? "border-red-400 dark:border-red-500/50"
+            : "border-border hover:border-red-300 dark:border-red-500/30 dark:hover:border-red-500/50"
             }`}
         >
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-900/40">
+          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-900/80">
             <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
@@ -1368,7 +1368,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               Out of Stock
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              <span className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {metrics.out_of_stock}
               </span>
               <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -1380,7 +1380,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       </div>
 
       {/* Control Panel Search Line */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -1388,7 +1388,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search garments..."
-              className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
@@ -1396,7 +1396,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
           <div className="relative">
             <button
               onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-              className="flex items-center gap-2 px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-700 dark:text-neutral-300 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-neutral-700 dark:text-neutral-300 bg-card text-sm font-medium hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <Filter className="h-4 w-4 text-neutral-400" />
               <span>Filters</span>
@@ -1409,16 +1409,16 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
             {showFiltersDropdown && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowFiltersDropdown(false)} />
-                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-neutral-200 dark:border-slate-700 p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2 w-72 bg-card rounded-xl shadow-xl border border-border p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Category
                       </label>
                       <select
                         value={columnFilters.category}
                         onChange={(e) => setColumnFilters({ ...columnFilters, category: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Categories</option>
                         {Array.isArray(filterOptions.categories) && filterOptions.categories.map((c) => (
@@ -1429,13 +1429,13 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Gender
                       </label>
                       <select
                         value={columnFilters.gender}
                         onChange={(e) => setColumnFilters({ ...columnFilters, gender: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Genders</option>
                         {Array.isArray(filterOptions.genders) && filterOptions.genders.map((c) => (
@@ -1446,13 +1446,13 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Size
                       </label>
                       <select
                         value={columnFilters.size}
                         onChange={(e) => setColumnFilters({ ...columnFilters, size: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Sizes</option>
                         {Array.isArray(filterOptions.sizes) && filterOptions.sizes.map((c) => (
@@ -1463,13 +1463,13 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Colour
                       </label>
                       <select
                         value={columnFilters.colour}
                         onChange={(e) => setColumnFilters({ ...columnFilters, colour: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-xl text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-3 py-2 border border-border rounded-xl text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="all">All Colours</option>
                         {Array.isArray(filterOptions.colours) && filterOptions.colours.map((c) => (
@@ -1479,7 +1479,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                         ))}
                       </select>
                     </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-slate-800">
+                    <div className="flex justify-between items-center pt-3 border-t border-neutral-100 dark:border-neutral-700">
                       <button
                         onClick={() => setColumnFilters({ category: "all", gender: "all", size: "all", colour: "all" })}
                         className="text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -1505,7 +1505,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setSelectedCard(e.target.value); }}
-              className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
             >
               <option value="all">All Status</option>
               <option value="available">Available</option>
@@ -1700,9 +1700,9 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       {/* Creation/Edit Setup Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-neutral-200 dark:border-slate-700">
+          <div className="bg-card rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-border">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+              <h2 className="text-xl font-bold text-foreground">
                 {editingId ? "Edit Garment" : "Add Garment"}
               </h2>
               <button
@@ -1724,7 +1724,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, skuNo: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -1737,7 +1737,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, hsnCode: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2 lg:col-span-1">
@@ -1750,7 +1750,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, pattern: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
@@ -1763,7 +1763,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -1775,7 +1775,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>Shirt</option>
                   <option>Pant</option>
@@ -1793,7 +1793,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, gender: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>Male</option>
                   <option>Female</option>
@@ -1808,7 +1808,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, size: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option>XS</option>
                   <option>S</option>
@@ -1827,7 +1827,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, colour: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
                   <option value="">Select Colour</option>
                   <option value="White">White</option>
@@ -1853,7 +1853,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, availableQty: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -1869,7 +1869,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, minimumRequired: e.target.value })
                   }
-                  className={`w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-neutral-100 dark:bg-slate-800' : ''}`}
+                  className={`w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-muted' : ''}`}
                 />
               </div>
               <div>
@@ -1883,7 +1883,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, blockedQty: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -1897,7 +1897,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onChange={(e) =>
                     setFormData({ ...formData, unitPrice: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -1921,14 +1921,14 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                       };
                       reader.readAsDataURL(file);
                     }}
-                    className="w-full min-w-0 px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                    className="w-full min-w-0 px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                   />
                   {formData.image && (
                     <div className="relative w-12 h-12 flex-shrink-0">
                       <img
                         src={formData.image}
                         alt="Preview"
-                        className="w-full h-full object-cover rounded-lg border border-neutral-200 dark:border-slate-700"
+                        className="w-full h-full object-cover rounded-lg border border-border"
                       />
                       <button
                         type="button"
@@ -1949,10 +1949,10 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-700 dark:text-neutral-300 font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 text-sm transition-colors"
+                className="px-4 py-2 border border-border rounded-lg text-neutral-700 dark:text-neutral-300 font-medium hover:bg-muted text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -1970,9 +1970,9 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       {/* Viewer Modal Setup */}
       {showViewModal && selectedGarment && (
         <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-2xl shadow-2xl border border-neutral-200 dark:border-slate-700">
-            <div className="flex justify-between items-center mb-6 border-b border-neutral-100 dark:border-slate-800 pb-4">
-              <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <div className="bg-card rounded-2xl p-6 w-full max-w-2xl shadow-2xl border border-border">
+            <div className="flex justify-between items-center mb-6 border-b border-neutral-100 dark:border-neutral-700 pb-4">
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Eye className="h-6 w-6 text-purple-600" />
                 Garment Details
               </h2>
@@ -1990,10 +1990,10 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   <img
                     src={selectedGarment.image}
                     alt={selectedGarment.description}
-                    className="w-full aspect-[3/4] object-cover rounded-xl border border-neutral-200 dark:border-slate-700 shadow-sm"
+                    className="w-full aspect-[3/4] object-cover rounded-xl border border-border shadow-sm"
                   />
                 ) : (
-                  <div className="w-full aspect-[3/4] bg-neutral-100 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-neutral-400 font-medium text-sm">
+                  <div className="w-full aspect-[3/4] bg-muted border border-border rounded-xl flex items-center justify-center text-neutral-400 font-medium text-sm">
                     No Image Provided
                   </div>
                 )}
@@ -2002,42 +2002,42 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               <div className="space-y-4 text-sm text-neutral-700 dark:text-neutral-300 flex-1">
                 <div className="grid grid-cols-2 gap-y-6 gap-x-8">
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                    <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       SKU No
                     </span>
-                    <span className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                    <span className="text-base font-semibold text-foreground">
                       {selectedGarment.skuNo}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                    <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       HSN Code
                     </span>
-                    <span className="text-base text-neutral-900 dark:text-neutral-100 font-medium">
+                    <span className="text-base text-foreground font-medium">
                       {selectedGarment.hsnCode}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                    <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Description
                     </span>
-                    <span className="text-base text-neutral-900 dark:text-neutral-100 font-medium">
+                    <span className="text-base text-foreground font-medium">
                       {selectedGarment.description}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                    <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Pattern
                     </span>
-                    <span className="text-base text-neutral-900 dark:text-neutral-100 font-medium">
+                    <span className="text-base text-foreground font-medium">
                       {selectedGarment.pattern || "N/A"}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+                    <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Min Required Qty
                     </span>
-                    <span className="text-base text-neutral-900 dark:text-neutral-100 font-medium">
+                    <span className="text-base text-foreground font-medium">
                       {selectedGarment.minimumRequired || selectedGarment.min_required || "0"}
                     </span>
                   </div>
@@ -2045,10 +2045,10 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
               </div>
             </div>
 
-            <div className="flex justify-end mt-8 pt-4 border-t border-neutral-100 dark:border-slate-800">
+            <div className="flex justify-end mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-700">
               <button
                 onClick={() => setShowViewModal(false)}
-                className="px-6 py-2 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg font-medium hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors"
+                className="px-6 py-2 bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg font-medium hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Close
               </button>
@@ -2105,9 +2105,9 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
   }, [fetchItems]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6">
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
           <List className="h-5 w-5 text-indigo-500" />
           Unified Material List
         </h2>
@@ -2119,7 +2119,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
               placeholder="Search by name, code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -2127,7 +2127,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-neutral-500 dark:text-neutral-400 uppercase bg-neutral-50 dark:bg-slate-800/50">
+          <thead className="text-xs text-muted-foreground uppercase bg-neutral-50 dark:bg-neutral-800/50">
             <tr>
               <th className="px-4 py-3 font-medium rounded-tl-lg">Type</th>
               <th className="px-4 py-3 font-medium">Code/SKU</th>
@@ -2150,13 +2150,13 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
               </tr>
             ) : (
               items.map((item, index) => (
-                <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors">
+                <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                       {item.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{item.hsn_code || item.name}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">{item.hsn_code || item.name}</td>
                   <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.name}</td>
                   <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.category}</td>
                   <td className="px-4 py-3 text-right font-medium">{item.available_qty}</td>
@@ -2181,22 +2181,22 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
       </div>
 
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t border-neutral-100 dark:border-slate-800 pt-4">
-          <div className="text-sm text-neutral-500 dark:text-neutral-400">
+        <div className="mt-6 flex items-center justify-between border-t border-neutral-100 dark:border-neutral-700 pt-4">
+          <div className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-2 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+              className="p-2 border border-border rounded-lg hover:bg-neutral-50 disabled:opacity-50"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-2 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+              className="p-2 border border-border rounded-lg hover:bg-neutral-50 disabled:opacity-50"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

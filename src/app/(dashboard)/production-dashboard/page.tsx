@@ -125,10 +125,10 @@ export default function ProductionDashboardPage() {
   }, [activeProductionOrders]);
 
   const metrics = [
-    { title: 'Active Production POs', value: activeProductionOrders.length.toString(), icon: Factory, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/40' },
-    { title: 'Total Pieces In Progress', value: totalPieces.toLocaleString(), icon: Layers, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/40' },
-    { title: 'Completed Stages Today', value: completedStagesToday.toString(), icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/40' },
-    { title: 'Production Alerts', value: productionAlerts.toString(), icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40' },
+    { title: 'Active Production POs', value: activeProductionOrders.length.toString(), icon: Factory, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/80' },
+    { title: 'Total Pieces In Progress', value: totalPieces.toLocaleString(), icon: Layers, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/80' },
+    { title: 'Completed Stages Today', value: completedStagesToday.toString(), icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/80' },
+    { title: 'Production Alerts', value: productionAlerts.toString(), icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/80' },
   ];
 
   const getStatusStyle = (status: string) => {
@@ -137,18 +137,18 @@ export default function ProductionDashboardPage() {
       case 'Delayed': 
       case 'Failed':
       case 'Rework Required': return 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'In Progress': return 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+      case 'In Progress': return 'bg-blue-100 dark:bg-neutral-900/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
       default: return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
 
   // Custom workflow tracker mapping
   const productionSteps = [
-    { id: 'cutting', name: 'Cutting' },
-    { id: 'stitching', name: 'Stitching' },
-    { id: 'fusing', name: 'Fusing' },
-    { id: 'kaj-button', name: 'Kaj Button' },
-    { id: 'finishing', name: 'Finishing' }
+    { id: 'cutting', name: 'Cutting', icon: Scissors, color: 'text-blue-600 dark:text-blue-400' },
+    { id: 'stitching', name: 'Stitching', icon: Layers, color: 'text-emerald-600 dark:text-emerald-400' },
+    { id: 'fusing', name: 'Fusing', icon: Factory, color: 'text-amber-600 dark:text-amber-400' },
+    { id: 'kaj-button', name: 'Kaj Button', icon: CheckCircle2, color: 'text-purple-600 dark:text-purple-400' },
+    { id: 'finishing', name: 'Finishing', icon: Package, color: 'text-red-600 dark:text-red-400' }
   ];
 
   return (
@@ -156,16 +156,16 @@ export default function ProductionDashboardPage() {
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Production Dashboard</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Overview of all active production lines and tracking.</p>
+          <h1 className="text-2xl font-bold text-foreground">Production Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Overview of all active production lines and tracking.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => router.push('/production/personnel')}
-            className="flex items-center gap-1.5 px-4 py-2 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-lg transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
           >
             <User className="h-4 w-4" />
-            <span>View Personnel Overview</span>
+            <span>View Persons</span>
           </button>
           <Link
             href="/production"
@@ -182,14 +182,19 @@ export default function ProductionDashboardPage() {
         {metrics.map((stat) => {
           const IconComponent = stat.icon;
           return (
-            <div key={stat.title} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div key={stat.title} className={`rounded-xl shadow-sm border p-5 flex items-center gap-4 hover:shadow-md transition-shadow bg-white
+              ${stat.title === 'Active Production POs' ? 'border-blue-200 dark:border-blue-500/50 dark:bg-[#11131e]' : 
+                stat.title === 'Total Pieces In Progress' ? 'border-indigo-200 dark:border-indigo-500/50 dark:bg-[#11131e]' : 
+                stat.title === 'Completed Stages Today' ? 'border-emerald-200 dark:border-emerald-500/50 dark:bg-[#0e1713]' : 
+                stat.title === 'Production Alerts' ? 'border-red-200 dark:border-red-500/50 dark:bg-[#1d1112]' : 'border-border dark:border-neutral-800 dark:bg-[#121212]'}
+            `}>
               <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${stat.bg}`}>
                 <IconComponent className={`h-6 w-6 ${stat.color}`} />
               </div>
               <div>
                 <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{stat.title}</p>
                 <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{stat.value}</span>
+                  <span className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</span>
                 </div>
               </div>
             </div>
@@ -207,7 +212,7 @@ export default function ProductionDashboardPage() {
           </button>
         </div>
         {/* Evenly distributed full width flex row container */}
-        <div className="flex items-center justify-between overflow-visible p-5 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm w-full">
+        <div className="flex items-center justify-between overflow-visible p-5 bg-card rounded-xl border border-gray-100 dark:border-neutral-700 shadow-sm w-full">
           {productionSteps.map((step, idx) => {
             const count = processedOrders.filter(o => o.computedActiveStage.toLowerCase() === step.name.toLowerCase()).length;
             const isActive = activeFilterStage?.toLowerCase() === step.name.toLowerCase();
@@ -215,26 +220,29 @@ export default function ProductionDashboardPage() {
             return (
               <React.Fragment key={step.id}>
                 <div className="relative flex flex-col items-center justify-center space-y-1.5 group outline-none rounded-lg p-2">
-                  <button 
-                    onClick={() => setActiveFilterStage(isActive ? null : step.name)}
-                    className={`text-sm font-medium transition-colors whitespace-nowrap px-2 py-1 rounded ${isActive ? 'text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400'}`}
-                  >
-                    {step.name}
-                  </button>
+                  <div className="flex flex-col items-center gap-1.5 mb-1">
+                    {step.icon && <step.icon className={`h-5 w-5 ${step.color} opacity-90 drop-shadow-sm`} />}
+                    <button 
+                      onClick={() => setActiveFilterStage(isActive ? null : step.name)}
+                      className={`text-sm font-medium transition-colors whitespace-nowrap px-2 py-1 rounded ${isActive ? 'text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-neutral-800/10 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400'}`}
+                    >
+                      {step.name}
+                    </button>
+                  </div>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       setActivePopoverStage(activePopoverStage === step.name ? null : step.name);
                     }}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 ${count > 0 || isActive || activePopoverStage === step.name ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' : 'bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-slate-700'}`}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 ${count > 0 || isActive || activePopoverStage === step.name ? 'bg-blue-100 dark:bg-neutral-800/40 text-blue-700 dark:text-blue-400' : 'bg-muted text-muted-foreground hover:bg-neutral-200 dark:hover:bg-slate-700'}`}
                   >
                     {count} Pending
                   </button>
                   
                   {/* Floating Popover Menu */}
                   {activePopoverStage === step.name && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-neutral-200 dark:border-slate-700 z-50 p-3">
-                      <div className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-2 border-b border-neutral-100 dark:border-slate-800 pb-2">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-56 bg-card rounded-xl shadow-md border border-border z-50 p-3">
+                      <div className="text-xs font-bold text-card-foreground mb-2 border-b border-neutral-100 dark:border-neutral-700 pb-2">
                         Pending at {step.name}
                       </div>
                       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
@@ -272,13 +280,16 @@ export default function ProductionDashboardPage() {
 
       <div className="flex flex-col w-full space-y-6">
         {/* Production Datatable */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden w-full">
-            <div className="border-b border-neutral-200 dark:border-slate-800 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
-                {activeFilterStage ? `${activeFilterStage} Pipelines` : 'Active Production Pipelines'}
-              </h2>
+        <div className="bg-card rounded-xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden w-full">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-lg font-semibold text-card-foreground">
+                  {activeFilterStage ? `${activeFilterStage} Pipelines` : 'Recent Orders in Production'}
+                </h2>
+              </div>
               {activeFilterStage && (
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800">
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-neutral-800/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800">
                   Filtered View
                 </span>
               )}
@@ -286,7 +297,7 @@ export default function ProductionDashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full table-fixed text-center border-collapse">
                 <thead>
-                  <tr className="border-b border-neutral-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold bg-neutral-50/30 dark:bg-slate-900">
+                  <tr className="border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted">
                     <th scope="col" className="w-[15%] px-2 py-4 align-middle whitespace-nowrap text-left pl-6">PO NUMBER</th>
                     <th scope="col" className="w-[15%] px-2 py-4 align-middle whitespace-nowrap text-left">CUSTOMER</th>
                     <th scope="col" className="w-[15%] px-2 py-4 align-middle whitespace-nowrap text-center">ACTIVE STAGE</th>
@@ -309,14 +320,18 @@ export default function ProductionDashboardPage() {
                     displayedOrders.map((order) => {
                       return (
                         <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
-                          <td className="px-6 py-[18px] text-left text-sm font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap align-middle">
-                            {order.poNumber}
+                          <td className="px-6 py-[18px] text-left text-sm font-semibold text-foreground align-middle max-w-[140px]">
+                            <div className="truncate w-full" title={order.poNumber}>
+                              {order.poNumber}
+                            </div>
                           </td>
-                          <td className="px-2 py-[18px] text-left text-sm text-neutral-600 dark:text-neutral-400 truncate align-middle">
-                            {order.customerName}
+                          <td className="px-2 py-[18px] text-left text-sm text-muted-foreground align-middle max-w-[160px]">
+                            <div className="truncate w-full" title={order.customerName}>
+                              {order.customerName}
+                            </div>
                           </td>
                           <td className="px-2 py-[18px] align-middle text-center">
-                            <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                            <span className="text-sm font-medium text-card-foreground">
                               {order.computedActiveStage}
                             </span>
                           </td>
@@ -325,11 +340,11 @@ export default function ProductionDashboardPage() {
                               {order.computedActiveStatus}
                             </span>
                           </td>
-                          <td className="px-2 py-[18px] text-center text-sm font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap align-middle">
+                          <td className="px-2 py-[18px] text-center text-sm font-medium text-foreground whitespace-nowrap align-middle">
                             {order.computedTotalPieces.toLocaleString()}
                           </td>
                           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
-                            <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+                            <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                               <span>{order.deliveryDate ? order.deliveryDate.split('T')[0] : 'TBD'}</span>
                             </div>
@@ -350,41 +365,7 @@ export default function ProductionDashboardPage() {
             </div>
           </div>
 
-        {/* Production Status Progress Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden w-full p-6">
-            <div className="border-b border-gray-100 dark:border-slate-800 pb-4 mb-6">
-              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Production Status</h2>
-            </div>
-            <div>
-              <div className="space-y-6">
-                {aggregatedStages.map((stage) => {
-                  const StageIcon = stage.icon;
-                  const percentage = stage.target > 0 ? Math.round((stage.completed / stage.target) * 100) : 0;
-                  return (
-                    <div key={stage.id}>
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          <StageIcon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-                          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                            {stage.name}
-                          </span>
-                        </div>
-                        <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                          <span className="font-semibold text-neutral-900 dark:text-neutral-100">{stage.completed.toLocaleString()}</span> / {stage.target.toLocaleString()} units
-                        </span>
-                      </div>
-                      <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className={`h-2.5 rounded-full ${stage.color} transition-all duration-500 ease-out`}
-                          style={{ width: `${Math.min(percentage, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+
         </div>
     </div>
   );

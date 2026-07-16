@@ -194,19 +194,19 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     if (type === 'total-orders') {
       return (
         <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100">
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">
             <Link href={`/orders/${item.id}`} className="text-blue-600 hover:underline">{item.id}</Link>
           </td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.customer}</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.items} units</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.poDate}</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.deliveryDate}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.customer}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.items} units</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.poDate}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.deliveryDate}</td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800`}>
               {item.status}
             </span>
           </td>
-          <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100 text-right">{item.amount}</td>
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground text-right">{item.amount}</td>
         </tr>
       );
     }
@@ -214,16 +214,16 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     if (type === 'active-production') {
       return (
         <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100">{item.poNumber}</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.style}</td>
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.poNumber}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.style}</td>
           <td className="px-4 py-3">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
               {item.stage}
             </span>
           </td>
-          <td className="px-4 py-3 text-[13px] font-bold text-neutral-900 dark:text-neutral-100">{item.qty} pcs</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.startDate}</td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.qty} pcs</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.startDate}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-neutral-400" />
             {item.expectedCompletion}
           </td>
@@ -234,13 +234,13 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     if (type === 'pending-procurement') {
       return (
         <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100">{item.poNumber}</td>
-          <td className="px-4 py-3 text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">{item.material}</td>
-          <td className="px-4 py-3 text-[13px] font-bold text-neutral-900 dark:text-neutral-100">{item.requiredQty} <span className="font-normal text-xs text-neutral-500">{item.unit}</span></td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.supplier}</td>
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.poNumber}</td>
+          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{item.material}</td>
+          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.requiredQty} <span className="font-normal text-xs text-neutral-500">{item.unit}</span></td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.supplier}</td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
-                item.status === 'Ordered' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
+                item.status === 'Ordered' ? 'bg-blue-100 text-blue-800 dark:bg-neutral-800/40 dark:text-blue-300' :
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
               }`}>
               {item.status}
@@ -253,10 +253,10 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     if (type === 'inventory-alerts') {
       return (
         <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-neutral-900 dark:text-neutral-100">{item.materialId}</td>
-          <td className="px-4 py-3 text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">{item.name}</td>
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.materialId}</td>
+          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{item.name}</td>
           <td className="px-4 py-3 text-[13px] font-bold text-red-600">{item.currentStock} <span className="font-normal text-xs text-neutral-500">{item.unit}</span></td>
-          <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">{item.threshold} <span className="text-xs">{item.unit}</span></td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.threshold} <span className="text-xs">{item.unit}</span></td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Critical' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
                 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
@@ -292,16 +292,16 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+            className="p-2 bg-card border border-border rounded-lg hover:bg-muted transition-colors shadow-sm"
           >
-            <ArrowLeft className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               {icon}
               {title}
             </h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{description}</p>
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
         </div>
 
@@ -322,7 +322,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
             },
             {
               id: 'In Production', label: 'In Production', icon: Factory, count: reportStats.inProduction,
-              bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', active: 'ring-1 ring-blue-500 border-blue-500 shadow-md', hover: 'hover:border-blue-300 dark:hover:border-blue-700'
+              bg: 'bg-blue-100 dark:bg-neutral-800/30', text: 'text-blue-600 dark:text-blue-400', active: 'ring-1 ring-blue-500 border-blue-500 shadow-md', hover: 'hover:border-blue-300 dark:hover:border-blue-700'
             },
             {
               id: 'Cutting', label: 'Cutting', icon: Scissors, count: reportStats.cutting,
@@ -340,15 +340,15 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
               <div
                 key={box.id}
                 onClick={() => setStatusFilter(isActive ? 'All' : box.id)}
-                className={`bg-white dark:bg-slate-900 rounded-xl border p-5 flex items-center gap-4 cursor-pointer transition-all ${isActive ? box.active : `border-neutral-200 dark:border-slate-700 ${box.hover} hover:shadow-sm`
+                className={`bg-card rounded-xl border p-5 flex items-center gap-4 cursor-pointer transition-all ${isActive ? box.active : `border-border ${box.hover} hover:shadow-sm`
                   }`}
               >
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${box.bg}`}>
                   <Icon className={`h-6 w-6 ${box.text}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{box.label}</p>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{box.count}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{box.label}</p>
+                  <p className="text-2xl font-bold text-foreground">{box.count}</p>
                 </div>
               </div>
             );
@@ -357,10 +357,10 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
       )}
 
       {/* Main Table Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
 
         {/* Filters */}
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
@@ -368,7 +368,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
               placeholder="Search records..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-card focus:ring-2 focus:ring-ring outline-none transition-shadow"
             />
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -377,7 +377,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
               <select
                 value={entityFilter}
                 onChange={(e) => setEntityFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 appearance-none outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-lg bg-card appearance-none outline-none focus:ring-2 focus:ring-ring cursor-pointer"
               >
                 <option value="All">All {entityLabel}s</option>
                 {uniqueEntities.map(e => <option key={e} value={e}>{e}</option>)}
@@ -388,7 +388,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm border border-neutral-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 appearance-none outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-lg bg-card appearance-none outline-none focus:ring-2 focus:ring-ring cursor-pointer"
               >
                 <option value="All">All {statusLabel}s</option>
                 {uniqueStatuses.map(s => <option key={s} value={s}>{s}</option>)}
@@ -400,7 +400,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50/50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-bold">
+              <tr className="bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
                 {tableHeaders.map((header, i) => (
                   <th key={i} className={`px-4 py-3 ${i === tableHeaders.length - 1 && type === 'total-orders' ? 'text-right' : ''}`}>
                     {header}
@@ -413,7 +413,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
                 filteredData.map((item: any, idx: number) => renderTableRow(item, idx))
               ) : (
                 <tr>
-                  <td colSpan={tableHeaders.length} className="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={tableHeaders.length} className="px-4 py-8 text-center text-muted-foreground">
                     No matching records found.
                   </td>
                 </tr>
@@ -423,7 +423,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         </div>
 
         {/* Footer info */}
-        <div className="bg-neutral-50 dark:bg-slate-900 px-6 py-4 border-t border-neutral-200 dark:border-slate-700 text-xs text-neutral-500 dark:text-neutral-400 flex justify-between">
+        <div className="bg-neutral-50 dark:bg-neutral-800 px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
           <p>
             {type === 'active-production'
               ? `Showing ${filteredData.length} orders representing ${filteredData.reduce((sum: any, item: any) => sum + (item.qty || 0), 0).toLocaleString()} total units`

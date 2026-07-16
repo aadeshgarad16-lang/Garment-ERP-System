@@ -70,21 +70,21 @@ function OrderDetailsView({
   const creationDate = new Date(oldestLog.timestamp).toLocaleString();
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-      <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+      <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
-            className="p-2 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-700 transition shadow-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-2 text-sm font-semibold"
+            className="p-2 bg-card border border-border rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-700 transition shadow-sm text-neutral-600 dark:text-neutral-300 flex items-center gap-2 text-sm font-semibold"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Logs
           </button>
           <div>
-            <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               Order History: <span className="text-indigo-600 dark:text-indigo-400">{orderNo}</span>
             </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               First Activity: {creationDate}
             </p>
           </div>
@@ -94,7 +94,7 @@ function OrderDetailsView({
       <div className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+            <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
               <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Date & Time</div></th>
               <th className="px-6 py-4"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Person</div></th>
               <th className="px-6 py-4 w-1/4">Old Data</th>
@@ -108,16 +108,16 @@ function OrderDetailsView({
               <tr key={log.id} className="hover:bg-neutral-50/80 dark:hover:bg-slate-800/50 transition-colors">
                 <td className="px-6 py-4 align-top">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    <span className="text-sm font-medium text-foreground">
                       {formatDateDisplay(log.timestamp)}
                     </span>
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </td>
                 <td className="px-6 py-4 align-top">
-                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  <span className="text-sm font-medium text-foreground">
                     {log.person}
                   </span>
                 </td>
@@ -126,7 +126,7 @@ function OrderDetailsView({
                     {changes.map((change, i) => {
                       const parsed = parseChange(change);
                       return (
-                        <div key={i} className="text-sm text-neutral-600 dark:text-neutral-400 font-medium bg-neutral-100 dark:bg-slate-800 px-2.5 py-1.5 rounded">
+                        <div key={i} className="text-sm text-muted-foreground font-medium bg-muted px-2.5 py-1.5 rounded">
                           {parsed.oldData}
                         </div>
                       );
@@ -192,7 +192,7 @@ export default function LogsPage() {
   const getActionColor = (action: string) => {
     switch (action) {
       case 'Created': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50';
-      case 'Updated': return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50';
+      case 'Updated': return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-neutral-900/40 dark:text-blue-400 dark:border-blue-900/50';
       case 'Multiple Actions': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/50';
       case 'Deleted': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50';
       case 'Approved': return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/50';
@@ -255,7 +255,7 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 text-neutral-900 dark:text-neutral-100">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 text-foreground">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -263,14 +263,14 @@ export default function LogsPage() {
             <History className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
             System Change Log
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Track all changes, updates, and actions performed within the system.
           </p>
         </div>
         <div>
           <button
             onClick={loadLogs}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors shadow-sm text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-muted transition-colors shadow-sm text-sm font-medium"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh Logs
@@ -280,11 +280,11 @@ export default function LogsPage() {
 
       {/* Filters Section */}
       {!selectedOrderNo && (
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Box */}
           <div className="flex-1">
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Search Details
             </label>
             <div className="relative">
@@ -296,7 +296,7 @@ export default function LogsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search order number, details..."
-                className="w-full pl-10 pr-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-transparent"
+                className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-transparent"
               />
             </div>
           </div>
@@ -304,13 +304,13 @@ export default function LogsPage() {
           <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full lg:w-auto">
             {/* Order No Filter */}
             <div className="w-full sm:w-40">
-              <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Order Number
               </label>
               <select
                 value={orderNoFilter}
                 onChange={(e) => setOrderNoFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="All">All Orders</option>
                 {uniqueOrderNos.map((po, idx) => (
@@ -321,13 +321,13 @@ export default function LogsPage() {
 
             {/* Person Filter */}
             <div className="w-full sm:w-40">
-              <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Person
               </label>
               <select
                 value={personFilter}
                 onChange={(e) => setPersonFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="All">All Users</option>
                 {uniquePersons.map((p, idx) => (
@@ -338,13 +338,13 @@ export default function LogsPage() {
 
             {/* Action Filter */}
             <div className="w-full sm:w-40">
-              <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Action Type
               </label>
               <select
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="All">All Actions</option>
                 <option value="Updated">Updated</option>
@@ -358,7 +358,7 @@ export default function LogsPage() {
             {/* Date Range Filters */}
             <div className="w-full sm:w-72 flex gap-2">
               <div className="flex-1">
-                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Date From
                 </label>
                 <input
@@ -366,11 +366,11 @@ export default function LogsPage() {
                   lang="en-GB"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Date To
                 </label>
                 <input
@@ -378,7 +378,7 @@ export default function LogsPage() {
                   lang="en-GB"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-950 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function LogsPage() {
             <div className="w-full sm:w-auto flex items-end sm:ml-4">
               <button
                 onClick={resetFilters}
-                className="w-full h-[38px] px-6 bg-neutral-100 dark:bg-slate-800 hover:bg-neutral-200 dark:hover:bg-slate-700 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                className="w-full h-[38px] px-6 bg-muted hover:bg-neutral-200 dark:hover:bg-slate-700 text-neutral-600 dark:text-neutral-300 border border-border rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
               >
                 Clear
               </button>
@@ -405,11 +405,11 @@ export default function LogsPage() {
           onBack={() => setSelectedOrderNo(null)} 
         />
       ) : (
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> Order No</div></th>
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Person</div></th>
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5" /> Action Type</div></th>
@@ -426,7 +426,7 @@ export default function LogsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      <span className="text-sm font-medium text-foreground">
                         {log.person}
                       </span>
                     </td>
@@ -449,7 +449,7 @@ export default function LogsPage() {
               ) : (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-neutral-500 dark:text-neutral-400">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <History className="h-10 w-10 mb-3 opacity-20" />
                       <p className="text-sm font-medium">No log records found for the selected filters.</p>
                     </div>
@@ -462,15 +462,15 @@ export default function LogsPage() {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="bg-neutral-50 dark:bg-slate-900 border-t border-neutral-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="bg-neutral-50 dark:bg-neutral-800 border-t border-border px-6 py-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
               Showing <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredLogs.length)}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredLogs.length)}</span> of <span className="font-medium">{filteredLogs.length}</span> results
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-1.5 border border-neutral-300 dark:border-slate-600 rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                className="p-1.5 border border-border rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -482,7 +482,7 @@ export default function LogsPage() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-1.5 border border-neutral-300 dark:border-slate-600 rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                className="p-1.5 border border-border rounded-md text-neutral-500 hover:bg-neutral-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

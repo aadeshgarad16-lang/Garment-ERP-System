@@ -26,7 +26,7 @@ const KPIData = [
     trend: 'up',
     icon: Package,
     color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
+    bg: 'bg-blue-100 dark:bg-neutral-800/30',
   },
   {
     title: 'Active Allocations',
@@ -78,11 +78,11 @@ export default function ReportsPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-indigo-600" />
             Analytics & Reports
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Comprehensive business insights and granular data breakdowns.
           </p>
         </div>
@@ -91,7 +91,7 @@ export default function ReportsPage() {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
-              className="appearance-none pl-10 pr-8 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm font-medium text-neutral-700 dark:text-neutral-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="appearance-none pl-10 pr-8 py-2 bg-card border border-border rounded-lg text-sm font-medium text-neutral-700 dark:text-neutral-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
               <option>Today</option>
               <option>This Week</option>
@@ -114,7 +114,7 @@ export default function ReportsPage() {
           const IconComponent = kpi.icon;
           const isUp = kpi.trend === 'up';
           return (
-            <div key={index} className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div key={index} className="bg-card rounded-xl border border-border p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className={`p-3 rounded-xl ${kpi.bg}`}>
                   <IconComponent className={`h-6 w-6 ${kpi.color}`} />
@@ -125,8 +125,8 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{kpi.value}</h3>
-                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mt-1">{kpi.title}</p>
+                <h3 className="text-3xl font-bold text-foreground">{kpi.value}</h3>
+                <p className="text-sm font-medium text-muted-foreground mt-1">{kpi.title}</p>
               </div>
             </div>
           );
@@ -136,9 +136,9 @@ export default function ReportsPage() {
       {/* Charts & Breakdowns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Stage Tracking Bar Chart (CSS Simulated) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-800 p-6 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-neutral-500" />
               Stage Breakdown
             </h2>
@@ -150,9 +150,9 @@ export default function ReportsPage() {
                 <div key={idx}>
                   <div className="flex justify-between text-sm font-medium mb-1.5">
                     <span className="text-neutral-700 dark:text-neutral-300">{item.stage}</span>
-                    <span className="text-neutral-900 dark:text-neutral-100">{item.count} / {item.total}</span>
+                    <span className="text-foreground">{item.count} / {item.total}</span>
                   </div>
-                  <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
                     <div
                       className={`h-2.5 rounded-full ${item.color} transition-all duration-1000 ease-out`}
                       style={{ width: `${percentage}%` }}
@@ -165,9 +165,9 @@ export default function ReportsPage() {
         </div>
 
         {/* Order Summary Doughnut / Stats (CSS Simulated) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-800 p-6 shadow-sm flex flex-col">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
               <Package className="h-5 w-5 text-neutral-500" />
               Order Summary Overview
             </h2>
@@ -175,33 +175,33 @@ export default function ReportsPage() {
           
           <div className="flex-1 flex flex-col justify-center gap-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30">
+              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-neutral-800/10 border border-blue-100 dark:border-blue-800/30">
                 <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Total Received</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">1,245</p>
+                <p className="text-2xl font-bold text-foreground">1,245</p>
               </div>
               <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30">
                 <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Completed</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">890</p>
+                <p className="text-2xl font-bold text-foreground">890</p>
               </div>
               <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
                 <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Pending / Open</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">325</p>
+                <p className="text-2xl font-bold text-foreground">325</p>
               </div>
               <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30">
                 <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Delayed / Issues</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">30</p>
+                <p className="text-2xl font-bold text-foreground">30</p>
               </div>
             </div>
             
             {/* Visual ratio bar */}
             <div className="mt-2">
-               <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-2">Order Completion Ratio</p>
-               <div className="w-full flex h-3 rounded-full overflow-hidden border border-neutral-100 dark:border-slate-700">
+               <p className="text-sm font-medium text-muted-foreground mb-2">Order Completion Ratio</p>
+               <div className="w-full flex h-3 rounded-full overflow-hidden border border-neutral-100 dark:border-neutral-700">
                  <div className="bg-emerald-500" style={{ width: '71%' }} title="Completed (71%)"></div>
                  <div className="bg-amber-400" style={{ width: '26%' }} title="Pending (26%)"></div>
                  <div className="bg-red-500" style={{ width: '3%' }} title="Delayed (3%)"></div>
                </div>
-               <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 font-bold uppercase tracking-wider">
+               <div className="flex justify-between text-[11px] text-muted-foreground mt-2 font-bold uppercase tracking-wider">
                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Completed</span>
                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm"></span> Pending</span>
                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm"></span> Delayed</span>
@@ -212,9 +212,9 @@ export default function ReportsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
             <FileText className="h-5 w-5 text-neutral-500" />
             Recent Generated Reports
           </h2>
@@ -223,7 +223,7 @@ export default function ReportsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-bold bg-neutral-50/30 dark:bg-slate-900">
+              <tr className="border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold bg-muted">
                 <th className="px-6 py-4">Report ID</th>
                 <th className="px-6 py-4">Report Name</th>
                 <th className="px-6 py-4">Category</th>
@@ -235,10 +235,10 @@ export default function ReportsPage() {
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
               {recentReportsData.map((report) => (
                 <tr key={report.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4 text-sm font-bold text-neutral-900 dark:text-neutral-100">{report.id}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-foreground">{report.id}</td>
                   <td className="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-300 font-semibold">{report.name}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400">{report.type}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400">{report.date}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{report.type}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{report.date}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                       report.status === 'Generated' 

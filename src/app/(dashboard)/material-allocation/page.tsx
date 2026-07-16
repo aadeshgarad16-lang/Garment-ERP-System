@@ -267,11 +267,11 @@ export default function MaterialAllocationPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ListChecks className="h-6 w-6 text-indigo-600" />
             {t('procurement.materialAllocation') || 'Material Allocation'}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             {t('procurement.materialAllocationDesc') || 'Reserve and lock warehouse inventory against this Purchase Order'}
           </p>
           {poNumber && (
@@ -295,7 +295,7 @@ export default function MaterialAllocationPage() {
               className={`w-full sm:w-auto px-5 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
                 canAllocate && allocationResult !== 'loading'
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                  : 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
               }`}
             >
               {allocationResult === 'loading'
@@ -353,20 +353,20 @@ export default function MaterialAllocationPage() {
           { icon: Lock, label: 'Locked / Reserved', value: stats.locked, color: stats.locked > 0 ? 'indigo' : 'neutral' },
         ].map((card, i) => {
           const colorBg: Record<string, string> = {
-            neutral: 'bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400',
+            neutral: 'bg-muted text-muted-foreground',
             emerald: 'bg-emerald-100 text-emerald-600',
             red: 'bg-red-100 text-red-600',
             indigo: 'bg-indigo-100 text-indigo-600',
           };
           const Icon = card.icon;
           return (
-            <div key={i} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex items-center gap-4">
+            <div key={i} className="bg-card rounded-xl shadow-sm border border-border p-5 flex items-center gap-4">
               <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${colorBg[card.color]}`}>
                 <Icon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{card.label}</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{card.value}</p>
+                <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                <p className="text-2xl font-bold text-foreground">{card.value}</p>
               </div>
             </div>
           );
@@ -375,9 +375,9 @@ export default function MaterialAllocationPage() {
 
 
       {/* BOM Allocation Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
             <Box className="h-4 w-4 text-indigo-500" />
             Reservation &amp; Allocation Table
           </h2>
@@ -406,7 +406,7 @@ export default function MaterialAllocationPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+              <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-4 py-3.5">Material Name</th>
                 <th className="px-4 py-3.5">Category</th>
                 <th className="px-4 py-3.5 text-right">Required Qty</th>
@@ -436,17 +436,17 @@ export default function MaterialAllocationPage() {
                       {/* Material Name */}
                       <td className="px-4 py-4">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{line.material_name}</span>
+                          <span className="text-sm font-semibold text-foreground">{line.material_name}</span>
                           <span className="text-[11px] text-neutral-400">ID: {line.material_id}</span>
                         </div>
                       </td>
 
                       {/* Category */}
-                      <td className="px-4 py-4 text-xs text-neutral-600 dark:text-neutral-400">{line.category}</td>
+                      <td className="px-4 py-4 text-xs text-muted-foreground">{line.category}</td>
 
                       {/* Required Qty */}
                       <td className="px-4 py-4 text-right">
-                        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{line.required_qty.toLocaleString()}</span>
+                        <span className="text-sm font-semibold text-foreground">{line.required_qty.toLocaleString()}</span>
                         <span className="text-[11px] text-neutral-400 block">{line.unit}</span>
                       </td>
 
@@ -470,10 +470,10 @@ export default function MaterialAllocationPage() {
                             disabled={line.isLocked}
                             className={`w-24 px-2 py-1.5 border rounded-lg text-sm text-right transition-colors ${
                               line.isLocked
-                                ? 'bg-neutral-100 dark:bg-slate-800 border-neutral-200 dark:border-slate-700 text-neutral-500 cursor-not-allowed'
+                                ? 'bg-muted border-border text-neutral-500 cursor-not-allowed'
                                 : line.allocate_qty > line.available_qty
                                   ? 'border-red-300 bg-red-50 text-red-900'
-                                  : 'border-neutral-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-neutral-900 dark:text-neutral-100 focus:ring-indigo-500 focus:border-indigo-500'
+                                  : 'border-border bg-card text-foreground focus:ring-indigo-500 focus:border-indigo-500'
                             }`}
                           />
                           <span className="text-xs text-neutral-400">{line.unit}</span>
@@ -521,7 +521,7 @@ export default function MaterialAllocationPage() {
         </div>
 
         {/* Bottom action bar */}
-        <div className="border-t border-neutral-100 dark:border-slate-800 px-4 py-3 bg-neutral-50/50 dark:bg-slate-800/30 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="border-t border-neutral-100 dark:border-neutral-700 px-4 py-3 bg-neutral-50/50 dark:bg-neutral-800/30 flex flex-col sm:flex-row justify-between items-center gap-3">
           <div className="flex items-center gap-4 text-xs text-neutral-500">
             <span><span className="font-semibold text-neutral-700 dark:text-neutral-300">{stats.locked}</span> / {stats.total} lines reserved</span>
             {stats.shortage > 0 && (
@@ -539,7 +539,7 @@ export default function MaterialAllocationPage() {
                 className={`px-4 py-2 rounded-lg shadow-sm font-medium text-sm flex items-center gap-2 transition-colors ${
                   canAllocate && allocationResult !== 'loading'
                     ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                    : 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
                 }`}
               >
                 <Lock className="h-4 w-4" />

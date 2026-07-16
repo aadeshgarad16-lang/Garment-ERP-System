@@ -376,18 +376,18 @@ export default function ManageUsersPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                         <UserPlus className="h-6 w-6 text-indigo-600" />
                         Manage Users
                     </h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+                    <p className="text-muted-foreground text-sm mt-1">
                         Create, audit, and manage role-based users and configuration statuses for the ERP system.
                     </p>
                 </div>
             </div>
 
             {/* Tabs Layout */}
-            <div className="flex border-b border-neutral-200 dark:border-slate-700 space-x-4">
+            <div className="flex border-b border-border space-x-4">
                 <button
                     onClick={() => setActiveTab("add")}
                     className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "add"
@@ -431,9 +431,9 @@ export default function ManageUsersPage() {
 
                     {/* TAB 1 CONTENT: ADD / EDIT FORM */}
                     {activeTab === "add" && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-                            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
-                                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+                        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                                <h2 className="text-lg font-semibold text-card-foreground">
                                     User Details {editingUserId && "(Editing User)"}
                                 </h2>
                             </div>
@@ -445,7 +445,7 @@ export default function ManageUsersPage() {
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                                             Full Name <span className="text-red-500">*</span>
                                         </label>
-                                        <input type="text" placeholder="Enter Full Name (Name, Middle Name, Surname)" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                        <input type="text" placeholder="Enter Full Name (Name, Middle Name, Surname)" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                         {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
                                     </div>
                                     <div>
@@ -455,30 +455,30 @@ export default function ManageUsersPage() {
                                         <input type="text" placeholder="Enter 10-digit Mobile Number" value={formData.mobileNumber} onChange={e => {
                                             const val = e.target.value.replace(/\D/g, '');
                                             if (val.length <= 10) setFormData({ ...formData, mobileNumber: val });
-                                        }} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                        }} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                         {errors.mobileNumber && <p className="text-red-500 text-xs mt-1">{errors.mobileNumber}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                                             Email ID
                                         </label>
-                                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Designation</label>
-                                        <input type="text" value={formData.designation} onChange={e => setFormData({ ...formData, designation: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                        <input type="text" value={formData.designation} onChange={e => setFormData({ ...formData, designation: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                     </div>
                                 </div>
 
                                 {/* SECTION 2 & 3: ROLE & LOGIN DETAILS */}
-                                <hr className="border-neutral-200 dark:border-slate-700" />
+                                <hr className="border-border" />
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                                     <div>
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                                             Role <span className="text-red-500">*</span>
                                         </label>
-                                        <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none disabled:opacity-60 disabled:cursor-not-allowed">
+                                        <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none disabled:opacity-60 disabled:cursor-not-allowed">
                                             <option value="">Select a Role...</option>
                                             {roles.map(r => <option key={r} value={r}>{r}</option>)}
                                         </select>
@@ -488,7 +488,7 @@ export default function ManageUsersPage() {
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                                             Username
                                         </label>
-                                        <input type="text" value={formData.mobileNumber} readOnly disabled placeholder="Same as Contact No" className="w-full px-3 py-2 border border-neutral-200 dark:border-slate-700 rounded-lg text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-800/50 text-sm focus:outline-none cursor-not-allowed" />
+                                        <input type="text" value={formData.mobileNumber} readOnly disabled placeholder="Same as Contact No" className="w-full px-3 py-2 border border-border rounded-lg text-muted-foreground bg-neutral-50 dark:bg-neutral-800/50 text-sm focus:outline-none cursor-not-allowed" />
                                         {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                                     </div>
                                     <div>
@@ -496,7 +496,7 @@ export default function ManageUsersPage() {
                                             Password {!editingUserId && <span className="text-red-500">*</span>}
                                         </label>
                                         <div className="relative">
-                                            <input type={showPassword ? "text" : "password"} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                            <input type={showPassword ? "text" : "password"} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
                                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
@@ -508,7 +508,7 @@ export default function ManageUsersPage() {
                                             Confirm Password {!editingUserId && <span className="text-red-500">*</span>}
                                         </label>
                                         <div className="relative">
-                                            <input type={showConfirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
+                                            <input type={showConfirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} disabled={isReadOnly} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed" />
                                             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
                                                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
@@ -518,9 +518,9 @@ export default function ManageUsersPage() {
                                 </div>
 
                                 {/* SECTION 4: MODULE ACCESS */}
-                                <hr className="border-neutral-200 dark:border-slate-700" />
+                                <hr className="border-border" />
                                 <div>
-                                    <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-4">Module Access / Permissions</h3>
+                                    <h3 className="text-sm font-semibold text-card-foreground mb-4">Module Access / Permissions</h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {modulesList.map(mod => (
                                             <label key={mod} className="flex items-center gap-2 cursor-pointer">
@@ -529,7 +529,7 @@ export default function ManageUsersPage() {
                                                     checked={formData.modules.includes(mod)}
                                                     onChange={() => handleModuleToggle(mod)}
                                                     disabled={isReadOnly}
-                                                    className="w-4 h-4 text-indigo-600 border-neutral-300 rounded focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="w-4 h-4 text-indigo-600 border-neutral-300 rounded focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed"
                                                 />
                                                 <span className="text-sm text-neutral-700 dark:text-neutral-300">{mod}</span>
                                             </label>
@@ -538,9 +538,9 @@ export default function ManageUsersPage() {
                                 </div>
 
                                 {/* SECTION 5: ACTION BUTTONS */}
-                                <hr className="border-neutral-200 dark:border-slate-700" />
+                                <hr className="border-border" />
                                 <div className="flex justify-end gap-3 pt-2">
-                                    <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 dark:bg-slate-900 dark:text-neutral-300 dark:border-slate-700 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors">
+                                    <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors">
                                         <X className="w-4 h-4" /> Cancel
                                     </button>
                                     <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 flex items-center gap-2 transition-colors">
@@ -558,9 +558,9 @@ export default function ManageUsersPage() {
 
                     {/* TAB 2 CONTENT: USER LIST TABLE */}
                     {activeTab === "list" && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-                            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <Users className="w-5 h-5 text-indigo-500" />
                                     User Records Directory
                                 </h2>
@@ -573,10 +573,10 @@ export default function ManageUsersPage() {
                                             placeholder="Search User..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 text-neutral-900 dark:text-neutral-100"
+                                            className="pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64 text-foreground"
                                         />
                                     </div>
-                                    <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-neutral-900 dark:text-neutral-100 appearance-none min-w-[120px]">
+                                    <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-foreground appearance-none min-w-[120px]">
                                         <option value="All">All Roles</option>
                                         {roles.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
@@ -586,7 +586,7 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse table-fixed min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-slate-800/70 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-3 py-4 w-[110px]">Employee ID</th>
                                             <th className="px-3 py-4 w-[140px]">Full Name</th>
                                             <th className="px-3 py-4 w-[120px]">Username</th>
@@ -597,26 +597,26 @@ export default function ManageUsersPage() {
                                             <th className="px-3 py-4 w-[140px] text-center">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-card">
                                         {filteredUsers.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-6 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400 italic">
+                                                <td colSpan={8} className="px-6 py-8 text-center text-sm text-muted-foreground italic">
                                                     No users found matching your search.
                                                 </td>
                                             </tr>
                                         ) : (
                                             filteredUsers.map((user, idx) => (
                                                 <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                                    <td className="px-3 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate" title={user.employeeId}>{user.employeeId}</td>
+                                                    <td className="px-3 py-4 text-sm font-medium text-foreground truncate" title={user.employeeId}>{user.employeeId}</td>
                                                     <td className="px-3 py-4 text-sm text-neutral-700 dark:text-neutral-300 truncate" title={user.fullName}>{user.fullName}</td>
-                                                    <td className="px-3 py-4 text-sm text-neutral-600 dark:text-neutral-400 truncate" title={user.username}>{user.username}</td>
-                                                    <td className="px-3 py-4 text-sm text-neutral-600 dark:text-neutral-400">
-                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-700 dark:bg-slate-800 dark:text-neutral-300 border border-neutral-200 dark:border-slate-700 truncate max-w-full" title={user.role}>
+                                                    <td className="px-3 py-4 text-sm text-muted-foreground truncate" title={user.username}>{user.username}</td>
+                                                    <td className="px-3 py-4 text-sm text-muted-foreground">
+                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 border border-border truncate max-w-full" title={user.role}>
                                                             {user.role}
                                                         </span>
                                                     </td>
-                                                    <td className="px-3 py-4 text-sm text-neutral-600 dark:text-neutral-400 truncate" title={user.email}>{user.email}</td>
-                                                    <td className="px-3 py-4 text-sm text-neutral-600 dark:text-neutral-400 truncate" title={user.lastLogin}>{user.lastLogin}</td>
+                                                    <td className="px-3 py-4 text-sm text-muted-foreground truncate" title={user.email}>{user.email}</td>
+                                                    <td className="px-3 py-4 text-sm text-muted-foreground truncate" title={user.lastLogin}>{user.lastLogin}</td>
                                                     <td className="px-3 py-4">
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${user.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-neutral-100 text-neutral-700 border-neutral-200'}`}>
                                                             {user.status}
@@ -656,9 +656,9 @@ export default function ManageUsersPage() {
 
                     {/* TAB 3 CONTENT: USER LOGS */}
                     {activeTab === "logs" && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-                            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
-                                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                                <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-indigo-500" />
                                     User Activity Audit Trail
                                 </h2>
@@ -666,20 +666,20 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-slate-800/70 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-6 py-4">Operator & Role</th>
                                             <th className="px-6 py-4">Action Performed</th>
                                             <th className="px-6 py-4">Timestamp</th>
                                             <th className="px-6 py-4">IP Address</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-card">
                                         {userLogs.map((log) => (
                                             <tr key={log.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                                <td className="px-6 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">{log.username}</td>
+                                                <td className="px-6 py-4 text-sm font-medium text-foreground">{log.username}</td>
                                                 <td className="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-300">{log.action}</td>
-                                                <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{log.timestamp}</td>
-                                                <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{log.ipAddress}</td>
+                                                <td className="px-6 py-4 text-sm text-muted-foreground">{log.timestamp}</td>
+                                                <td className="px-6 py-4 text-sm text-muted-foreground">{log.ipAddress}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -690,9 +690,9 @@ export default function ManageUsersPage() {
 
                     {/* TAB 4 CONTENT: ENABLE/DISABLE ACCESS CONTROL */}
                     {activeTab === "status" && (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-                            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
-                                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                                <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <UserCheck className="w-5 h-5 text-indigo-500" />
                                     Enable / Disable Access Status
                                 </h2>
@@ -700,18 +700,18 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-slate-800/70 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-6 py-4">Full Name</th>
                                             <th className="px-6 py-4">Role</th>
                                             <th className="px-6 py-4">Current Status</th>
                                             <th className="px-6 py-4 text-center">Toggle Operation</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-card">
                                         {filteredUsers.map((user, idx) => (
                                             <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                                <td className="px-6 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">{user.fullName}</td>
-                                                <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-400">{user.role}</td>
+                                                <td className="px-6 py-4 text-sm font-medium text-foreground">{user.fullName}</td>
+                                                <td className="px-6 py-4 text-sm text-muted-foreground">{user.role}</td>
                                                 <td className="px-6 py-4 text-sm">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${user.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                                         {user.status}
@@ -741,9 +741,9 @@ export default function ManageUsersPage() {
                 {/* MODAL: VIEW USER */}
                 {viewingUser && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-slate-800">
-                                <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">User Details</h3>
+                        <div className="bg-card rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-700">
+                                <h3 className="text-xl font-bold text-foreground">User Details</h3>
                                 <button onClick={() => setViewingUser(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
                                     <X className="w-5 h-5" />
                                 </button>
@@ -758,39 +758,39 @@ export default function ManageUsersPage() {
                                     <div className="space-y-6">
                                         {/* Basic User Information Grid */}
                                         <div>
-                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-slate-800 pb-2">User Information</h4>
+                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-neutral-700 pb-2">User Information</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Employee ID</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.contact_number || viewingUser.employeeId}</div>
+                                                    <label className="text-xs text-muted-foreground block">Employee ID</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.contact_number || viewingUser.employeeId}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Full Name</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.full_name || viewingUser.fullName}</div>
+                                                    <label className="text-xs text-muted-foreground block">Full Name</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.full_name || viewingUser.fullName}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Contact Number</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.contact_number || viewingUser.mobileNumber}</div>
+                                                    <label className="text-xs text-muted-foreground block">Contact Number</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.contact_number || viewingUser.mobileNumber}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Email ID</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.email_id || viewingUser.email || "N/A"}</div>
+                                                    <label className="text-xs text-muted-foreground block">Email ID</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.email_id || viewingUser.email || "N/A"}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Designation</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.designation || "N/A"}</div>
+                                                    <label className="text-xs text-muted-foreground block">Designation</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.designation || "N/A"}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Role</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.role}</div>
+                                                    <label className="text-xs text-muted-foreground block">Role</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.role}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Username</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{viewingUser.username}</div>
+                                                    <label className="text-xs text-muted-foreground block">Username</label>
+                                                    <div className="text-sm font-medium text-foreground">{viewingUser.username}</div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs text-neutral-500 dark:text-neutral-400 block">Account Status</label>
-                                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                                    <label className="text-xs text-muted-foreground block">Account Status</label>
+                                                    <div className="text-sm font-medium text-foreground">
                                                         <span className={`inline-flex items-center px-2 py-1 rounded text-[11px] font-medium border ${viewingUser.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-neutral-100 text-neutral-700 border-neutral-200'}`}>
                                                             {viewingUser.status || "Active"}
                                                         </span>
@@ -801,13 +801,13 @@ export default function ManageUsersPage() {
 
                                         {/* Allotted Access Pages / Modules Grid */}
                                         <div>
-                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-slate-800 pb-2">Allotted Access Pages</h4>
+                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-neutral-700 pb-2">Allotted Access Pages</h4>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                                 {viewingUser.modules_access && viewingUser.modules_access.length > 0 ? (
                                                     viewingUser.modules_access.map((mod: string) => (
                                                         <div
                                                             key={mod}
-                                                            className="flex items-center gap-2 p-2 rounded-lg border text-sm border-blue-100 bg-blue-50/50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/10 dark:text-blue-400"
+                                                            className="flex items-center gap-2 p-2 rounded-lg border text-sm border-blue-100 bg-blue-50/50 text-blue-700 dark:border-blue-900/30 dark:bg-neutral-800/10 dark:text-blue-400"
                                                         >
                                                             <div className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center bg-blue-600 text-white">
                                                                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -827,8 +827,8 @@ export default function ManageUsersPage() {
                                     </div>
                                 )}
                             </div>
-                            <div className="p-6 border-t border-neutral-100 dark:border-slate-800 bg-neutral-50 dark:bg-slate-800/50 flex justify-end">
-                                <button onClick={() => setViewingUser(null)} className="px-6 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm">Close</button>
+                            <div className="p-6 border-t border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 flex justify-end">
+                                <button onClick={() => setViewingUser(null)} className="px-6 py-2 bg-card border border-border rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-muted transition-colors font-medium text-sm">Close</button>
                             </div>
                         </div>
                     </div>
@@ -837,9 +837,9 @@ export default function ManageUsersPage() {
                 {/* MODAL: SUPER ADMIN PASSWORD RESET */}
                 {resettingPasswordUserId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-neutral-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-slate-800">
-                                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <div className="bg-card rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-border">
+                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-700">
+                                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                                     <ShieldAlert className="w-5 h-5 text-purple-600" />
                                     Super Admin Password Reset
                                 </h3>
@@ -850,15 +850,15 @@ export default function ManageUsersPage() {
                             <div className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">New Password</label>
-                                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">Confirm New Password</label>
-                                    <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} className="w-full px-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-neutral-900 dark:text-neutral-100 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                                    <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-neutral-100 dark:border-slate-800 bg-neutral-50 dark:bg-slate-800/50 flex justify-end gap-2">
-                                <button onClick={() => setResettingPasswordUserId(null)} className="px-4 py-2 text-xs font-medium bg-white border rounded-lg text-neutral-700 dark:bg-slate-900 dark:text-neutral-300 dark:border-slate-700">Cancel</button>
+                            <div className="p-4 border-t border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 flex justify-end gap-2">
+                                <button onClick={() => setResettingPasswordUserId(null)} className="px-4 py-2 text-xs font-medium bg-white border rounded-lg text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">Cancel</button>
                                 <button onClick={handleSuperAdminPasswordReset} disabled={isResetLoading} className="px-4 py-2 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm transition-colors">
                                     {isResetLoading ? "Resetting..." : "Confirm Reset"}
                                 </button>

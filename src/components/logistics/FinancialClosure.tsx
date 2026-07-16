@@ -24,7 +24,7 @@ export default function FinancialClosure({ onComplete }: FinancialClosureProps) 
   const isFormValid = freightCost.trim() !== '';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-emerald-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="bg-card rounded-xl shadow-sm border border-emerald-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="border-b border-emerald-100 px-6 py-5 bg-emerald-50/50 flex items-center gap-3">
         <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
           <DollarSign className="h-5 w-5" />
@@ -50,7 +50,7 @@ export default function FinancialClosure({ onComplete }: FinancialClosureProps) 
                   placeholder="0.00"
                   value={freightCost}
                   onChange={(e) => setFreightCost(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -66,7 +66,7 @@ export default function FinancialClosure({ onComplete }: FinancialClosureProps) 
                   placeholder="0.00"
                   value={customsDuties}
                   onChange={(e) => setCustomsDuties(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                 />
               </div>
             </div>

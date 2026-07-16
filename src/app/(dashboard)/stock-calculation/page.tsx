@@ -105,21 +105,21 @@ function SearchableDropdown({
           onFocus={() => setIsOpen(true)}
           disabled={disabled}
           placeholder={placeholder}
-          className="w-full px-3 py-2 pr-10 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+          className="w-full px-3 py-2 pr-10 bg-card border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
           <ChevronDown className="h-4 w-4" />
         </div>
       </div>
       {isOpen && !disabled && (
-        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1 border-t-0">
+        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-card border border-border rounded-lg shadow-lg py-1 border-t-0">
           {filteredOptions.length === 0 ? (
             <li className="px-3 py-2 text-sm text-neutral-500 italic">No options found</li>
           ) : (
             filteredOptions.map((opt, idx) => (
               <li
                 key={idx}
-                className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer transition-colors"
+                className="px-3 py-2 text-sm text-foreground hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer transition-colors"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onChange(opt);
@@ -470,19 +470,19 @@ function StockCalculationContent() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Package className="h-6 w-6 text-blue-600" />
           Stock Check
         </h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Calculate garment requirements and allocate existing stock.
         </p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 mt-6">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 rounded-t-xl">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-            <Box className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+      <div className="bg-card rounded-xl shadow-sm border border-border mt-6">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 rounded-t-xl">
+          <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+            <Box className="h-5 w-5 text-muted-foreground" />
             Stock Calculation
           </h2>
         </div>
@@ -510,7 +510,7 @@ function StockCalculationContent() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">PO Date</label>
               <div
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-slate-800/40 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
+                className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800/40 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
               >
                 {formatDate(orderAnalysis.derivedPODate) || "—"}
               </div>
@@ -519,14 +519,14 @@ function StockCalculationContent() {
 
           <div className="mb-6">
             {!selectedPONumber || !displayOrder ? (
-              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-slate-700 rounded-xl bg-neutral-50 dark:bg-slate-800/30 text-neutral-500 dark:text-neutral-400 text-sm italic">
+              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800/30 text-muted-foreground text-sm italic">
                 Please select a PO number.
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-slate-700 shadow-sm">
+              <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
-                    <tr className="bg-neutral-50 dark:bg-slate-800/70 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                    <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                       <th className="px-6 py-3.5">PO Number</th>
                       <th className="px-6 py-3.5 whitespace-nowrap">PO Date</th>
                       <th className="px-6 py-3.5 whitespace-nowrap">Delivery Date</th>
@@ -534,17 +534,17 @@ function StockCalculationContent() {
                       <th className="px-6 py-3.5">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                    <tr className="text-sm text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50/30 transition-colors">
+                  <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-card">
+                    <tr className="text-sm text-card-foreground hover:bg-neutral-50/30 transition-colors">
                       <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400 whitespace-normal break-words max-w-[200px]">{displayOrder.poNumber || displayOrder.po_number}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.poDate || displayOrder.order_date)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.deliveryDate || displayOrder.delivery_date)}</td>
-                      <td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400 space-y-2">
+                      <td className="px-6 py-4 text-xs text-muted-foreground space-y-2">
                         {displayOrder.specs && displayOrder.specs.length > 0 ? (
                           displayOrder.specs.map((spec: any) => (
-                            <div key={spec.id || spec.spec_id} className="flex justify-between border-b border-neutral-100 dark:border-slate-800 last:border-0 pb-1.5 last:pb-0 min-h-[24px] items-center">
+                            <div key={spec.id || spec.spec_id} className="flex justify-between border-b border-neutral-100 dark:border-neutral-700 last:border-0 pb-1.5 last:pb-0 min-h-[24px] items-center">
                               <span className="font-medium text-neutral-700 dark:text-neutral-300">{spec.garment_name || spec.itemDescription} ({spec.size}) - {spec.pattern}</span>
-                              <span className="font-semibold bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded text-neutral-900 dark:text-neutral-100">Qty: {spec.quantity}</span>
+                              <span className="font-semibold bg-gray-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-foreground">Qty: {spec.quantity}</span>
                             </div>
                           ))
                         ) : (
@@ -572,7 +572,7 @@ function StockCalculationContent() {
                               <div key={`status-${spec.id || spec.spec_id}`} className="flex items-center justify-between border-b border-transparent last:border-0 pb-1.5 last:pb-0 min-h-[24px]">
                                 <div>
                                   {isPending ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-slate-800 dark:text-neutral-400 border border-neutral-200 dark:border-slate-700">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 border border-border">
                                       Pending Selection
                                     </span>
                                   ) : isAvailable ? (
@@ -589,7 +589,7 @@ function StockCalculationContent() {
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium ml-3">
+                                <span className="text-xs text-muted-foreground font-medium ml-3">
                                   Req: {req}
                                 </span>
                               </div>
@@ -606,7 +606,7 @@ function StockCalculationContent() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-neutral-100 dark:border-neutral-700 pt-6">
             <div className="flex-1">
               {displayOrder && displayOrder.hasAllocationError && (
                 <p className="text-sm text-red-600 dark:text-red-400 font-semibold flex items-center gap-1.5">
@@ -640,7 +640,7 @@ function StockCalculationContent() {
                         onClick={() => handleCalculateBOM('calculate-bom')}
                         disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
                         className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                            ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                            ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                             : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
                           }`}
                       >
@@ -652,7 +652,7 @@ function StockCalculationContent() {
                         type="button"
                         disabled
                         title="You do not have permission to access BOM Calculation."
-                        className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                        className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none"
                       >
                         Max Stage Reached
                       </button>
@@ -665,7 +665,7 @@ function StockCalculationContent() {
                             onClick={() => handleCalculateBOM('quality-packing')}
                             disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
                             className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                                ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                                 : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
                               }`}
                           >
@@ -677,7 +677,7 @@ function StockCalculationContent() {
                             type="button"
                             disabled
                             title="You do not have permission to access Quality & Packing."
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none"
                           >
                             Max Stage Reached
                           </button>
@@ -690,7 +690,7 @@ function StockCalculationContent() {
                             onClick={() => handleCalculateBOM('purchase-request')}
                             disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
                             className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                                ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none'
+                                ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                                 : 'bg-white text-red-600 border border-red-200 hover:bg-red-50 active:transform active:scale-[0.99]'
                               }`}
                           >
@@ -702,7 +702,7 @@ function StockCalculationContent() {
                             type="button"
                             disabled
                             title="You do not have permission to access Procurement."
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 shadow-none"
+                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none"
                           >
                             Max Stage Reached
                           </button>
@@ -722,7 +722,7 @@ function StockCalculationContent() {
 
 export default function StockCalculationPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 animate-pulse">Loading stock verification system...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-sm font-medium text-muted-foreground animate-pulse">Loading stock verification system...</div>}>
       <StockCalculationContent />
     </Suspense>
   );

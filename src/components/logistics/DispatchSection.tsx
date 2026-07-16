@@ -25,14 +25,14 @@ export default function DispatchSection({ onComplete }: DispatchSectionProps) {
   const isFormValid = courier.trim() !== '' && trackingNumber.trim() !== '' && eta !== '';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
+    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="border-b border-border px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
         <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
           <Truck className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('logistics.dispatchDetails') || 'Dispatch Details'}</h2>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t('logistics.dispatchDetailsDesc') || 'Assign courier and initialize physical transit.'}</p>
+          <h2 className="text-lg font-semibold text-card-foreground">{t('logistics.dispatchDetails') || 'Dispatch Details'}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('logistics.dispatchDetailsDesc') || 'Assign courier and initialize physical transit.'}</p>
         </div>
       </div>
       
@@ -47,7 +47,7 @@ export default function DispatchSection({ onComplete }: DispatchSectionProps) {
               <select 
                 value={courier}
                 onChange={(e) => setCourier(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-slate-900"
+                className="w-full px-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-card"
               >
                 <option value="">{t('logistics.selectPartner') || 'Select Partner...'}</option>
                 <option value="Maersk Logistics">Maersk Logistics</option>
@@ -66,7 +66,7 @@ export default function DispatchSection({ onComplete }: DispatchSectionProps) {
                 placeholder="e.g. AWB-12345678"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
               />
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function DispatchSection({ onComplete }: DispatchSectionProps) {
                 lang="en-GB"
                 value={eta}
                 onChange={(e) => setEta(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
               />
             </div>
           </div>

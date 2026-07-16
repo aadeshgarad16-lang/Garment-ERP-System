@@ -55,9 +55,9 @@ export default function ProfilePage() {
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto py-8">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-6">{t('profile') || 'User Profile'}</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">{t('profile') || 'User Profile'}</h1>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           {/* Cover Header */}
           <div className="h-32 bg-gradient-to-r from-blue-600 to-blue-400"></div>
 
@@ -65,7 +65,7 @@ export default function ProfilePage() {
             {/* Avatar Profile Photo */}
             <div className="relative flex justify-between items-end -mt-12 mb-8">
               <div className="relative" ref={optionsRef}>
-                <div className="h-24 w-24 rounded-full bg-white dark:bg-slate-900 p-1 shadow-md">
+                <div className="h-24 w-24 rounded-full bg-card p-1 shadow-md">
                   <div className="h-full w-full rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold">
                     {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                   </div>
@@ -78,7 +78,7 @@ export default function ProfilePage() {
                 </button>
 
                 {showPhotoOptions && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-neutral-200 dark:border-slate-700 overflow-hidden z-10 animate-in fade-in zoom-in duration-150">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-card rounded-lg shadow-xl border border-border overflow-hidden z-10 animate-in fade-in zoom-in duration-150">
                     <button
                       onClick={() => { cameraRef.current?.click(); setShowPhotoOptions(false); }}
                       className="w-full text-left px-4 py-3 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
@@ -112,29 +112,29 @@ export default function ProfilePage() {
             {/* Profile Details */}
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{currentUser?.name || "John Doe"}</h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatRole(currentUser?.userRole)}</p>
+                <h2 className="text-xl font-bold text-foreground">{currentUser?.name || "John Doe"}</h2>
+                <p className="text-sm text-muted-foreground">{formatRole(currentUser?.userRole)}</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-100 dark:border-neutral-700">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
                     <User className="h-3.5 w-3.5" />
                     {t('fullName') || 'Full Name'}
                   </label>
-                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{currentUser?.name || "N/A"}</p>
+                  <p className="text-foreground font-medium">{currentUser?.name || "N/A"}</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
                     <Mail className="h-3.5 w-3.5" />
                     {t('email') || 'Email Address'}
                   </label>
-                  <p className="text-neutral-900 dark:text-neutral-100 font-medium">{currentUser?.email || "No email provided"}</p>
+                  <p className="text-foreground font-medium">{currentUser?.email || "No email provided"}</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {t('userRole') || 'User Role'}
                   </label>
@@ -144,7 +144,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5" />
                     {t('phoneNumber') || 'Phone Number'}
                   </label>
@@ -153,7 +153,7 @@ export default function ProfilePage() {
                     value={currentUser?.loginPhoneNumber || "N/A"}
                     disabled
                     readOnly
-                    className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
+                    className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-neutral-800 border border-border rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
                   />
                 </div>
               </div>
@@ -179,15 +179,15 @@ export default function ProfilePage() {
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 mb-2">{t('deleteAccount') || 'Delete Account'}</h3>
+          <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-foreground mb-2">{t('deleteAccount') || 'Delete Account'}</h3>
             <p className="text -neutral-600 dark:text-neutral-400 mb-6">
               {t('deleteConfirmDesc') || 'Are you sure you want to delete your account? This action is permanent and all ERP data will be lost.'}
             </p>
             <div className="flex flex-col sm:flex-row justify-end gap-3">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
+                className="px-4 py-2 bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
               >
                 {t('actions.cancel') || 'Cancel'}
               </button>

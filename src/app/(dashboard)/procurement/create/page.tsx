@@ -96,11 +96,16 @@ export default function CreateProcurementPage() {
     async function fetchSuppliers() {
       try {
         const response = await fetch('/api/suppliers');
-        if (!response.ok) throw new Error('Network response exception');
+        if (!response.ok) {
+          console.warn(`Network response exception: ${response.status}`);
+          setSuppliers([]);
+          return;
+        }
         const data = await response.json();
         setSuppliers(data);
       } catch (error) {
-        console.error("Error connecting to supplier directory service:", error);
+        console.warn("Error connecting to supplier directory service:", error);
+        setSuppliers([]);
       } finally {
         setIsLoadingSuppliers(false);
       }
@@ -406,23 +411,23 @@ export default function CreateProcurementPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => advanceStage('/procurement', 'Procurement')}
-          className="p-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 rounded-lg hover:bg-neutral-50 dark:hover:bg-slate-800 shadow-sm transition-colors"
+          className="p-2 bg-card border border-border text-muted-foreground hover:text-neutral-900 rounded-lg hover:bg-muted shadow-sm transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Plus className="h-6 w-6 text-indigo-600" />
             {t('procurement.createRequest') || 'Create Purchase Request'}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             {t('procurement.createRequestDesc') || 'Submit a formal procurement proposal to resolve outstanding material shortages'}
           </p>
         </div>
       </div>
 
       {isSubmitted ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 overflow-hidden shadow-sm max-w-3xl mx-auto mt-6">
+        <div className="bg-card rounded-xl border border-emerald-200 overflow-hidden shadow-sm max-w-3xl mx-auto mt-6">
           <div className="border-b border-emerald-100 px-6 py-8 bg-emerald-50/50 flex flex-col items-center text-center">
             <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
@@ -437,23 +442,23 @@ export default function CreateProcurementPage() {
 
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-neutral-50 dark:bg-slate-900 rounded-lg border border-neutral-100 dark:border-slate-800">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</p>
-                <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formData.poNumber}</p>
+              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</p>
+                <p className="font-semibold text-foreground">{formData.poNumber}</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-slate-900 rounded-lg border border-neutral-100 dark:border-slate-800">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{t('dashboard.recentOrders.headers.customer') || 'Requested By'}</p>
-                <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formData.requestedBy} ({formData.department})</p>
+              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.customer') || 'Requested By'}</p>
+                <p className="font-semibold text-foreground">{formData.requestedBy} ({formData.department})</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-slate-900 rounded-lg border border-neutral-100 dark:border-slate-800 md:col-span-2">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t('inventoryVal.materialsHeader') || 'Materials Requested'}</p>
-                <div className="divide-y divide-neutral-200 dark:divide-slate-700 border border-neutral-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700 md:col-span-2">
+                <p className="text-xs text-muted-foreground mb-2">{t('inventoryVal.materialsHeader') || 'Materials Requested'}</p>
+                <div className="divide-y divide-neutral-200 dark:divide-slate-700 border border-border rounded-lg overflow-hidden bg-card">
                   {requestedMaterials.map((item, idx) => {
                     const details = getMaterialDetails(item.materialId);
                     return (
                       <div key={idx} className="flex justify-between items-center px-4 py-2.5 text-sm">
-                        <span className="font-medium text-neutral-900 dark:text-neutral-100">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
-                        <span className="text-neutral-500 dark:text-neutral-400 font-semibold">{item.quantity} {details.unit}</span>
+                        <span className="font-medium text-foreground">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
+                        <span className="text-muted-foreground font-semibold">{item.quantity} {details.unit}</span>
                       </div>
                     );
                   })}
@@ -464,7 +469,7 @@ export default function CreateProcurementPage() {
             <div className="flex justify-center gap-4 pt-4">
               <button
                 onClick={() => advanceStage('/procurement', 'Procurement')}
-                className="px-5 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 rounded-lg font-medium text-sm transition-colors"
+                className="px-5 py-2.5 bg-muted text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 rounded-lg font-medium text-sm transition-colors"
               >
                 {t('procurement.backToSummary') || 'Back to Procurement'}
               </button>
@@ -481,32 +486,32 @@ export default function CreateProcurementPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
+          <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             {showArchive ? (
               <div className="flex flex-col h-full">
-                <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                     <Archive className="h-5 w-5 text-indigo-600" />
                     {t('procurement.archiveDashboard') || 'Archived Items Dashboard'}
                   </h2>
                   <button
                     onClick={() => setShowArchive(false)}
-                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 rounded-lg text-sm font-medium shadow-sm transition-colors"
+                    className="px-4 py-2 bg-card border border-border text-neutral-700 dark:text-neutral-300 hover:bg-muted rounded-lg text-sm font-medium shadow-sm transition-colors"
                   >
                     {t('procurement.backToProcurement') || 'Back to Procurement'}
                   </button>
                 </div>
                 <div className="p-6">
                   {archivedItems.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-xl bg-neutral-50 dark:bg-slate-900/50">
+                    <div className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-neutral-800/50">
                       <Archive className="h-10 w-10 text-neutral-300 dark:text-slate-600 mx-auto mb-3" />
-                      <p className="text-neutral-500 dark:text-neutral-400 font-medium">{t('procurement.noArchivedItems') || 'No archived materials found.'}</p>
+                      <p className="text-muted-foreground font-medium">{t('procurement.noArchivedItems') || 'No archived materials found.'}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto border border-neutral-200 dark:border-slate-700 rounded-xl">
+                    <div className="overflow-x-auto border border-border rounded-xl">
                       <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
-                          <tr className="bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[10px] uppercase font-bold text-neutral-500 dark:text-neutral-400 tracking-wider">
+                          <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                             <th className="px-4 py-3">{t('inventoryVal.materialsHeader') || 'Material Name'}</th>
                             <th className="px-4 py-3">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</th>
                             <th className="px-4 py-3">{t('procurement.archivedDate') || 'Archived Date'}</th>
@@ -517,13 +522,13 @@ export default function CreateProcurementPage() {
                           {archivedItems.map((item, idx) => {
                             return (
                               <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                <td className="px-4 py-3 text-sm font-medium text-foreground">
                                   {item.material}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                                <td className="px-4 py-3 text-sm text-muted-foreground">
                                   {item.linkedPO}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                                <td className="px-4 py-3 text-sm text-muted-foreground">
                                   {item.archivedDate ? formatDateDisplay(item.archivedDate) : 'N/A'}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-neutral-500 italic">
@@ -540,8 +545,8 @@ export default function CreateProcurementPage() {
               </div>
             ) : (
               <>
-                <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+                  <h2 className="text-lg font-semibold text-card-foreground">
                     {t('procurement.requestFormTitle') || 'Purchase Request Configuration'}
                   </h2>
                 </div>
@@ -549,7 +554,7 @@ export default function CreateProcurementPage() {
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}
                       </label>
                       <input
@@ -559,7 +564,7 @@ export default function CreateProcurementPage() {
                         placeholder="Search or enter PO"
                         value={formData.poNumber}
                         onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        className="w-full px-3.5 py-2.5 bg-card border border-border text-foreground rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                       />
                       <datalist id="poList">
                         {availableOrders.map((order, idx) => (
@@ -568,7 +573,7 @@ export default function CreateProcurementPage() {
                       </datalist>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {t('dashboard.recentOrders.headers.deliveryDate') || 'Request Date'}
                       </label>
                       <input
@@ -576,14 +581,14 @@ export default function CreateProcurementPage() {
                         lang="en-GB"
                         value={formData.requestDate}
                         disabled
-                        className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-border text-muted-foreground rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {t('dashboard.recentOrders.headers.customer') || 'Requested By'} <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -593,18 +598,18 @@ export default function CreateProcurementPage() {
                         value={formData.requestedBy}
                         onChange={handleInputChange}
                         placeholder={t('procurement.enterYourName') || "Enter full name"}
-                        className="w-full px-3.5 py-2.5 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 border border-border text-foreground placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                        {t('common.department') || 'Department'}
+                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Department
                       </label>
                       <select
                         name="department"
                         value={formData.department}
                         onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white dark:bg-slate-900"
+                        className="w-full px-3.5 py-2.5 border border-border text-foreground rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-card"
                       >
                         <option value="Production">{t('orderInitiation.tracker.production') || 'Production'}</option>
                         <option value="Inventory">{t('orderInitiation.tracker.inventory') || 'Inventory'}</option>
@@ -614,20 +619,20 @@ export default function CreateProcurementPage() {
                   </div>
 
                   {/* Dynamic Materials List Component */}
-                  <div className="border-t border-neutral-100 dark:border-slate-800 pt-6 space-y-4">
+                  <div className="border-t border-neutral-100 dark:border-neutral-700 pt-6 space-y-4">
                     <div className="flex justify-between items-center bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
                       <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 text-xs font-semibold uppercase tracking-wider">
                         <FileCheck2 className="h-4 w-4" />
-                        {t('procurement.materialForm') || 'Material Procurement Form'}
+                        Material Procurement Form
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => setShowArchive(true)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-neutral-300 rounded-lg text-xs font-bold shadow-sm transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border hover:bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg text-xs font-bold shadow-sm transition-colors"
                         >
                           <Archive className="h-3.5 w-3.5" />
-                          {t('procurement.archiveBox') || 'Archive Box'} ({archivedItems.length})
+                          Archive Box ({archivedItems.length})
                         </button>
                         <button
                           type="button"
@@ -635,18 +640,18 @@ export default function CreateProcurementPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          {t('procurement.addMaterial') || 'Add Material'}
+                          Add Material
                         </button>
                       </div>
                     </div>
 
-                    <div className="border border-neutral-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+                    <div className="border border-border rounded-xl overflow-hidden bg-card">
                       <div className="w-full">
                         {/* Header Row */}
-                        <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[10px] uppercase font-bold text-neutral-500 dark:text-neutral-400 tracking-wider whitespace-nowrap px-6 py-3">
+                        <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider whitespace-nowrap px-6 py-3">
                           <div>{t('inventoryVal.materialsHeader') || 'Material'}</div>
-                          <div>{t('procurement.quantity') || 'Quantity'}</div>
-                          <div>{t('procurement.unit') || 'Unit'}</div>
+                          <div>QUANTITY</div>
+                          <div>UNIT</div>
                           <div>{t('bom.customer') || 'Supplier'}</div>
                           <div className="text-right">{t('procurement.estCost') || 'Est. Cost'}</div>
                           <div className="text-center">{t('procurement.actions') || 'Actions'}</div>
@@ -671,9 +676,9 @@ export default function CreateProcurementPage() {
                                     <select
                                       value={item.materialId}
                                       onChange={(e) => handleMaterialUpdate(index, 'materialId', e.target.value)}
-                                      className={`w-full h-9 px-3 py-1.5 border rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 transition-colors shadow-sm ${details.available < details.required
+                                      className={`w-full h-9 px-3 py-1.5 border rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-card transition-colors shadow-sm ${details.available < details.required
                                         ? 'border-red-300 text-red-600 focus:ring-red-500'
-                                        : 'border-neutral-200 dark:border-slate-700/80 text-neutral-800 dark:text-neutral-200 focus:ring-indigo-500'
+                                        : 'border-border/80 text-card-foreground focus:ring-indigo-500'
                                         }`}
                                     >
                                       {inventoryMaterials.map((m: any) => {
@@ -682,14 +687,14 @@ export default function CreateProcurementPage() {
                                           <option
                                             key={m.id}
                                             value={m.id}
-                                            className={optionShort ? 'text-red-600 font-semibold' : 'text-neutral-800 dark:text-neutral-200'}
+                                            className={optionShort ? 'text-red-600 font-semibold' : 'text-card-foreground'}
                                           >
                                             {item.customName && m.id === item.materialId ? item.customName : (t(`inventory.materials.items.${m.id}`) || m.name)}
                                           </option>
                                         );
                                       })}
                                     </select>
-                                    <span className={`absolute top-9.5 left-1 text-[10px] font-bold transition-colors leading-none ${details.available < details.required ? 'text-red-500' : 'text-neutral-500 dark:text-neutral-400'
+                                    <span className={`absolute top-9.5 left-1 text-[10px] font-bold transition-colors leading-none ${details.available < details.required ? 'text-red-500' : 'text-muted-foreground'
                                       }`}>
                                       {details.id}
                                     </span>
@@ -704,14 +709,14 @@ export default function CreateProcurementPage() {
                                       min={1}
                                       value={item.quantity}
                                       onChange={(e) => handleMaterialUpdate(index, 'quantity', parseInt(e.target.value) || 0)}
-                                      className="w-full h-9 px-3 py-1.5 border border-neutral-200 dark:border-slate-700/80 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 outline-none font-semibold text-neutral-800 dark:text-neutral-200 bg-white dark:bg-slate-900 shadow-sm"
+                                      className="w-full h-9 px-3 py-1.5 border border-border/80 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 outline-none font-semibold text-card-foreground bg-card shadow-sm"
                                     />
                                   </div>
                                 </div>
 
                                 {/* Column 3: Unit */}
                                 <div className="min-w-0">
-                                  <div className="h-9 flex items-center text-xs text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
+                                  <div className="h-9 flex items-center text-xs text-slate-500 dark:text-neutral-400 font-semibold whitespace-nowrap">
                                     {unitTrans}
                                   </div>
                                 </div>
@@ -722,7 +727,7 @@ export default function CreateProcurementPage() {
                                     <select
                                       value={item.supplier}
                                       onChange={(e) => handleMaterialUpdate(index, 'supplier', e.target.value)}
-                                      className="w-full h-9 px-3 py-1.5 border border-neutral-200 dark:border-slate-700/80 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 text-neutral-800 dark:text-neutral-200 shadow-sm"
+                                      className="w-full h-9 px-3 py-1.5 border border-border/80 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-card text-card-foreground shadow-sm"
                                     >
                                       {isLoadingSuppliers ? (
                                         <option>{t('procurement.loading') || 'Loading...'}</option>
@@ -737,7 +742,7 @@ export default function CreateProcurementPage() {
 
                                 {/* Column 5: Est. Cost */}
                                 <div className="min-w-0 text-right">
-                                  <div className="h-9 flex items-center justify-end text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                                  <div className="h-9 flex items-center justify-end text-xs font-bold text-foreground">
                                     ₹{(item.quantity * details.costPerUnit).toLocaleString()}
                                   </div>
                                 </div>
@@ -765,7 +770,7 @@ export default function CreateProcurementPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         {t('dashboard.recentOrders.headers.deliveryDate') || 'Required By Date'} <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -774,32 +779,32 @@ export default function CreateProcurementPage() {
                         required
                         value={formData.requiredDate}
                         onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 border border-border text-foreground rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                      {t('procurement.uploadPoLabel') || 'Upload Purchase Order (PO)'}
+                    <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Procurement Notes
                     </label>
                     <textarea
                       name="notes"
                       rows={4}
                       value={formData.notes}
                       onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
+                      className="w-full px-3.5 py-2.5 border border-border text-foreground placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
                       placeholder="Enter any additional procurement notes here..."
                     ></textarea>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-slate-800">
+                  <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-neutral-700">
                     <button
                       type="button"
                       onClick={() => advanceStage('/procurement', 'Procurement')}
-                      className="px-5 py-2.5 text-neutral-600 dark:text-neutral-400 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm font-medium hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
+                      className="px-5 py-2.5 text-muted-foreground bg-card border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      {t('common.cancel') || 'Cancel'}
+                      Cancel
                     </button>
                     <button
                       type="submit"
@@ -816,27 +821,27 @@ export default function CreateProcurementPage() {
           {/* Sidebar Context Card */}
           <div className="space-y-6">
             {/* Consolidated Purchase Request Summary Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-              <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30">
-                <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30">
+                <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
                   {t('procurement.shortageProfile') || 'Purchase Proposal Summary'}
                 </h3>
               </div>
               <div className="p-5 space-y-4">
                 <div>
                   <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                    {t('procurement.totalUniqueItems') || 'Total Unique Items'}
+                    Total Unique Items
                   </span>
                   <p className="text-2xl font-extrabold text-indigo-900">
                     {requestedMaterials.length}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-slate-800">
+                <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-neutral-700">
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                      {t('procurement.totalVolume') || 'Total Volume'}
+                      TOTAL VOLUME
                     </span>
                     <p className="text-md font-semibold text-neutral-700 dark:text-neutral-300">
                       {totalItemsCount.toLocaleString()} units
@@ -861,9 +866,9 @@ export default function CreateProcurementPage() {
                       {requestedMaterials.map((item, idx) => {
                         const details = getMaterialDetails(item.materialId);
                         return (
-                          <div key={idx} className="flex justify-between items-center text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-900 p-2 rounded border border-neutral-100 dark:border-slate-800">
+                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground bg-neutral-50 dark:bg-neutral-800 p-2 rounded border border-neutral-100 dark:border-neutral-700">
                             <span className="font-medium truncate max-w-[120px]">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
-                            <span className="font-bold text-neutral-900 dark:text-neutral-100">{item.quantity} {details.unit}</span>
+                            <span className="font-bold text-foreground">{item.quantity} {details.unit}</span>
                           </div>
                         );
                       })}
@@ -874,10 +879,10 @@ export default function CreateProcurementPage() {
             </div>
 
             {/* Supplier Information Summary Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-              <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30">
-                <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30">
+                <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
                   {t('procurement.supplierProfile') || 'Active Suppliers'}
                 </h3>
               </div>
@@ -885,12 +890,12 @@ export default function CreateProcurementPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-neutral-200 dark:border-slate-700 bg-neutral-50/50 dark:bg-slate-800/50">
-                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Supplier Name</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Material Specialities</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Leadtime</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Performance</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Status</th>
+                      <tr className="border-b border-border bg-neutral-50/50 dark:bg-neutral-800/50">
+                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Supplier Name</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material Specialities</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Leadtime</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Performance</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -898,7 +903,7 @@ export default function CreateProcurementPage() {
                       {!isLoadingSuppliers && suppliers.map((sup, idx) => (
                         <tr key={sup.id || idx} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
                           {/* Column 1: Customer Name */}
-                          <td className="px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                          <td className="px-6 py-4 text-sm font-bold text-card-foreground">
                             <div className="flex items-center gap-1.5">
                               {sup.name}
                               {sup.isFavorite !== false && (
@@ -907,23 +912,23 @@ export default function CreateProcurementPage() {
                             </div>
                           </td>
                           {/* Column 2: Material Specialities */}
-                          <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                          <td className="px-6 py-4 text-sm text-muted-foreground font-medium">
                             {sup.materials}
                           </td>
                           {/* Column 3: Leadtime */}
-                          <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                          <td className="px-6 py-4 text-sm text-muted-foreground font-medium">
                             {sup.leadTime}
                           </td>
                           {/* Column 4: Performance */}
                           <td className="px-6 py-4 text-sm">
                             <div className="flex flex-col gap-1 w-24">
-                              <div className="w-full bg-neutral-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
                                 <div 
                                   className={`h-full ${getPerformanceBarColor(sup.performance || 90)}`}
                                   style={{ width: `${sup.performance || 90}%` }}
                                 />
                               </div>
-                              <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-400">
+                              <span className="text-[11px] font-bold text-muted-foreground">
                                 {sup.performance}%
                               </span>
                             </div>
@@ -949,7 +954,7 @@ export default function CreateProcurementPage() {
                     </tbody>
                   </table>
                   {isLoadingSuppliers && (
-                    <p className="p-4 text-xs text-neutral-500 dark:text-neutral-400">{t('procurement.loadingSuppliers') || 'Loading active suppliers...'}</p>
+                    <p className="p-4 text-xs text-muted-foreground">{t('procurement.loadingSuppliers') || 'Loading active suppliers...'}</p>
                   )}
                 </div>
               </div>

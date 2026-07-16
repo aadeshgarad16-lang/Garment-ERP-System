@@ -92,7 +92,7 @@ const DEFAULT_FORM_STATE: InitialFormState = {
 };
 
 const getInputStyle = (error?: string) =>
-  `w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 transition shadow-sm ${error ? "border-red-500 focus:ring-red-500" : "border-neutral-300 dark:border-slate-700 focus:ring-blue-500"
+  `w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 transition shadow-sm ${error ? "border-red-500 focus:ring-red-500" : "border-neutral-300 dark:border-neutral-700 focus:ring-ring"
   }`;
 
 const inputStyle = getInputStyle();
@@ -696,23 +696,23 @@ function OrdersPageContent() {
       <WorkflowIndicator currentStep="Order Initiation" />
 
       {/* HEADER */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex justify-between items-center">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-5 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ShoppingBag className="h-6 w-6 text-blue-600" />
             Order Initiation
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Create and manage purchase orders</p>
+          <p className="text-sm text-muted-foreground mt-1">Create and manage purchase orders</p>
         </div>
       </div>
 
       <div className="space-y-6">
         <div className="w-full space-y-6">
           {/* PURCHASE ORDER DETAILS */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-visible">
-            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
-              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-visible">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+              <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
                 Purchase Order Information
               </h2>
             </div>
@@ -751,7 +751,7 @@ function OrdersPageContent() {
                           }
                         }}
                         disabled={isReadOnly}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded"
+                        className="h-4 w-4 text-blue-600 focus:ring-ring border-neutral-300 rounded"
                       />
                       PO Not Required
                     </label>
@@ -767,7 +767,7 @@ function OrdersPageContent() {
                           }
                         }}
                         disabled={isReadOnly}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300 rounded"
+                        className="h-4 w-4 text-blue-600 focus:ring-ring border-neutral-300 rounded"
                       />
                       Link to Existing Parent Order
                     </label>
@@ -857,9 +857,9 @@ function OrdersPageContent() {
 
               {/* LINK TO PARENT PO GRID */}
               {isLinkingParent && (
-                <div className="bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl p-5 overflow-hidden">
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-border rounded-xl p-5 overflow-hidden">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Select Parent PO</h3>
+                    <h3 className="text-base font-semibold text-card-foreground">Select Parent PO</h3>
                     <input
                       type="text"
                       placeholder="Search Parent POs..."
@@ -873,8 +873,8 @@ function OrdersPageContent() {
                     />
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-neutral-600 dark:text-neutral-400">
-                      <thead className="text-xs text-neutral-700 uppercase bg-neutral-100 dark:bg-slate-700 dark:text-neutral-300">
+                    <table className="w-full text-sm text-left text-muted-foreground">
+                      <thead className="text-xs text-neutral-700 uppercase bg-neutral-100 dark:bg-neutral-700 dark:text-neutral-300">
                         <tr>
                           <th className="px-4 py-3 text-center">Select (Parent)</th>
                           <th className="px-4 py-3">Parent PO Number</th>
@@ -886,7 +886,7 @@ function OrdersPageContent() {
                       <tbody>
                         {paginatedParentPOs.length > 0 ? (
                           paginatedParentPOs.map((po) => (
-                            <tr key={po.id} className="border-b dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
+                            <tr key={po.id} className="border-b dark:border-neutral-700 bg-card hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
                               <td className="px-4 py-3 text-center">
                                 <input
                                   type="radio"
@@ -894,10 +894,10 @@ function OrdersPageContent() {
                                   value={po.poNumber}
                                   checked={tempParentPo === po.poNumber}
                                   onChange={() => setTempParentPo(po.poNumber)}
-                                  className="w-4 h-4 text-blue-600 border-neutral-300 focus:ring-blue-500"
+                                  className="w-4 h-4 text-blue-600 border-neutral-300 focus:ring-ring"
                                 />
                               </td>
-                              <td className="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{po.poNumber}</td>
+                              <td className="px-4 py-3 font-medium text-foreground">{po.poNumber}</td>
                               <td className="px-4 py-3">{po.poDate ? formatDateDisplay(po.poDate) : "—"}</td>
                               <td className="px-4 py-3">{po.customerName}</td>
                               <td className="px-4 py-3">
@@ -918,7 +918,7 @@ function OrdersPageContent() {
                     </table>
                   </div>
                   {totalParentPages > 1 && (
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-neutral-200 dark:border-slate-700">
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
                       <span className="text-xs text-neutral-500">
                         Showing {((parentPage - 1) * PARENT_PAGE_SIZE) + 1} to {Math.min(parentPage * PARENT_PAGE_SIZE, filteredParentPOs.length)} of {filteredParentPOs.length} Entries
                       </span>
@@ -959,8 +959,8 @@ function OrdersPageContent() {
               )}
 
               {/* CUSTOMER CONTACT INFORMATION */}
-              <div className="bg-neutral-50 dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl p-5">
-                <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-4">Customer Contact Information</h3>
+              <div className="bg-neutral-50 dark:bg-neutral-800 border border-border rounded-xl p-5">
+                <h3 className="text-base font-semibold text-card-foreground mb-4">Customer Contact Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label htmlFor="contactPerson" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Contact Person Name</label>
@@ -977,8 +977,8 @@ function OrdersPageContent() {
                   </div>
                   <div>
                     <label htmlFor="contactPhone" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Phone Number <span className="text-red-500">*</span></label>
-                    <div className={`flex mt-2 shadow-sm rounded-lg overflow-hidden border transition ${errors.contactPhone ? 'border-red-500 focus-within:ring-2 focus-within:ring-red-500' : 'border-neutral-300 dark:border-slate-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'}`}>
-                      <span className="inline-flex items-center px-3 bg-neutral-100 dark:bg-slate-800 border-r border-neutral-300 dark:border-slate-700 text-neutral-500 dark:text-neutral-400 text-sm font-medium select-none">
+                    <div className={`flex mt-2 shadow-sm rounded-lg overflow-hidden border transition ${errors.contactPhone ? 'border-red-500 focus-within:ring-2 focus-within:ring-red-500' : 'border-neutral-300 dark:border-neutral-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'}`}>
+                      <span className="inline-flex items-center px-3 bg-muted border-r border-neutral-300 dark:border-neutral-700 text-muted-foreground text-sm font-medium select-none">
                         +91
                       </span>
                       <input
@@ -988,7 +988,7 @@ function OrdersPageContent() {
                         onBlur={() => handleBlur("contactPhone")}
                         onChange={handlePhoneInputChange}
                         placeholder=" 00000 00000"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none"
+                        className="w-full px-3 py-2 bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none"
                       />
                     </div>
                     {errors.contactPhone && <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>}
@@ -1010,9 +1010,9 @@ function OrdersPageContent() {
               </div>
 
               {/* DELIVERY CONFIGURATION OPTIONS TOGGLE */}
-              <div className="bg-neutral-50 dark:bg-slate-800/60 border border-neutral-200 dark:border-slate-700/80 rounded-xl p-4">
+              <div className="bg-neutral-50 dark:bg-neutral-800/60 border border-border/80 rounded-xl p-4">
                 <div>
-                  <label className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 block mb-2">
+                  <label className="text-sm font-semibold text-card-foreground block mb-2">
                     Delivery Option Configurations <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center gap-6">
@@ -1023,7 +1023,7 @@ function OrdersPageContent() {
                         value="single"
                         checked={formState.deliveryType === "single"}
                         onChange={() => handleInputChange("deliveryType", "single")}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300"
+                        className="h-4 w-4 text-blue-600 focus:ring-ring border-neutral-300"
                       />
                       Single Delivery Address
                     </label>
@@ -1034,7 +1034,7 @@ function OrdersPageContent() {
                         value="multi"
                         checked={formState.deliveryType === "multi"}
                         onChange={() => handleInputChange("deliveryType", "multi")}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-neutral-300"
+                        className="h-4 w-4 text-blue-600 focus:ring-ring border-neutral-300"
                       />
                       Multiple Delivery Addresses (Per Item Layout)
                     </label>
@@ -1070,12 +1070,12 @@ function OrdersPageContent() {
                         className={`${getInputStyle(errors.deliveryAddress)} w-full min-h-[100px] resize-none overflow-hidden`}
                       />
                       {showAddressDropdown && formState.customerName.trim() !== "" && (
-                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                          <div className="px-3 py-2 bg-neutral-50 dark:bg-slate-800 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 border-b border-neutral-100 dark:border-slate-800 uppercase tracking-wider">
+                        <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                          <div className="px-3 py-2 bg-neutral-50 dark:bg-neutral-800 text-[11px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-neutral-700 uppercase tracking-wider">
                             Saved Addresses for {formState.customerName}
                           </div>
                           {filteredAddresses.length === 0 ? (
-                            <div className="px-4 py-3 text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                            <div className="px-4 py-3 text-xs text-muted-foreground text-center">
                               No matching saved addresses. Press Tab to use this new address.
                             </div>
                           ) : (
@@ -1247,15 +1247,15 @@ function OrdersPageContent() {
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">PO File <span className="text-red-500">*</span></span>
                 {!uploadedFile ? (
-                  <label className="mt-3 border-2 border-dashed border-neutral-300 dark:border-slate-700 rounded-xl p-8 text-center bg-neutral-50 dark:bg-slate-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-slate-800 transition block">
+                  <label className="mt-3 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-8 text-center bg-neutral-50 dark:bg-neutral-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-slate-800 transition block">
                     <Upload className="h-10 w-10 mx-auto text-neutral-400" />
                     <p className="mt-3 text-sm text-blue-600 font-medium">Upload PO File</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">PDF, DOC, XLS, PNG, JPG up to 10MB</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, XLS, PNG, JPG up to 10MB</p>
                     <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
                   </label>
                 ) : (
-                  <div className="mt-3 flex items-center justify-between border border-neutral-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-800">
-                    <p className="font-medium text-neutral-900 dark:text-neutral-100 text-sm truncate">{uploadedFile.name}</p>
+                  <div className="mt-3 flex items-center justify-between border border-border rounded-xl p-4 bg-gray-50 dark:bg-neutral-800">
+                    <p className="font-medium text-foreground text-sm truncate">{uploadedFile.name}</p>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -1281,10 +1281,10 @@ function OrdersPageContent() {
           </div>
 
           {/* PAYMENT DETAILS (GST REMOVED) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700">
-            <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50">
-              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+          <div className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+              <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-muted-foreground" />
                 Payment Details
               </h2>
             </div>
@@ -1309,7 +1309,7 @@ function OrdersPageContent() {
                 <div>
                   <label htmlFor="poAmount" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">PO Amount <span className="text-red-500">*</span></label>
                   <div className="relative mt-2">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 font-medium">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                     <input
                       id="poAmount"
                       type="text"
@@ -1325,7 +1325,7 @@ function OrdersPageContent() {
                 <div>
                   <label htmlFor="advancedAmount" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Advanced Amount</label>
                   <div className="relative mt-2">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 font-medium">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                     <input
                       id="advancedAmount"
                       type="text"
@@ -1339,12 +1339,12 @@ function OrdersPageContent() {
                 <div>
                   <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Remaining Amount</label>
                   <div className="relative mt-2">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 font-medium">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                     <input
                       type="text"
                       readOnly
                       value={formatIndianNumber(totalAmountCalculations.remainingAmount.toFixed(2))}
-                      className={`${inputStyle} pl-10 bg-neutral-100 dark:bg-slate-800 cursor-not-allowed font-medium`}
+                      className={`${inputStyle} pl-10 bg-muted cursor-not-allowed font-medium`}
                       placeholder="0.00"
                     />
                   </div>
@@ -1352,14 +1352,14 @@ function OrdersPageContent() {
               </div>
 
               <div className="pt-4 space-y-4">
-                <div className="flex justify-between items-center text-sm text-neutral-500 dark:text-neutral-400">
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
                   <span className="w-max whitespace-nowrap block">
                     Total order amount
                   </span>
-                  <span className="font-bold text-neutral-800 dark:text-neutral-200">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
+                  <span className="font-bold text-card-foreground">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-6 pt-5 mt-2 border-t border-neutral-100 dark:border-slate-800">
+                <div className="flex flex-wrap items-center justify-end gap-6 pt-5 mt-2 border-t border-neutral-100 dark:border-neutral-700">
                   <div className="text-xl font-bold ml-2">
                     <span className="text-blue-600">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                   </div>
@@ -1369,7 +1369,7 @@ function OrdersPageContent() {
           </div>
 
           {/* BOTTOM GLOBAL ACTION PANEL */}
-          <div className="w-full flex justify-end mt-6 border-t border-neutral-200 dark:border-slate-700 pt-6">
+          <div className="w-full flex justify-end mt-6 border-t border-border pt-6">
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -1383,7 +1383,7 @@ function OrdersPageContent() {
               <button
                 type="button"
                 onClick={() => router.push("/drafts")}
-                className="px-5 py-2.5 border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:bg-slate-800 transition shadow-sm"
+                className="px-5 py-2.5 border border-neutral-300 dark:border-neutral-700 bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:bg-neutral-800 transition shadow-sm"
               >
                 View Drafts
               </button>
@@ -1415,9 +1415,9 @@ function OrdersPageContent() {
       {/* PREVIEW MODAL */}
       {showPreviewModal && uploadedFile && (
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-4xl shadow-2xl border border-neutral-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-neutral-200 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 truncate pr-4">
+          <div className="bg-card rounded-xl p-6 w-full max-w-4xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-border">
+              <h3 className="text-lg font-bold text-foreground truncate pr-4">
                 Preview: {uploadedFile.name}
               </h3>
               <button
@@ -1428,7 +1428,7 @@ function OrdersPageContent() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-neutral-50 dark:bg-slate-950 rounded-lg min-h-[300px]">
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-background rounded-lg min-h-[300px]">
               {uploadedFile.base64.startsWith("data:image/") ? (
                 <img
                   src={uploadedFile.base64}
@@ -1444,11 +1444,11 @@ function OrdersPageContent() {
               )}
             </div>
 
-            <div className="flex justify-end mt-4 pt-2 border-t border-neutral-200 dark:border-slate-800">
+            <div className="flex justify-end mt-4 pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(false)}
-                className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-semibold transition"
+                className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-semibold transition"
               >
                 Close
               </button>
@@ -1460,9 +1460,9 @@ function OrdersPageContent() {
       {/* SAVE NEW ADDRESS CONFIRMATION MODAL */}
       {showSaveNewAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
-            <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-blue-500" />
                 Save New Address?
               </h3>
@@ -1477,12 +1477,12 @@ function OrdersPageContent() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 This is a new address. Would you like to save it to this customer's profile for future use?
               </p>
-              <div className="bg-neutral-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-slate-800/60 text-left">
+              <div className="bg-neutral-50 dark:bg-neutral-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-700/60 text-left">
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
-                <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mt-0.5 mb-2">{formState.customerName}</p>
+                <p className="text-xs font-bold text-card-foreground mt-0.5 mb-2">{formState.customerName}</p>
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
                 <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5 leading-relaxed">{formState.deliveryAddress}</p>
                 {formState.deliveryPin && (
@@ -1498,7 +1498,7 @@ function OrdersPageContent() {
                   onClick={() => {
                     setShowSaveNewAddressModal(false);
                   }}
-                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                 >
                   No
                 </button>
@@ -1537,7 +1537,7 @@ function OrdersPageContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">Loading Order Initiation Framework...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Loading Order Initiation Framework...</div>}>
       <OrdersPageContent />
     </Suspense>
   );

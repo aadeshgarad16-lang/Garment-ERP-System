@@ -220,11 +220,11 @@ export default function ProcurementPage() {
 
   const getPriorityStyle = (priority: string) => {
     switch (priority) {
-      case 'Low': return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
+      case 'Low': return 'bg-muted text-card-foreground border-border';
       case 'Medium': return 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200';
       case 'High': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'Critical': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
+      default: return 'bg-muted text-card-foreground border-border';
     }
   };
 
@@ -234,7 +234,7 @@ export default function ProcurementPage() {
       case 'Vendor Assigned': return 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200';
       case 'Ordered': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case 'Awaiting Delivery': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700';
+      default: return 'bg-muted text-card-foreground border-border';
     }
   };
 
@@ -254,26 +254,26 @@ export default function ProcurementPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Truck className="h-6 w-6 text-indigo-600" />
             {t('procurement.title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('procurement.subtitle')}</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('procurement.subtitle')}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0 items-center">
           <div className="flex items-center gap-2 mr-2">
-            <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">PO Number:</label>
+            <label className="text-sm font-medium text-muted-foreground">PO Number:</label>
             <input
               type="text"
               value={poInput}
               onChange={(e) => setPoInput(e.target.value)}
-              className="border border-neutral-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm dark:bg-slate-900 focus:ring-indigo-500 focus:border-indigo-500 w-32 sm:w-48 text-neutral-900 dark:text-neutral-100"
+              className="border border-border rounded-lg px-3 py-1.5 text-sm dark:bg-neutral-800 focus:ring-indigo-500 focus:border-indigo-500 w-32 sm:w-48 text-foreground"
               placeholder="Enter PO"
             />
           </div>
           <button
             onClick={() => router.push('/procurement/create')}
-            className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" />
             {t('procurement.createRequest')}
@@ -290,52 +290,52 @@ export default function ProcurementPage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 flex items-center gap-4">
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100">
             <AlertTriangle className="h-6 w-6 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.shortageItems')}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalShortages}</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('procurement.shortageItems')}</p>
+            <p className="text-2xl font-bold text-foreground">{totalShortages}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 flex items-center gap-4">
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100">
             <DollarSign className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.estCost')}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">₹{estimatedCost.toLocaleString()}</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('procurement.estCost')}</p>
+            <p className="text-2xl font-bold text-foreground">₹{estimatedCost.toLocaleString()}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4 sm:p-5 lg:p-6 flex items-center gap-4">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 flex items-center gap-4">
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100">
             <ShieldAlert className="h-6 w-6 text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.criticalItems')}</p>
-            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{criticalItems}</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('procurement.criticalItems')}</p>
+            <p className="text-2xl font-bold text-foreground">{criticalItems}</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6 flex items-center gap-4">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex items-center gap-4">
           <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-100">
             <Clock className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('procurement.fulfillment')}</p>
-            <p className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mt-1">{t('dashboard.recentOrders.status.pending')}</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('procurement.fulfillment')}</p>
+            <p className="text-lg font-bold text-foreground mt-1">{t('dashboard.recentOrders.status.pending')}</p>
           </div>
         </div>
       </div>
 
       {/* Procurement Requests Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="border-b border-border px-6 py-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('procurement.requestsHeader')}</h2>
+            <h2 className="text-lg font-semibold text-card-foreground">{t('procurement.requestsHeader')}</h2>
 
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search */}
@@ -348,7 +348,7 @@ export default function ProcurementPage() {
                   placeholder={t('inventoryVal.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900 dark:text-neutral-100"
+                  className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-foreground"
                 />
               </div>
 
@@ -357,7 +357,7 @@ export default function ProcurementPage() {
                 <select
                   value={priorityFilter}
                   onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900 dark:text-neutral-100 appearance-none bg-white dark:bg-slate-900 cursor-pointer"
+                  className="block w-full pl-3 pr-10 py-2 border border-border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
                 >
                   <option value="All">{t('procurement.allPriorities') || 'All Priorities'}</option>
                   <option value="Low">{t('procurement.low') || 'Low'}</option>
@@ -378,7 +378,7 @@ export default function ProcurementPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-neutral-900 dark:text-neutral-100 appearance-none bg-white dark:bg-slate-900 cursor-pointer"
+                  className="block w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
                 >
                   <option value="All">{t('procurement.allStatuses') || 'All Statuses'}</option>
                   <option value="Pending Procurement">{t('procurement.pending') || 'Pending'}</option>
@@ -397,7 +397,7 @@ export default function ProcurementPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse ">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-4 py-3">{t('inventoryVal.materialsHeader')}</th>
                 <th className="px-4 py-3 text-right">Required</th>
                 <th className="px-4 py-3 text-right">Available</th>
@@ -414,15 +414,15 @@ export default function ProcurementPage() {
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className={`text-sm font-medium ${item.shortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.material}</span>
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{item.category} • {item.id}</span>
+                        <span className={`text-sm font-medium ${item.shortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-foreground'}`}>{item.material}</span>
+                        <span className="text-xs text-muted-foreground mt-1">{item.category} • {item.id}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-neutral-900 dark:text-neutral-100">{item.required} <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span></td>
-                    <td className="px-4 py-3 text-right text-sm text-neutral-600 dark:text-neutral-400">{item.available}</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{item.required} <span className="text-xs text-muted-foreground">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span></td>
+                    <td className="px-4 py-3 text-right text-sm text-muted-foreground">{item.available}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-red-600">{item.shortage}</td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">₹{item.cost.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[13px] text-neutral-600 dark:text-neutral-400">
+                    <td className="px-4 py-3 text-right text-sm font-medium text-foreground">₹{item.cost.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-neutral-400" />
                         {item.supplier}
@@ -454,7 +454,7 @@ export default function ProcurementPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="h-8 w-8 text-neutral-300 mb-2" />
                       <p>{t('dashboard.recentOrders.headers.poNumber') || 'No procurement requests found.'}</p>
@@ -466,15 +466,15 @@ export default function ProcurementPage() {
           </table>
         </div>
 
-        <div className="bg-neutral-50 dark:bg-slate-900 px-4 py-3 border-t border-neutral-200 dark:border-slate-700 flex items-center justify-between">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            {t('inventoryVal.showing') || 'Showing'} <span className="font-medium text-neutral-900 dark:text-neutral-100">1</span> {t('inventoryVal.to') || 'to'} <span className="font-medium text-neutral-900 dark:text-neutral-100">{filteredShortages.length}</span> {t('inventoryVal.of') || 'of'} <span className="font-medium text-neutral-900 dark:text-neutral-100">{mockShortages.length}</span>
+        <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 border-t border-border flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t('inventoryVal.showing') || 'Showing'} <span className="font-medium text-foreground">1</span> {t('inventoryVal.to') || 'to'} <span className="font-medium text-foreground">{filteredShortages.length}</span> {t('inventoryVal.of') || 'of'} <span className="font-medium text-foreground">{mockShortages.length}</span>
           </p>
           <div className="flex items-center gap-2">
-            <button className="p-2 border border-neutral-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+            <button className="p-2 border border-border rounded-md bg-card text-neutral-400 hover:text-neutral-700 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button className="p-2 border border-neutral-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors">
+            <button className="p-2 border border-border rounded-md bg-card text-neutral-400 hover:text-neutral-700 hover:bg-muted transition-colors">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -485,17 +485,17 @@ export default function ProcurementPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Supplier Summary */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+        <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+            <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
               {t('procurement.supplierSummary') || 'Supplier Directory Summary'}
             </h2>
           </div>
           <div className="w-full">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+                <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-2 py-3 w-[22%] break-words">{t('bom.customer') || 'Supplier Name'}</th>
                   <th className="px-2 py-3 w-[25%] break-words">{t('inventoryVal.materialsHeader') || 'Materials Supplied'}</th>
                   <th className="px-2 py-3 w-[15%] break-words">{t('leadTime') || 'Lead Time'}</th>
@@ -508,17 +508,17 @@ export default function ProcurementPage() {
                   <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="px-2 py-3 break-words">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 flex items-center gap-1 flex-wrap">
+                        <span className="text-sm font-medium text-foreground flex items-center gap-1 flex-wrap">
                           {supplier.name}
                           {supplier.preferred && <span title={t('procurement.preferredVendor') || 'Preferred Vendor'}><Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" /></span>}
                         </span>
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-[13px] text-neutral-600 dark:text-neutral-400 break-words">{supplier.materials}</td>
-                    <td className="px-2 py-3 text-[13px] text-neutral-600 dark:text-neutral-400 break-words">{supplier.leadTime}</td>
+                    <td className="px-2 py-3 text-[13px] text-muted-foreground break-words">{supplier.materials}</td>
+                    <td className="px-2 py-3 text-[13px] text-muted-foreground break-words">{supplier.leadTime}</td>
                     <td className="px-2 py-3">
                       <div className="flex flex-col xl:flex-row items-start xl:items-center gap-2">
-                        <div className="w-full max-w-[40px] xl:max-w-[60px] bg-neutral-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full max-w-[40px] xl:max-w-[60px] bg-muted rounded-full h-1.5 overflow-hidden">
                           <div
                             className={`h-1.5 rounded-full ${supplier.performance >= 95 ? 'bg-emerald-500' : supplier.performance >= 90 ? 'bg-amber-500' : 'bg-red-500'}`}
                             style={{ width: `${supplier.performance}%` }}
@@ -547,7 +547,7 @@ export default function ProcurementPage() {
 
         {/* Workflow Progression */}
         <div className="lg:col-span-1 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-900/30 rounded-xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 overflow-hidden flex flex-col">
-          <div className="border-b border-indigo-100 dark:border-indigo-800/50 px-6 py-5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+          <div className="border-b border-indigo-100 dark:border-indigo-800/50 px-6 py-5 bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm">
             <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               {t('procurement.procCompletion') || 'Procurement Completion'}
@@ -557,30 +557,30 @@ export default function ProcurementPage() {
           <div className="p-6 flex-1 flex flex-col justify-between">
             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px before:h-full before:w-0.5 before:bg-indigo-200">
               <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white dark:bg-slate-900 flex-shrink-0 z-10 border-indigo-600 text-indigo-600">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-indigo-600 text-indigo-600">
                   <div className="w-2 h-2 bg-indigo-600 rounded-full" />
                 </div>
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t('orderInitiation.tracker.procurement') || 'Procurement'}</span>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('procurement.shortageItems') || 'Shortage resolution'}</p>
+                  <span className="text-sm font-semibold text-foreground">{t('orderInitiation.tracker.procurement') || 'Procurement'}</span>
+                  <p className="text-xs text-muted-foreground">{t('procurement.shortageItems') || 'Shortage resolution'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white dark:bg-slate-900 flex-shrink-0 z-10 border-indigo-400 text-indigo-400" />
+                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-indigo-400 text-indigo-400" />
                 <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">{t('orderInitiation.tracker.materialAllocation') || 'Material Allocation'}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">{t('orderInitiation.tracker.materialAllocation') || 'Material Allocation'}</span>
                   <p className="text-xs text-neutral-400">{t('Allocate Warehouse') || 'Allocate from warehouse'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white dark:bg-slate-900 flex-shrink-0 z-10 border-neutral-300 dark:border-slate-600 text-transparent" />
+                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-border text-transparent" />
                 <div className="ml-4">
                   <span className="text-sm font-semibold text-neutral-400">{t('Freeze Materials') || 'Freeze Materials'}</span>
                   <p className="text-xs text-neutral-400">{t('Lock Stock') || 'Lock stock for PO'}</p>
                 </div>
               </div>
               <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-white dark:bg-slate-900 flex-shrink-0 z-10 border-neutral-300 dark:border-slate-600 text-transparent" />
+                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-border text-transparent" />
                 <div className="ml-4">
                   <span className="text-sm font-semibold text-neutral-400">{t('orderInitiation.tracker.production') || 'Production'}</span>
                   <p className="text-xs text-neutral-400">{t('Begin Manufacturing') || 'Begin manufacturing'}</p>
@@ -597,7 +597,7 @@ export default function ProcurementPage() {
             </button>
             <button
               onClick={() => router.push('/procurement/create')}
-              className="mt-3 w-full px-4 py-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+              className="mt-3 w-full px-4 py-3 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4" />
               {t('procurement.createRequest')}
@@ -608,14 +608,14 @@ export default function ProcurementPage() {
 
       {/* Archive Box */}
       {archivedRequests.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-8">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Archive Box</h2>
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-8">
+          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+            <h2 className="text-lg font-semibold text-card-foreground">Archive Box</h2>
           </div>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-slate-900/50 border-b border-neutral-200 dark:border-slate-700 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+                <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-6 py-3">Material Name</th>
                   <th className="px-4 py-3">PO Number</th>
                   <th className="px-4 py-3">Archived Date</th>
@@ -625,9 +625,9 @@ export default function ProcurementPage() {
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                 {archivedRequests.map((item, idx) => (
                   <tr key={idx} className="hover:bg-neutral-50/80 transition-colors">
-                    <td className="px-6 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">{item.material}</td>
-                    <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">{item.linkedPO}</td>
-                    <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">{formatDateDisplay(item.archivedDate)}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-foreground">{item.material}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.linkedPO}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateDisplay(item.archivedDate)}</td>
                     <td className="px-4 py-3 text-sm text-neutral-500 italic">{item.archiveReason}</td>
                   </tr>
                 ))}

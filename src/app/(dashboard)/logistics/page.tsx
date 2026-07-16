@@ -134,12 +134,12 @@ export default function LogisticsPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Truck className="h-6 w-6 text-indigo-600" />
             {t('logistics.title') || 'Logistics Management'}
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               {t('logistics.subtitle') || 'Manage dispatch, documentation, and final delivery fulfillment.'}
             </p>
             {poNumber && (
@@ -163,7 +163,7 @@ export default function LogisticsPage() {
       />
 
       {orderArchived ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-emerald-200 overflow-hidden mt-6">
+        <div className="bg-card rounded-xl shadow-sm border border-emerald-200 overflow-hidden mt-6">
           <div className="border-b border-emerald-100 px-6 py-5 bg-emerald-50/50 flex flex-col items-center text-center">
             <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />

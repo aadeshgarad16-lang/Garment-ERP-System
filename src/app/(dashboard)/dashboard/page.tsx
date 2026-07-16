@@ -54,8 +54,8 @@ export interface ProductionStage {
 const STATUS_THEME_MAP: Record<string, string> = {
   delivered: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30',
   pending: 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/30',
-  inProduction: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30',
-  cutting: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30',
+  inProduction: 'bg-blue-100 dark:bg-neutral-900/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30',
+  cutting: 'bg-blue-100 dark:bg-neutral-900/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30',
 };
 
 const STAGE_DISPLAY_MAP: Record<string, string> = {
@@ -143,7 +143,7 @@ export default function DashboardHomePage({
 
   // Dynamic evaluation of Metric blocks maps
   const metricsBlocks: StatItem[] = useMemo(() => [
-    { tKey: 'totalOrders', value: statsData?.totalOrders ?? '0', change: statsData?.totalOrdersChange, icon: ShoppingCart, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/40', href: '/reports/total-orders' },
+    { tKey: 'totalOrders', value: statsData?.totalOrders ?? '0', change: statsData?.totalOrdersChange, icon: ShoppingCart, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-neutral-800/40', href: '/reports/total-orders' },
     { tKey: 'activeProduction', subtitleKey: 'units', value: statsData?.activeProduction ?? '0', icon: Factory, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/40', href: '/reports/active-production' },
     { tKey: 'pendingProcurement', subtitleKey: 'purchaseOrders', value: statsData?.pendingProcurement ?? '0', icon: Truck, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/40', href: '/reports/pending-procurement' },
     { tKey: 'inventoryAlerts', subtitleKey: 'lowStockItems', value: statsData?.inventoryAlerts ?? '0', icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/40', href: '/reports/inventory-alerts' },
@@ -177,7 +177,7 @@ export default function DashboardHomePage({
       const reason = order.delayReason || delayReasons[order.poNumber] || '';
 
       return (
-        <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
+        <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-white/[0.02] transition-colors">
           <td className="px-3 py-[18px] text-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate align-middle" title={order.poNumber}>{order.poNumber}</td>
           <td className="px-3 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 truncate align-middle" title={order.customerName}>{order.customerName}</td>
           <td className="px-3 py-[18px] align-middle text-center">
@@ -214,7 +214,7 @@ export default function DashboardHomePage({
                   value={tempReason}
                   onChange={(e) => setTempReason(e.target.value)}
                   placeholder="Type custom reason..."
-                  className="w-full text-center px-3 py-1.5 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-800 dark:text-neutral-200"
+                  className="w-full text-center px-3 py-1.5 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-neutral-800/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-800 dark:text-neutral-200"
                   autoFocus
                 />
                 <div className="flex items-center justify-between">
@@ -238,7 +238,7 @@ export default function DashboardHomePage({
                     setDelayReasons(prev => ({ ...prev, [order.id]: e.target.value }));
                   }
                 }}
-                className="w-full truncate text-center px-3 py-1.5 text-sm border border-neutral-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-slate-600 transition-colors bg-white cursor-pointer"
+                className="w-full truncate text-center px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg dark:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-slate-600 transition-colors bg-white cursor-pointer"
               >
                 <option value="">None</option>
                 <option value="Fabric Sourcing Delay">Fabric Sourcing Delay</option>
@@ -271,7 +271,7 @@ export default function DashboardHomePage({
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link
             href="/orders"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-[#1d4ed8] hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
           >
             <PlusCircle className="h-4 w-4" />
             <span>Order Initiation</span>
@@ -279,7 +279,7 @@ export default function DashboardHomePage({
           {/* Orderlist Button */}
           <Link
             href="/order-list"
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-[#1d4ed8] hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
           >
             <Calculator className="h-4 w-4" />
             <span>{t('Order List')}</span>
@@ -287,7 +287,7 @@ export default function DashboardHomePage({
           {/* Reports Button */}
           <Link
             href="/reports"
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-[#1d4ed8] hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
           >
             <Box className="h-4 w-4" />
             <span>{t('Reports')}</span>
@@ -301,23 +301,43 @@ export default function DashboardHomePage({
           const IconComponent = stat.icon;
           return (
             <Link href={stat.href} key={stat.tKey} className="block group">
-              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex items-center gap-4 transition-all duration-200 group-hover:shadow-md group-hover:border-blue-300 dark:group-hover:border-blue-800 h-full">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${stat.bg}`}>
-                  <IconComponent className={`h-6 w-6 ${stat.color}`} />
-                </div>
+              <div className={`rounded-xl shadow-sm border p-5 flex items-center justify-between transition-all duration-200 group-hover:shadow-md h-full bg-white
+                ${stat.tKey === 'totalOrders' ? 'border-indigo-200 dark:border-indigo-500/50 dark:bg-[#11131e]' : 
+                  stat.tKey === 'activeProduction' ? 'border-emerald-200 dark:border-emerald-500/50 dark:bg-[#0e1713]' : 
+                  stat.tKey === 'pendingProcurement' ? 'border-amber-200 dark:border-amber-500/50 dark:bg-[#1a1510]' : 
+                  stat.tKey === 'inventoryAlerts' ? 'border-red-200 dark:border-red-500/50 dark:bg-[#1d1112]' : 'border-neutral-200 dark:border-neutral-800 dark:bg-[#121212]'}
+              `}>
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t(`dashboard.metrics.${stat.tKey}`)}</p>
+                  <p className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider mb-1
+                    ${stat.tKey === 'totalOrders' ? 'text-indigo-600 dark:text-indigo-400' : 
+                      stat.tKey === 'activeProduction' ? 'text-emerald-600 dark:text-emerald-400' : 
+                      stat.tKey === 'pendingProcurement' ? 'text-amber-600 dark:text-amber-400' : 
+                      stat.tKey === 'inventoryAlerts' ? 'text-red-600 dark:text-red-400' : 'text-neutral-500 dark:text-neutral-400'}
+                  `}>{t(`dashboard.metrics.${stat.tKey}`)}</p>
                   <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{stat.value}</span>
+                    <span className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</span>
                     {stat.change && (
                       <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         {stat.change}
                       </span>
                     )}
                     {stat.subtitleKey && (
-                      <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{t(`dashboard.metrics.${stat.subtitleKey}`)}</span>
+                      <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t(`dashboard.metrics.${stat.subtitleKey}`)}</span>
                     )}
                   </div>
+                </div>
+                <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0
+                  ${stat.tKey === 'totalOrders' ? 'bg-indigo-100 dark:bg-indigo-900/80' : 
+                    stat.tKey === 'activeProduction' ? 'bg-emerald-100 dark:bg-emerald-900/80' : 
+                    stat.tKey === 'pendingProcurement' ? 'bg-amber-100 dark:bg-amber-900/80' : 
+                    stat.tKey === 'inventoryAlerts' ? 'bg-red-100 dark:bg-red-900/80' : 'bg-neutral-100 dark:bg-neutral-800'}
+                `}>
+                  <IconComponent className={`h-6 w-6 
+                    ${stat.tKey === 'totalOrders' ? 'text-indigo-600 dark:text-indigo-400' : 
+                      stat.tKey === 'activeProduction' ? 'text-emerald-600 dark:text-emerald-400' : 
+                      stat.tKey === 'pendingProcurement' ? 'text-amber-600 dark:text-amber-400' : 
+                      stat.tKey === 'inventoryAlerts' ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'}
+                  `} />
                 </div>
               </div>
             </Link>
@@ -330,14 +350,14 @@ export default function DashboardHomePage({
         <WorkflowIndicator currentStep="" />
 
         {/* Recent Orders Datatable */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-800 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/30">
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-neutral-200 dark:border-border overflow-hidden">
+          <div className="border-b border-neutral-200 dark:border-border px-6 py-4 bg-neutral-50/50 dark:bg-white/[0.02]">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('dashboard.recentOrders.title')}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-center border-collapse">
               <thead>
-                <tr className="border-b border-neutral-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold bg-neutral-50/30 dark:bg-slate-900">
+                <tr className="border-b border-neutral-200 dark:border-border text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold bg-neutral-50/30 dark:bg-white/[0.02]">
                   <th scope="col" className="w-[13%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.poNumber')}</th>
                   <th scope="col" className="w-[11%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.customer')}</th>
                   <th scope="col" className="w-[16%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.status')}</th>
@@ -348,7 +368,7 @@ export default function DashboardHomePage({
                   <th scope="col" className="w-[12%] px-2 py-4 align-middle whitespace-nowrap text-center">{t('dashboard.recentOrders.headers.amount')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800/60">
+              <tbody className="divide-y divide-neutral-100 dark:divide-white/[0.05]">
                 {renderedOrderRows}
               </tbody>
             </table>

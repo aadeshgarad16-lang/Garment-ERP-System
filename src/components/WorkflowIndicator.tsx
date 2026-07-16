@@ -125,8 +125,8 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
         className={`whitespace-nowrap transition-colors block text-center text-[9px] sm:text-[10px] lg:text-[11px] xl:text-sm ${isActive
           ? 'font-bold text-blue-600 dark:text-blue-400'
           : isPast
-            ? 'font-medium text-neutral-600 dark:text-neutral-400'
-            : 'font-medium text-neutral-400 dark:text-neutral-500'
+            ? 'font-medium text-muted-foreground dark:text-zinc-300'
+            : 'font-medium text-neutral-400 dark:text-zinc-300'
           }`}
       >
         {t(`orderInitiation.tracker.${trackerKeyMap[step]}`) || t(`sidebar.${trackerKeyMap[step]}`) || step}
@@ -158,23 +158,23 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
                 setOpenDropdown(openDropdown === step ? null : step);
               }
             }}
-            className={`text-[9px] xl:text-xs font-semibold px-2 py-0.5 rounded-full transition-colors whitespace-nowrap ${isStepAuthorized && stageOrders.length > 0
-              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer dark:bg-blue-900/60 dark:text-blue-300 shadow-sm border border-blue-200/50'
-              : 'bg-neutral-100 text-neutral-500 dark:bg-slate-800 dark:text-neutral-400 cursor-default border border-neutral-200/50'
+            className={`text-[9px] xl:text-xs font-semibold px-2 py-0.5 rounded-full transition-colors whitespace-nowrap border ${isStepAuthorized && stageOrders.length > 0
+              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer dark:bg-blue-900/40 dark:text-blue-200 border-blue-200/50 dark:border-blue-800'
+              : 'bg-neutral-100 text-neutral-500 dark:bg-slate-800 dark:text-slate-200 cursor-default border-neutral-200/50 dark:border-slate-700'
               }`}
           >
             {stageOrders.length} Pending
           </div>
 
           {openDropdown === step && (
-            <div className={`absolute top-full mt-2 w-max min-w-[280px] bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden ${index === 0 ? 'left-0' : index >= total - 2 ? 'right-0' : 'transform -translate-x-1/2 left-1/2'
+            <div className={`absolute top-full mt-2 w-max min-w-[280px] bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden ${index === 0 ? 'left-0' : index >= total - 2 ? 'right-0' : 'transform -translate-x-1/2 left-1/2'
               }`}>
-              <div className="px-3 py-2 bg-neutral-50 dark:bg-slate-700/50 border-b border-neutral-200 dark:border-slate-700 font-semibold text-xs text-neutral-700 dark:text-neutral-300">
+              <div className="px-3 py-2 bg-neutral-50 dark:bg-neutral-700/50 border-b border-border font-semibold text-xs text-neutral-700 dark:text-neutral-300">
                 Pending at {step}
               </div>
               <div className="max-h-48 overflow-y-auto custom-scrollbar">
                 {stageOrders.map(order => (
-                  <div key={order.id} className="flex justify-between items-center gap-2 px-3 py-2 text-xs border-b border-neutral-100 dark:border-slate-700/50 last:border-0 hover:bg-neutral-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <div key={order.id} className="flex justify-between items-center gap-2 px-3 py-2 text-xs border-b border-neutral-100 dark:border-neutral-700/50 last:border-0 hover:bg-neutral-50 dark:hover:bg-slate-700/30 transition-colors">
                     <span className="font-medium text-neutral-700 dark:text-neutral-300" title={order.poNumber || 'Draft Order'}>
                       {order.poNumber || 'Draft Order'}
                     </span>
@@ -194,7 +194,7 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
 
         {index < total - 1 && (
           <div className="flex items-center justify-center shrink-0">
-            <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-neutral-300 dark:text-neutral-600" />
+            <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-neutral-300 dark:text-slate-400" />
           </div>
         )}
       </React.Fragment>
@@ -211,7 +211,7 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
           Reset Workflow Data
         </button>
       </div>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-neutral-200 dark:border-slate-700 shadow-sm p-4 w-full mb-8">
+      <div className="bg-card dark:bg-[#18181b] rounded-2xl border border-border dark:border-zinc-800 shadow-sm p-4 w-full mb-8">
         <div className="flex flex-nowrap justify-between items-center w-full gap-0.5 sm:gap-1 lg:gap-2">
           {displaySteps.map((step, index) => renderStep(step, index, displaySteps.length))}
         </div>

@@ -18,7 +18,8 @@ import {
   ClipboardCheck,
   AlignEndHorizontal,
   Table,
-  PackageSearch
+  PackageSearch,
+  ArrowLeft
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -90,6 +91,7 @@ export default function ProductionPage() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
+  const [isOutsourceModalOpen, setIsOutsourceModalOpen] = useState(false);
 
   // Handover Engine State
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -456,7 +458,7 @@ export default function ProductionPage() {
 
   const getStatusBadge = (status: StageStatus) => {
     switch (status) {
-      case 'Pending': return <span className="bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Pending'}</span>;
+      case 'Pending': return <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Pending'}</span>;
       case 'In Progress': return <span className="bg-blue-100 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'In Progress'}</span>;
       case 'Completed': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Completed'}</span>;
       case 'Failed':
@@ -472,18 +474,20 @@ export default function ProductionPage() {
       case 'In Progress': return 'border-blue-200 bg-blue-50/30';
       case 'Rework Required':
       case 'Failed': return 'border-red-200 bg-red-50/30';
-      default: return 'border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-neutral-50 dark:hover:bg-slate-800 cursor-pointer';
+      default: return 'border-border bg-card hover:bg-muted cursor-pointer';
     }
   };
 
-  const getIconColor = (status: StageStatus, isActive: boolean) => {
-    if (isActive) return 'text-blue-600 bg-blue-100';
-    switch (status) {
-      case 'Completed': return 'text-emerald-600 bg-emerald-100';
-      case 'In Progress': return 'text-blue-600 bg-blue-100';
-      case 'Rework Required':
-      case 'Failed': return 'text-red-600 bg-red-100';
-      default: return 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800';
+  const getIconColor = (stageId: string, status: StageStatus, isActive: boolean) => {
+    if (isActive) return 'text-blue-600 bg-blue-100 ring-2 ring-blue-500/30 dark:bg-blue-900/50 dark:text-blue-300';
+    switch (stageId) {
+      case 'material': return 'text-cyan-600 bg-cyan-100/80 dark:bg-cyan-900/40 dark:text-cyan-400';
+      case 'cutting': return 'text-indigo-600 bg-indigo-100/80 dark:bg-indigo-900/40 dark:text-indigo-400';
+      case 'stitching': return 'text-emerald-600 bg-emerald-100/80 dark:bg-emerald-900/40 dark:text-emerald-400';
+      case 'fusing': return 'text-amber-600 bg-amber-100/80 dark:bg-amber-900/40 dark:text-amber-400';
+      case 'kaj-button': return 'text-purple-600 bg-purple-100/80 dark:bg-purple-900/40 dark:text-purple-400';
+      case 'finishing': return 'text-rose-600 bg-rose-100/80 dark:bg-rose-900/40 dark:text-rose-400';
+      default: return 'text-muted-foreground bg-muted';
     }
   };
 
@@ -494,32 +498,17 @@ export default function ProductionPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
-      {/* Production Workflow Stepper */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-6 mb-6 flex items-center justify-between overflow-x-auto gap-4">
-        {stages.filter(s => s.id !== 'material').map((stage, idx, arr) => (
-          <React.Fragment key={stage.id}>
-            <div className="flex flex-col items-center gap-2 whitespace-nowrap min-w-[100px]">
-              <span className={`text-sm font-semibold ${stage.status === 'Completed' ? 'text-emerald-700' : stage.status === 'In Progress' ? 'text-blue-700' : 'text-neutral-600 dark:text-neutral-400'}`}>
-                {stage.name}
-              </span>
-              <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${stage.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : stage.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-neutral-400'}`}>
-                0 Pending
-              </div>
-            </div>
-            {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-neutral-300 flex-shrink-0" />}
-          </React.Fragment>
-        ))}
-      </div>
+
 
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Activity className="h-6 w-6 text-indigo-600" />
             {t('production.title')}
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               {t('production.subtitle')}
             </p>
             {poNumber && (
@@ -536,44 +525,54 @@ export default function ProductionPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsOverviewModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-          >
-            <Table className="w-4 h-4 text-neutral-500" />
-            Overview
-          </button>
           <div className="relative">
             <button 
               onClick={() => setPopoverOpen(!popoverOpen)}
             className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold border transition-colors shadow-sm cursor-pointer ${
               overallProductionStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200' :
               overallProductionStatus === 'Rework Required' ? 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200' :
-              overallProductionStatus === 'Production Started' ? 'bg-blue-100 text-blue-800 dark:text-blue-200 border-blue-200 hover:bg-blue-200 dark:hover:bg-blue-900/40' :
-              'bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-slate-700 hover:bg-neutral-200 dark:hover:bg-slate-700'
+              'bg-muted text-card-foreground border-border hover:bg-neutral-200 dark:hover:bg-slate-700'
             }`}
           >
             {overallProductionStatus === 'Completed' ? (t('quality.stageComplete') || 'Completed') :
              overallProductionStatus === 'Rework Required' ? (t('dashboard.stockAlerts.severity.critical') || 'Rework Required') :
-             overallProductionStatus === 'Production Started' ? (t('dashboard.recentOrders.status.inProduction') || 'Production Started') :
-             (t('dashboard.recentOrders.status.pending') || 'Pending')}
+             'Active and Pending'}
           </button>
           
           {popoverOpen && (
-            <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-neutral-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="bg-neutral-50 dark:bg-slate-800/80 px-4 py-3 border-b border-neutral-200 dark:border-slate-700">
-                <h3 className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Pending at Production</h3>
+            <div className="absolute right-0 mt-3 w-72 bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active POs</h3>
               </div>
-              <div className="p-2 space-y-1">
-                {['PO-2026-002', 'PO-2026-005', 'PO-2026-008'].map(po => (
-                  <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-slate-800 rounded-xl transition-colors group">
+              <div className="p-2 space-y-1 border-b border-border">
+                {['PO-2026-002'].map(po => (
+                  <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
                     <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
                     <button
                       onClick={() => {
                         setPoNumber(po);
                         setPopoverOpen(false);
                       }}
-                      className="px-5 py-1.5 bg-[#0070F3] hover:bg-[#005AE0] text-white text-xs font-bold rounded-full transition-colors shadow-sm"
+                      className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pending POs</h3>
+              </div>
+              <div className="p-2 space-y-1">
+                {['PO-2026-005', 'PO-2026-008'].map(po => (
+                  <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
+                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
+                    <button
+                      onClick={() => {
+                        setPoNumber(po);
+                        setPopoverOpen(false);
+                      }}
+                      className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
                     >
                       View
                     </button>
@@ -587,13 +586,13 @@ export default function ProductionPage() {
       </div>
 
       {/* Progress Summary Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 md:p-6">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-5 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
           <div className="flex-1 w-full">
             <div className="flex justify-between items-end mb-2">
               <div>
-                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('production.overallProgress') || 'Overall Progress'}</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{progressPercentage}%</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('production.overallProgress') || 'Overall Progress'}</p>
+                <p className="text-2xl font-bold text-foreground">{progressPercentage}%</p>
               </div>
               <div className="text-right">
                 <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
@@ -601,7 +600,7 @@ export default function ProductionPage() {
                 </span>
               </div>
             </div>
-            <div className="w-full bg-neutral-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+            <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
               <div
                 className="h-2.5 rounded-full bg-indigo-600 transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
@@ -612,13 +611,13 @@ export default function ProductionPage() {
           <div className="flex gap-4 md:gap-8 flex-shrink-0 items-center">
             {poNumber && (
               <div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">PO Number</p>
-                <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{poNumber}</p>
+                <p className="text-xs text-muted-foreground uppercase font-semibold">PO Number</p>
+                <p className="text-xl font-bold text-foreground">{poNumber}</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase font-semibold">{t('production.total') || 'Total Pieces'}</p>
-              <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalOrderQty}</p>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">{t('production.total') || 'Total Pieces'}</p>
+              <p className="text-xl font-bold text-foreground">{totalOrderQty}</p>
             </div>
 
             {overallProductionStatus === 'Completed' && (
@@ -647,15 +646,15 @@ export default function ProductionPage() {
             >
               <div className="flex flex-col gap-3">
                 <div className="flex items-start justify-between">
-                  <div className={`p-2 rounded-lg ${getIconColor(stage.status, isActive)}`}>
+                  <div className={`p-2 rounded-lg ${getIconColor(stage.id, stage.status, isActive)}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   {getStatusBadge(stage.status)}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 text-sm">{stage.id === 'material' ? 'Material' : (t(`production.${stage.id}`) !== `production.${stage.id}` ? t(`production.${stage.id}`) : stage.name)}</h3>
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-tight mt-0.5 mb-1.5">{stage.id === 'material' ? 'Inspect and verify allocated raw materials and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description)}</p>
-                  <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                  <h3 className="font-semibold text-foreground text-sm">{stage.id === 'material' ? 'Material' : (t(`production.${stage.id}`) !== `production.${stage.id}` ? t(`production.${stage.id}`) : stage.name)}</h3>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">{stage.id === 'material' ? 'Inspect and verify allocated raw materials and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description)}</p>
+                  <p className="text-xs font-medium text-muted-foreground">
                     {stage.completedQty > 0 ? `${stage.completedQty} ${t('production.unitsProcessed') || 'units processed'}` : (t('dashboard.recentOrders.status.pending') || 'Not started')}
                   </p>
                 </div>
@@ -663,55 +662,92 @@ export default function ProductionPage() {
             </div>
           );
         })}
+        {/* Outsource Custom Card */}
+        <div 
+          onClick={() => setIsOutsourceModalOpen(true)}
+          className="rounded-xl border border-border bg-card p-4 transition-all cursor-pointer hover:bg-muted"
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-lg text-teal-600 bg-teal-100/80 dark:bg-teal-900/40 dark:text-teal-400">
+                <PackageSearch className="h-5 w-5" />
+              </div>
+              <span className="bg-blue-100 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Active</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">Outsource</h3>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">Manage external vendor allocations and transit tracking.</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                500 units processing
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {activeStageIdx !== null && ActiveIcon && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mt-6 animate-in fade-in slide-in-from-top-4">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-4 py-3 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6 animate-in fade-in slide-in-from-top-4">
+          <div className="border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30 grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] items-center">
+            {/* Column 1: Title */}
+            <div className="px-6 py-4 flex items-center gap-3">
+              <button onClick={() => setActiveStageIdx(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1.5 -ml-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0" aria-label="Go Back">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                 <ActiveIcon className="h-5 w-5 text-indigo-500" />
                 {stages[activeStageIdx].id === 'material' ? 'Material Stage Update' : `${t(`production.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} ${t('production.update') || 'Update'}`}
               </h2>
               {stages[activeStageIdx].id !== 'material' && (
                 <button
                   onClick={() => setIsStatusModalOpen(true)}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm flex items-center gap-1"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm flex items-center gap-1 shrink-0 ml-1"
                 >
                   Garment Status <span className="text-[10px]">ⓘ</span>
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                className="border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors"
-              >
-                + Add Person
-              </button>
-              {stages[activeStageIdx].id === 'material' && (
-                <button
-                  disabled
-                  onClick={() => { /* Functionality to be added later */ }}
-                  className="bg-indigo-600/50 text-white/80 cursor-not-allowed opacity-75 rounded-lg px-4 py-2 text-sm font-medium border border-indigo-200/20"
-                >
-                  Return Remaining Material to Store
-                </button>
-              )}
-              <button onClick={() => setActiveStageIdx(null)} className="text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700">
-                {t('back') || 'Close'}
-              </button>
+
+            {/* Column 2: PENDING Header */}
+            <div className="px-4 py-4 h-full flex items-center border-t md:border-t-0 md:border-l border-border">
+               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500"></span>Pending</span>
+            </div>
+
+            {/* Column 3: IN PROGRESS Header */}
+            <div className="px-4 py-4 h-full flex items-center border-t md:border-t-0 md:border-l border-border">
+               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span>In Progress</span>
+            </div>
+
+            {/* Column 4: COMPLETED Header + Actions */}
+            <div className="px-4 py-4 h-full flex items-center justify-between gap-4 border-t md:border-t-0 md:border-l border-border">
+               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5 shrink-0"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Completed</span>
+               
+               <div className="flex items-center">
+                 <button
+                   className="border border-neutral-300 dark:border-neutral-700 bg-card hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
+                 >
+                   + Add Person
+                 </button>
+                 {stages[activeStageIdx].id === 'material' && (
+                   <button
+                     disabled
+                     onClick={() => { /* Functionality to be added later */ }}
+                     className="bg-indigo-600/50 text-white/80 cursor-not-allowed opacity-75 rounded-lg px-3 py-1.5 text-sm font-medium border border-indigo-200/20 shrink-0 ml-2"
+                   >
+                     Return
+                   </button>
+                 )}
+               </div>
             </div>
           </div>
 
-          <div className="p-6">
-
+          <div>
             {stages[activeStageIdx].id === 'material' ? (
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
-                  <div className="w-full overflow-x-auto border border-neutral-200 dark:border-slate-700 rounded-lg">
+              <div className="space-y-6 p-6">
+                <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                  <div className="w-full overflow-x-auto border border-border rounded-lg">
                     <table className="w-full table-auto min-w-[800px] text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-neutral-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-slate-700">
+                        <tr className="bg-neutral-50 dark:bg-neutral-800 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                           <th className="px-4 py-3 whitespace-nowrap">Materials Inventory</th>
                           <th className="px-4 py-3 whitespace-nowrap">Category</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Required Qty</th>
@@ -730,19 +766,19 @@ export default function ProductionPage() {
                           const surplus = availQty > reqQty ? availQty - reqQty : 0;
                           
                           return (
-                            <tr key={mat.id} className={`transition-colors ${surplus > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-neutral-50 dark:hover:bg-slate-800/30'}`}>
-                              <td className="px-3 py-2 text-left font-semibold text-neutral-900 dark:text-neutral-100">{mat.name}</td>
-                              <td className="px-3 py-2 text-left text-neutral-500 dark:text-neutral-400">{mat.category || 'Raw Material'}</td>
+                            <tr key={mat.id} className={`transition-colors ${surplus > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-muted/30'}`}>
+                              <td className="px-3 py-2 text-left font-semibold text-foreground">{mat.name}</td>
+                              <td className="px-3 py-2 text-left text-muted-foreground">{mat.category || 'Raw Material'}</td>
                               <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{reqQty}</td>
                               <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{availQty}</td>
                               <td className="px-3 py-2 text-right text-neutral-400">{shortage > 0 ? shortage : '-'}</td>
-                              <td className="px-3 py-2 text-center text-neutral-500 dark:text-neutral-400">{mat.unit}</td>
+                              <td className="px-3 py-2 text-center text-muted-foreground">{mat.unit}</td>
                               <td className="px-3 py-2 text-center">
                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${shortage > 0 ? 'bg-amber-100 text-amber-700' : surplus > 0 ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{shortage > 0 ? 'Shortage' : surplus > 0 ? 'Surplus' : 'Fully Allocated'}</span>
                               </td>
                               <td className="px-3 py-2 text-right">
                                 <div className="flex items-center gap-2 justify-end min-w-[180px]">
-                                  <select className="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300">
+                                  <select className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300">
                                     <option value="">Select Worker</option>
                                     <option value="Jamal">Jamal</option>
                                     <option value="Christie">Christie</option>
@@ -750,7 +786,7 @@ export default function ProductionPage() {
                                   <input 
                                     type="number" 
                                     placeholder="Qty" 
-                                    className="px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-16 text-neutral-700 dark:text-neutral-300"
+                                    className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-16 text-neutral-700 dark:text-neutral-300"
                                   />
                                 </div>
                               </td>
@@ -802,8 +838,8 @@ export default function ProductionPage() {
                 return (
                   <>
                     {incomingTransits.length > 0 && (
-                      <div className="mb-6 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden shadow-sm">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
+                      <div className="m-6 mb-0 bg-card border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden shadow-sm">
+                        <div className="bg-blue-50 dark:bg-neutral-800/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
                           <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300">Incoming Material Transits (Pending Verification)</h3>
                         </div>
@@ -811,11 +847,11 @@ export default function ProductionPage() {
                           {incomingTransits.map(task => (
                             <div key={task.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div className="flex items-center gap-3">
-                                <div className="p-2 bg-neutral-100 dark:bg-slate-800 rounded-lg text-neutral-500">
+                                <div className="p-2 bg-muted rounded-lg text-neutral-500">
                                   <Layers className="h-4 w-4" />
                                 </div>
                                 <div>
-                                  <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                                  <div className="text-sm font-bold text-card-foreground">
                                     {task.transitingWorkerId || 'Origin Worker'} <span className="text-neutral-400 mx-1">→</span> {task.materialAllocatedName}
                                   </div>
                                   <div className="text-xs text-neutral-500 mt-0.5">
@@ -842,33 +878,27 @@ export default function ProductionPage() {
                         </div>
                       </div>
                     )}
-                    <div className="space-y-4">
-                      {Object.entries(grouped).map(([assignee, assigneeTasks]) => {
-                      const isExpanded = expandedSwimlanes[assignee] !== false; // Default expanded
-                      return (
-                        <div key={assignee} className="border border-neutral-200 dark:border-slate-700 rounded-xl overflow-hidden bg-neutral-50 dark:bg-slate-800/20">
-                          <div 
-                            className="flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 cursor-pointer border-b border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
-                            onClick={() => toggleSwimlane(assignee)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                <User className="h-4 w-4" />
+                    <div>
+                      <div className="divide-y divide-border">
+                        {Object.entries(grouped).map(([assignee, assigneeTasks]) => (
+                          <div key={assignee} className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
+                            {/* Column 1: Row Indicator */}
+                            <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-neutral-900/10">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                  <User className="h-4 w-4" />
+                                </div>
+                                <h3 className="font-bold text-sm text-foreground">{assignee}</h3>
                               </div>
-                              <h3 className="font-bold text-sm text-neutral-900 dark:text-neutral-100">{assignee}</h3>
-                              <span className="text-[10px] font-bold bg-neutral-100 dark:bg-slate-800 text-neutral-500 px-2 py-0.5 rounded-full">{assigneeTasks.length} Tasks</span>
+                              <span className="text-[10px] font-bold bg-muted text-neutral-500 px-2 py-0.5 rounded-full self-start inline-flex">{assigneeTasks.length} Tasks</span>
                             </div>
-                            {isExpanded ? <ChevronUp className="h-4 w-4 text-neutral-400" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
-                          </div>
-                          
-                          {isExpanded && (
-                            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Pending Column */}
-                              <div className="flex flex-col gap-3">
-                                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500"></span>Pending</h4>
-                                {assigneeTasks.filter(t => t.status === 'Pending').map(task => (
-                                  <div key={task.id} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-neutral-200 dark:border-slate-700 p-3 border-l-4 border-l-red-500">
-                                    <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-2">{task.materialAllocatedName}</p>
+
+                            {/* Column 2: Pending */}
+                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                              {assigneeTasks.filter(t => t.status === 'Pending').length > 0 ? (
+                                assigneeTasks.filter(t => t.status === 'Pending').map(task => (
+                                  <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-red-500">
+                                    <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
                                     <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                       <div>
                                         <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
@@ -880,15 +910,18 @@ export default function ProductionPage() {
                                       </div>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
+                                ))
+                              ) : (
+                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                              )}
+                            </div>
 
-                              {/* In Progress Column */}
-                              <div className="flex flex-col gap-3">
-                                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span>In Progress</h4>
-                                {assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
-                                  <div key={task.id} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-neutral-200 dark:border-slate-700 p-3 border-l-4 border-l-amber-400">
-                                    <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-2">{task.materialAllocatedName}</p>
+                            {/* Column 3: In Progress */}
+                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                              {assigneeTasks.filter(t => t.status === 'In Progress').length > 0 ? (
+                                assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
+                                  <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-amber-400">
+                                    <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
                                     <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                       <div>
                                         <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
@@ -900,15 +933,32 @@ export default function ProductionPage() {
                                       </div>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
+                                ))
+                              ) : (
+                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                              )}
+                            </div>
 
-                              {/* Completed Column */}
-                              <div className="flex flex-col gap-3">
-                                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Completed</h4>
-                                {assigneeTasks.filter(t => t.status === 'Completed').map(task => (
-                                  <div key={task.id} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-neutral-200 dark:border-slate-700 p-3 border-l-4 border-l-emerald-500">
-                                    <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mb-2">{task.materialAllocatedName}</p>
+                            {/* Column 4: Completed */}
+                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                              {assigneeTasks.filter(t => t.status === 'Completed').length > 0 ? (
+                                assigneeTasks.filter(t => t.status === 'Completed').map(task => (
+                                  <div key={task.id} className="relative bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-emerald-500">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <p className="text-xs font-bold text-card-foreground pr-6">{task.materialAllocatedName}</p>
+                                      {!task.handshakeStatus && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleInitiateHandover(task);
+                                          }}
+                                          className="absolute top-2 right-2 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors shadow-sm"
+                                          title="Send to Next Stage"
+                                        >
+                                          <ChevronRight className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                       <div>
                                         <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
@@ -919,38 +969,26 @@ export default function ProductionPage() {
                                         <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.endTime || '--:--'}</span>
                                       </div>
                                     </div>
-                                    {!task.handshakeStatus && (
-                                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-slate-800">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleInitiateHandover(task);
-                                          }}
-                                          className="w-full text-xs font-semibold py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors"
-                                        >
-                                          Send for Next Stage
-                                        </button>
-                                      </div>
-                                    )}
                                     {task.handshakeStatus === 'PENDING' && (
-                                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-slate-800">
+                                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
                                         <span className="block w-full text-center text-[10px] font-bold py-1 bg-amber-50 text-amber-600 rounded">
                                           Transit Pending...
                                         </span>
                                       </div>
                                     )}
                                   </div>
-                                ))}
-                              </div>
+                                ))
+                              ) : (
+                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   
                   {/* Stage Advancement Flow */}
-                  <div className="mt-8 flex justify-end pt-4 border-t border-neutral-200 dark:border-slate-700">
+                  <div className="mt-8 flex justify-end pt-4 border-t border-border">
                     <button
                       onClick={() => handleAdvanceToNextStage(stages[activeStageIdx].id)}
                       className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
@@ -977,14 +1015,14 @@ export default function ProductionPage() {
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsHandoverModalOpen(false)} />
-            <div className="relative w-full max-w-lg mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 z-10 animate-in fade-in zoom-in-95 duration-200">
-              <div className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">Stage Transition Handover Selection</h3>
+            <div className="relative w-full max-w-lg mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border z-10 animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-card-foreground">Stage Transition Handover Selection</h3>
                 <button onClick={() => setIsHandoverModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">✕</button>
               </div>
               
               <div className="p-6 space-y-5">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex justify-between items-center">
+                <div className="bg-blue-50 dark:bg-neutral-800/20 p-4 rounded-lg flex justify-between items-center">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-bold mb-1">Transfer Block</p>
                     <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{pendingHandoverTask?.materialAllocatedName}</p>
@@ -1007,7 +1045,7 @@ export default function ProductionPage() {
                     <select
                       value={split.worker}
                       onChange={(e) => updateHandoverSplit(idx, 'worker', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-neutral-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-200 text-sm"
+                      className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm"
                     >
                       <option value="">Select worker...</option>
                       <option value="Christie">Christie</option>
@@ -1021,7 +1059,7 @@ export default function ProductionPage() {
                       value={split.quantity || ''}
                       onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value)}
                       placeholder="Qty"
-                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-900 text-neutral-700 dark:text-neutral-200 text-sm text-center"
+                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
                     />
                     <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded uppercase whitespace-nowrap">
                       {currentStatus}
@@ -1045,15 +1083,15 @@ export default function ProductionPage() {
               </div>
 
               {/* Handover Status History Table */}
-              <div className="border-t border-neutral-100 dark:border-slate-800 my-4 pt-4">
+              <div className="border-t border-neutral-100 dark:border-neutral-700 my-4 pt-4">
                 <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Handover Status History</h4>
                 <div className="max-h-[160px] overflow-y-auto pr-1">
                   <table className="table-auto w-full text-sm text-left">
-                    <thead className="bg-neutral-50 dark:bg-slate-800/50 sticky top-0">
+                    <thead className="bg-neutral-50 dark:bg-neutral-800/50 sticky top-0">
                       <tr>
-                        <th className="px-3 py-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">Allocated Person</th>
-                        <th className="px-3 py-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">Quantity</th>
-                        <th className="px-3 py-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">Status</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Allocated Person</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Quantity</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -1079,9 +1117,9 @@ export default function ProductionPage() {
                         }
 
                         return renderList.map(task => (
-                          <tr key={task.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/30">
-                            <td className="px-3 py-2 font-medium text-neutral-800 dark:text-neutral-200">{task.assignee}</td>
-                            <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{task.targetQty}</td>
+                          <tr key={task.id} className="hover:bg-muted/30">
+                            <td className="px-3 py-2 font-medium text-card-foreground">{task.assignee}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{task.targetQty}</td>
                             <td className="px-3 py-2">
                               {task.handshakeStatus === 'PENDING' ? (
                                 <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md text-xs font-semibold">Pending</span>
@@ -1102,7 +1140,7 @@ export default function ProductionPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-neutral-200 dark:border-slate-700 flex justify-end gap-3 bg-neutral-50 dark:bg-slate-800/50">
+            <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-neutral-50 dark:bg-neutral-800/50">
               <button onClick={() => setIsHandoverModalOpen(false)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">Cancel</button>
               <button 
                 onClick={submitHandover}
@@ -1115,29 +1153,70 @@ export default function ProductionPage() {
               >
                 Confirm Handover
               </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Outsource Vendor Modal */}
+      {isOutsourceModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOutsourceModalOpen(false)} />
+          <div className="relative w-full max-w-sm mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border z-10 animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-card-foreground">Outsource Assignment</h3>
+              <button onClick={() => setIsOutsourceModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Vendor Assigned</p>
+                <p className="text-sm font-semibold text-foreground">Global Trims & Co.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Item Details</p>
+                  <p className="text-sm font-semibold text-foreground">Collars (Navy)</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Quantity</p>
+                  <p className="text-sm font-semibold text-foreground">500 units</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Expected Return</p>
+                <p className="text-sm font-semibold text-foreground">August 12, 2026</p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-border flex justify-end">
+                <button
+                  onClick={() => setIsOutsourceModalOpen(false)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Status Modal */}
       {isStatusModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} />
-                <div className="relative w-full max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 max-h-[90vh] flex flex-col z-10">
-                  <div className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 flex justify-between items-center bg-neutral-50 dark:bg-slate-800/50">
-                    <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
+                <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border max-h-[90vh] flex flex-col z-10">
+                  <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
+                    <h2 className="text-lg font-bold text-card-foreground">
                       {stageName} Stage Breakdown <span className="text-sm font-medium text-neutral-500 ml-2">({poNumber || 'No PO Selected'})</span>
                     </h2>
-                    <button onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                    <button onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} className="text-neutral-500 hover:text-foreground transition-colors">
                       Close
                     </button>
                   </div>
                   <div className="p-6 overflow-y-auto">
                     {currentPoGarments.length > 0 ? (
-                      <div className="w-full text-left border-collapse border border-neutral-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                        <div className="grid grid-cols-3 bg-neutral-100 dark:bg-slate-800 text-xs uppercase tracking-wider text-neutral-600 dark:text-neutral-400 font-semibold border-b border-neutral-200 dark:border-slate-700">
+                      <div className="w-full text-left border-collapse border border-border rounded-lg overflow-hidden">
+                        <div className="grid grid-cols-3 bg-muted text-xs uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
                           <div className="px-4 py-3">Garment</div>
                           <div className="px-4 py-3 text-right">Target Qty</div>
                           <div className="px-4 py-3 text-right">{stageName} Status</div>
@@ -1149,7 +1228,7 @@ export default function ProductionPage() {
                               <React.Fragment key={i}>
                                 <div 
                                   onClick={() => setExpandedGarmentIdx(expandedGarmentIdx === i ? null : i)}
-                                  className="grid grid-cols-3 hover:bg-neutral-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group items-center"
+                                  className="grid grid-cols-3 hover:bg-muted/30 transition-colors cursor-pointer group items-center"
                                 >
                                   <div className="px-4 py-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-2">
                                     <span className={`transition-transform ${expandedGarmentIdx === i ? 'rotate-90' : ''}`}>▶</span>
@@ -1158,7 +1237,7 @@ export default function ProductionPage() {
                                   <div className="px-4 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-300 text-right">{g.targetQty}</div>
                                   <div className="px-4 py-3 text-sm font-medium text-right flex items-center justify-end gap-2">
                                     <span className={quantity === 0 ? "text-neutral-400" : ""}>{quantity}</span>
-                                    {quantity === 0 && <span className="text-neutral-500 text-[10px] bg-neutral-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">(Not Started)</span>}
+                                    {quantity === 0 && <span className="text-neutral-500 text-[10px] bg-muted px-1.5 py-0.5 rounded">(Not Started)</span>}
                                     {quantity > 0 && quantity < g.targetQty && <span className="text-blue-600 text-[10px] bg-blue-50 px-1.5 py-0.5 rounded">(In Progress)</span>}
                                     {quantity >= g.targetQty && <span className="text-emerald-600 text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded">(Completed)</span>}
                                   </div>
@@ -1166,30 +1245,30 @@ export default function ProductionPage() {
                         
                         {/* Expandable Sub-Panel */}
                         {expandedGarmentIdx === i && (
-                          <div className="bg-slate-50 dark:bg-slate-800/40 p-5 border-t border-neutral-200 dark:border-slate-700 shadow-inner">
+                          <div className="bg-slate-50 dark:bg-neutral-800/40 p-5 border-t border-border shadow-inner">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                               Garment Blueprints
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                               {/* Column A */}
-                              <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-slate-800 pb-2 mb-1">Design & Style Specs</h5>
+                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Design & Style Specs</h5>
                                 <div className="space-y-3">
                                   {g.specs.split(', ').map((specStr: string, idx: number) => {
                                     const [label, val] = specStr.split(': ');
                                     return (
                                       <div key={idx}>
                                         <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide block mb-0.5">{label}</span>
-                                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{val}</span>
+                                        <span className="text-sm font-medium text-foreground">{val}</span>
                                       </div>
                                     );
                                   })}
                                 </div>
                               </div>
                               {/* Column B */}
-                              <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-slate-800 pb-2 mb-1">Size & Color Matrix</h5>
+                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Size & Color Matrix</h5>
                                 {(() => {
                                   const parts = g.sizeGrid.split(' | ');
                                   const sizesStr = parts[0];
@@ -1201,19 +1280,19 @@ export default function ProductionPage() {
                                   const total = totalStr.includes(':') ? totalStr.split(': ')[1] : totalStr;
                                   
                                   return (
-                                    <div className="w-full text-left border border-neutral-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                                      <div className="grid grid-cols-2 bg-neutral-100 dark:bg-slate-800 text-xs font-semibold text-neutral-600 dark:text-neutral-400 border-b border-neutral-200 dark:border-slate-700">
-                                        <div className="px-3 py-2 border-r border-neutral-200 dark:border-slate-700">Size</div>
+                                    <div className="w-full text-left border border-border rounded-lg overflow-hidden">
+                                      <div className="grid grid-cols-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border">
+                                        <div className="px-3 py-2 border-r border-border">Size</div>
                                         <div className="px-3 py-2 text-right">Quantity</div>
                                       </div>
                                       {sizes.map((s: any, idx: number) => (
-                                        <div key={idx} className="grid grid-cols-2 text-sm text-neutral-800 dark:text-neutral-200 border-b border-neutral-100 dark:border-slate-700 last:border-b-0">
-                                          <div className="px-3 py-2 border-r border-neutral-100 dark:border-slate-700 font-medium">{s.size}</div>
+                                        <div key={idx} className="grid grid-cols-2 text-sm text-card-foreground border-b border-neutral-100 dark:border-neutral-700 last:border-b-0">
+                                          <div className="px-3 py-2 border-r border-neutral-100 dark:border-neutral-700 font-medium">{s.size}</div>
                                           <div className="px-3 py-2 text-right">{s.qty}</div>
                                         </div>
                                       ))}
                                       {total && (
-                                        <div className="grid grid-cols-2 bg-indigo-50 dark:bg-indigo-900/20 text-sm font-bold text-indigo-900 dark:text-indigo-200 border-t border-neutral-200 dark:border-slate-700">
+                                        <div className="grid grid-cols-2 bg-indigo-50 dark:bg-indigo-900/20 text-sm font-bold text-indigo-900 dark:text-indigo-200 border-t border-border">
                                           <div className="px-3 py-2 border-r border-indigo-100 dark:border-indigo-800/50 uppercase tracking-wide text-[10px] flex items-center">Total</div>
                                           <div className="px-3 py-2 text-right">{total}</div>
                                         </div>
@@ -1223,8 +1302,8 @@ export default function ProductionPage() {
                                 })()}
                               </div>
                               {/* Column C */}
-                              <div className="bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-slate-800 pb-2 mb-1">Raw Materials Allocated</h5>
+                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Raw Materials Allocated</h5>
                                 <ul className="divide-y divide-neutral-100 dark:divide-slate-700/50">
                                   {g.materials.map((mat: string, idx: number) => (
                                     <li key={idx} className="py-2.5 text-sm text-neutral-700 dark:text-neutral-300 flex items-start gap-2.5 first:pt-1 last:pb-1">
@@ -1244,7 +1323,7 @@ export default function ProductionPage() {
                       </div>
                     ) : (
                       <div className="text-center py-10">
-                        <p className="text-neutral-500 dark:text-neutral-400">No garment breakdown data available for this PO.</p>
+                        <p className="text-muted-foreground">No garment breakdown data available for this PO.</p>
                       </div>
                     )}
                   </div>
@@ -1256,38 +1335,38 @@ export default function ProductionPage() {
       {isOverviewModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOverviewModalOpen(false)} />
-          <div className="relative w-full max-w-4xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-neutral-200 dark:border-slate-700 flex flex-col z-10 max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-neutral-200 dark:border-slate-700 flex justify-between items-center bg-neutral-50 dark:bg-slate-800/50">
-              <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+          <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border flex flex-col z-10 max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
+              <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
                 <Table className="w-5 h-5 text-indigo-500" />
                 Global Status Matrix <span className="text-sm font-medium text-neutral-500 ml-1">({poNumber || 'No PO Selected'})</span>
               </h2>
-              <button onClick={() => setIsOverviewModalOpen(false)} className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+              <button onClick={() => setIsOverviewModalOpen(false)} className="text-neutral-500 hover:text-foreground transition-colors">
                 Close
               </button>
             </div>
             <div className="p-6 overflow-x-auto">
               {currentPoGarments.length > 0 ? (
-                <div className="w-full border border-neutral-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <div className="w-full border border-border rounded-lg overflow-hidden">
                   <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
-                      <tr className="bg-neutral-100 dark:bg-slate-800 text-xs uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
-                        <th className="px-4 py-3 font-semibold border-b border-r border-neutral-200 dark:border-slate-700">Garment</th>
-                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-neutral-200 dark:border-slate-700">Cutting</th>
-                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-neutral-200 dark:border-slate-700">Stitching</th>
-                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-neutral-200 dark:border-slate-700">Fusing</th>
-                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-neutral-200 dark:border-slate-700">Kaj Button</th>
-                        <th className="px-4 py-3 font-semibold text-center border-b border-neutral-200 dark:border-slate-700">Finishing</th>
+                      <tr className="bg-muted text-xs uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold border-b border-r border-border">Garment</th>
+                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-border">Cutting</th>
+                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-border">Stitching</th>
+                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-border">Fusing</th>
+                        <th className="px-4 py-3 font-semibold text-center border-b border-r border-border">Kaj Button</th>
+                        <th className="px-4 py-3 font-semibold text-center border-b border-border">Finishing</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200 dark:divide-slate-700/50">
                       {currentPoGarments.map((g: any, i) => (
-                        <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-4 py-3 text-sm font-bold text-neutral-900 dark:text-neutral-100 border-r border-neutral-200 dark:border-slate-700">{g.type}</td>
-                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-neutral-200 dark:border-slate-700 font-medium">{g.cutting || 0}</td>
-                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-neutral-200 dark:border-slate-700 font-medium">{g.stitching || 0}</td>
-                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-neutral-200 dark:border-slate-700 font-medium">{g.fusing || 0}</td>
-                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-neutral-200 dark:border-slate-700 font-medium">{g.kajButton || 0}</td>
+                        <tr key={i} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3 text-sm font-bold text-foreground border-r border-border">{g.type}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-border font-medium">{g.cutting || 0}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-border font-medium">{g.stitching || 0}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-border font-medium">{g.fusing || 0}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-border font-medium">{g.kajButton || 0}</td>
                           <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center font-medium">{g.finishing || 0}</td>
                         </tr>
                       ))}
@@ -1296,7 +1375,7 @@ export default function ProductionPage() {
                 </div>
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-neutral-500 dark:text-neutral-400">No data available for this PO.</p>
+                  <p className="text-muted-foreground">No data available for this PO.</p>
                 </div>
               )}
             </div>

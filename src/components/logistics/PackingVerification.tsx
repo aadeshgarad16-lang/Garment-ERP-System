@@ -31,14 +31,14 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
   const cartonCount = targetQty > 0 ? Math.ceil(targetQty / 40) : 0;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
+    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="border-b border-border px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
         <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
           <Package className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('orderInitiation.tracker.verification') || 'Packing & Verification'}</h2>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t('quality.stages.verification.desc') || 'Verify packed quantities against shipping manifest before final approval.'}</p>
+          <h2 className="text-lg font-semibold text-card-foreground">{t('orderInitiation.tracker.verification') || 'Packing & Verification'}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('quality.stages.verification.desc') || 'Verify packed quantities against shipping manifest before final approval.'}</p>
         </div>
       </div>
       
@@ -56,7 +56,7 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
                   type="text" 
                   value={manifestId}
                   onChange={(e) => setManifestId(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 focus:outline-none"
+                  className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-border rounded-lg text-sm text-muted-foreground focus:outline-none"
                   readOnly
                 />
               </div>
@@ -72,7 +72,7 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
                 placeholder={t('quality.verifiedQtyPlaceholder') || "Enter physical count"}
                 value={verifiedQty}
                 onChange={(e) => setVerifiedQty(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                className="w-full px-4 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-ring/20 focus:border-blue-500 outline-none transition-all"
               />
             </div>
             
@@ -84,29 +84,29 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
                 placeholder={t('logistics.verificationRemarksPlaceholder') || "Any discrepancies or notes..."}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all min-h-[100px]"
+                className="w-full px-4 py-3 border border-border rounded-lg text-sm focus:ring-2 focus:ring-ring/20 focus:border-blue-500 outline-none transition-all min-h-[100px]"
               />
             </div>
           </div>
           
-          <div className="bg-neutral-50 dark:bg-slate-900 rounded-xl p-6 border border-neutral-200 dark:border-slate-700 flex flex-col">
-            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-4 uppercase tracking-wider">{t('logistics.manifestSummary') || 'Manifest Summary'}</h3>
+          <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6 border border-border flex flex-col">
+            <h3 className="text-sm font-bold text-card-foreground mb-4 uppercase tracking-wider">{t('logistics.manifestSummary') || 'Manifest Summary'}</h3>
             <div className="space-y-4 flex-1">
-              <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('dashboard.recentOrders.headers.orderId') || 'Order ID'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{orderId}</span>
+              <div className="flex justify-between items-center pb-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">{t('dashboard.recentOrders.headers.orderId') || 'Order ID'}</span>
+                <span className="text-sm font-semibold text-foreground">{orderId}</span>
               </div>
-              <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.targetQty') || 'Target Quantity'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{targetQty} pcs</span>
+              <div className="flex justify-between items-center pb-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">{t('logistics.targetQty') || 'Target Quantity'}</span>
+                <span className="text-sm font-semibold text-foreground">{targetQty} pcs</span>
               </div>
-              <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.cartonCount') || 'Carton Count'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{cartonCount} Cartons</span>
+              <div className="flex justify-between items-center pb-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">{t('logistics.cartonCount') || 'Carton Count'}</span>
+                <span className="text-sm font-semibold text-foreground">{cartonCount} Cartons</span>
               </div>
-              <div className="flex justify-between items-center pb-3 border-b border-neutral-200 dark:border-slate-700">
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">{t('logistics.destination') || 'Destination'}</span>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{destination}</span>
+              <div className="flex justify-between items-center pb-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">{t('logistics.destination') || 'Destination'}</span>
+                <span className="text-sm font-semibold text-foreground">{destination}</span>
               </div>
             </div>
             

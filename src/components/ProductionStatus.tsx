@@ -16,8 +16,8 @@ const stages: StageProps[] = [
 
 export default function ProductionStatus() {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 w-full overflow-hidden">
-      <div className="px-6 py-4 border-b border-neutral-100 dark:border-slate-800">
+    <div className="bg-card rounded-xl shadow-sm border border-border w-full overflow-hidden">
+      <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-700">
         <h2 className="text-base font-bold text-neutral-800 dark:text-neutral-100">
           Production Status
         </h2>
@@ -36,7 +36,7 @@ export default function ProductionStatus() {
               </div>
             </div>
             
-            <div className="h-2 w-full bg-neutral-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div 
                 className={`h-full ${stage.color} rounded-full transition-all duration-500`}
                 style={{ width: '0%' }}

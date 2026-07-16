@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/contexts/language-context';
 import LanguageSwitcher from '@/components/language-switcher';
@@ -69,6 +69,16 @@ const navItems = [
     ]
   },
   { 
+    tKey: 'procurement', 
+    label: 'Procurement', 
+    icon: ClipboardList, 
+    module: 'Procurement',
+    children: [
+      { tKey: 'procurementDashboard', label: 'Procurement Dashboard', href: '/procurement', module: 'Procurement' },
+      { tKey: 'createPurchaseRequest', label: 'Create Purchase Request', href: '/procurement/create', module: 'Procurement' }
+    ]
+  },
+  { 
     tKey: 'storeGroup', 
     label: 'Store', 
     icon: Store,
@@ -81,9 +91,21 @@ const navItems = [
     ]
   },
   { tKey: 'production', label: 'Production', href: '/production-dashboard', icon: Factory, module: 'Production' },
+  { 
+    tKey: 'outsource', 
+    label: 'Out-source', 
+    icon: Truck, 
+    module: 'Outsource',
+    children: [
+      { tKey: 'outsourceDashboard', label: 'Outsource Dashboard', href: '/out-source', module: 'Outsource' },
+      { tKey: 'completeOutsource', label: 'Complete Outsource', href: '/out-source/complete', module: 'Outsource' },
+      { tKey: 'serviceOutsource', label: 'Service Outsource', href: '/out-source/Outsource-Service', module: 'Outsource' }
+    ]
+  },
   { tKey: 'qualityPacking', label: 'Quality & Packing', href: '/quality-packing', icon: ShieldCheck, module: 'Quality & Packing' },
   { tKey: 'logistics', label: 'Logistics', href: '/logistics', icon: Map, module: 'Logistics' },
   { tKey: 'accounts', label: 'Accounts', href: '/accounts', icon: PieChart, module: 'Accounts' },
+  { tKey: 'manageUser', label: 'Manage User', href: '/manage-user', icon: User, module: 'Manage User' },
   { tKey: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'Settings' },
 ];
 
@@ -97,6 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setMounted(true);
@@ -128,6 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Handle active state matching (e.g., if pathname is '/orders', Orders is active)
   const isItemActive = (href: string) => {
     if (!href) return false;
+    
     if (href === '/') {
       return pathname === '/';
     }
@@ -137,9 +161,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return pathname === '/production-dashboard';
     }
     
+    if (href === '/out-source') {
+      return pathname === '/out-source';
+    }
+    
     // Alternate split match to catch nested /production links without highlighting on dashboard
     if (href === '/production') {
       return pathname === '/production' || (pathname?.startsWith('/production/') && !pathname.startsWith('/production-dashboard'));
+    }
+    
+    // Support for query parameters routing (e.g. /store?tab=raw)
+    if (href.includes('?')) {
+      const [basePath, queryStr] = href.split('?');
+      if (pathname === basePath) {
+        const currentQuery = searchParams ? searchParams.toString() : '';
+        if (currentQuery && currentQuery.includes(queryStr)) {
+          return true;
+        }
+      }
+      return false;
     }
     
     return pathname?.startsWith(href);
@@ -167,7 +207,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname, mounted]);
 
   return (
-    <div className="fixed inset-0 flex bg-neutral-100 dark:bg-slate-950 font-sans">
+    <div className="fixed inset-0 flex bg-neutral-100 dark:bg-neutral-900 font-sans">
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -179,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 bg-[#1e293b] text-neutral-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
+        fixed inset-y-0 left-0 z-50 bg-[#1e293b] dark:bg-[#0b0b0c] border-r border-transparent dark:border-white/5 text-neutral-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         ${sidebarCollapsed ? 'w-20' : 'w-64'}
       `}>
@@ -202,7 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className={`flex-1 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${sidebarCollapsed ? 'overflow-visible' : 'overflow-y-auto'}`}>
           <div className={`mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider transition-all duration-300 overflow-hidden ${sidebarCollapsed ? 'px-0 h-0 opacity-0' : 'px-4 h-auto opacity-100'}`}>
             {!sidebarCollapsed && (t('sidebar.mainMenu') || 'MAIN MENU')}
           </div>
@@ -215,7 +255,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const isOpen = openMenus.includes(item.tKey);
 
               return (
-                <div key={item.tKey} className="relative group">
+                <div 
+                  key={item.tKey} 
+                  className="relative group"
+                >
                   {hasChildren ? (
                     <button
                       onClick={() => toggleMenu(item.tKey)}
@@ -263,8 +306,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             href={child.href}
                             onClick={() => setSidebarOpen(false)}
                             className={`block relative rounded-lg text-sm font-medium px-3 py-2 transition-colors ${childActive 
-                              ? 'text-white bg-blue-600' 
-                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
+                              ? 'text-white bg-blue-600 dark:bg-[#1d4ed8] shadow-sm' 
+                              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                           >
                             {childActive && (
                                <div className="absolute -left-[19px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#1e293b]"></div>
@@ -279,12 +322,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   )}
 
-                  {/* Tooltip for Collapsed State */}
+                  {/* Pure CSS Hover Flyout for Collapsed Sidebar */}
                   {sidebarCollapsed && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 bg-neutral-800 text-white text-xs font-medium px-2 py-1.5 rounded shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[60]">
-                      {itemName}
-                      {/* Tooltip arrow */}
-                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-800"></div>
+                    <div className="hidden group-hover:block absolute left-full top-0 pl-3 z-[60] w-56">
+                      {hasChildren ? (
+                        <div className="bg-[#121212] dark:bg-[#18181b] border border-zinc-800 rounded-lg p-2 shadow-xl">
+                          <div className="px-2 py-1 mb-1 border-b border-zinc-800 font-bold text-xs text-neutral-400 uppercase tracking-wider">
+                            {itemName}
+                          </div>
+                          <div className="flex flex-col">
+                            {item.children.filter((child: any) => user?.role === 'Super Admin' || user?.modules_access?.includes(child.module)).map((child: any) => {
+                              const childActive = isItemActive(child.href);
+                              return (
+                                <Link
+                                  key={child.tKey}
+                                  href={child.href}
+                                  onClick={() => setSidebarOpen(false)}
+                                  className={`px-3 py-2 text-sm transition-colors rounded flex items-center gap-2 ${
+                                    childActive 
+                                      ? 'text-white bg-blue-600' 
+                                      : 'text-zinc-200 hover:text-white hover:bg-zinc-800'
+                                  }`}
+                                >
+                                  {child.icon && <child.icon className="w-4 h-4 shrink-0" />}
+                                  {child.label}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-[#121212] dark:bg-[#18181b] border border-zinc-800 text-zinc-200 text-xs font-medium px-3 py-2 rounded shadow-xl whitespace-nowrap mt-2 relative">
+                          {itemName}
+                          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-zinc-800"></div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -298,7 +370,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         {/* Top Navbar */}
-        <header className="flex-shrink-0 h-16 bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm z-30">
+        <header className="flex-shrink-0 h-16 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm z-30">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -307,7 +379,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="h-6 w-6" />
             </button>
 
-            <div className="hidden sm:flex items-center bg-neutral-100 dark:bg-slate-800 rounded-lg px-3 py-2 w-72">
+            <div className="hidden sm:flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-lg px-3 py-2 w-72">
               <Search className="h-4 w-4 text-neutral-400" />
               <input
                 type="text"
@@ -336,7 +408,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onChange={(e) => setCurrentDate(e.target.value)}
                 className="absolute opacity-0 w-0 h-0"
               />
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-slate-800 rounded-lg text-sm font-medium border border-neutral-200 dark:border-slate-700 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors pointer-events-none">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors pointer-events-none">
                 <Calendar className="w-4 h-4 text-blue-500" />
                 <span className="text-neutral-700 dark:text-neutral-300">
                   {mounted && currentDate ? formatDateDisplay(currentDate) : ''}
@@ -353,14 +425,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
 
             <LanguageSwitcher />
-            <div className="h-8 w-px bg-neutral-200 dark:bg-slate-700 hidden sm:block"></div>
+            <div className="h-8 w-px bg-neutral-200 dark:bg-neutral-700 hidden sm:block"></div>
 
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-neutral-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
                   {(user as any)?.fullName ? (user as any).fullName.charAt(0).toUpperCase() : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
                 </div>
                 <div className="hidden md:block text-left">
@@ -371,7 +443,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-800 rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-neutral-700 z-50 overflow-hidden">
                   <Link
                     href="/profile"
                     onClick={() => setProfileDropdownOpen(false)}
@@ -380,7 +452,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <User className="h-4 w-4 text-neutral-400" />
                     {t('actions.viewProfile')}
                   </Link>
-                  <div className="border-t border-neutral-100 dark:border-slate-800 my-1"></div>
+                  <div className="border-t border-neutral-100 dark:border-neutral-700 my-1"></div>
                   <button
                     onClick={() => {
                       logout();
@@ -398,7 +470,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Main Scrollable Content */}
-        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-slate-950 p-4 sm:p-5 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900 p-4 sm:p-5 lg:p-8">
           {children}
         </main>
       </div>

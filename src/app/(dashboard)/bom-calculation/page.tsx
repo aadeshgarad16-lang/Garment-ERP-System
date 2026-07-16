@@ -89,21 +89,21 @@ function SearchableDropdown({
           onFocus={() => setIsOpen(true)}
           disabled={disabled}
           placeholder={placeholder}
-          className="w-full h-[42px] px-3 py-2.5 pr-10 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-[42px] px-3 py-2.5 pr-10 bg-card border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
           <ChevronDown className="h-4 w-4" />
         </div>
       </div>
       {isOpen && !disabled && (
-        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-lg py-1">
+        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-card border border-border rounded-lg shadow-lg py-1">
           {filteredOptions.length === 0 ? (
             <li className="px-3 py-2 text-sm text-neutral-500">No options found</li>
           ) : (
             filteredOptions.map((opt, idx) => (
               <li
                 key={idx}
-                className="px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 cursor-pointer"
+                className="px-3 py-2 text-sm text-foreground hover:bg-indigo-50 dark:hover:bg-indigo-900/50 cursor-pointer"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onChange(opt);
@@ -382,63 +382,63 @@ export default function BOMCalculationPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Calculator className="h-6 w-6 text-indigo-600" />
             {t('bom.title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{t('bom.subtitle')}</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('bom.subtitle')}</p>
         </div>
       </div>
 
       <div className="space-y-6">
         {/* 1. BOM Summary Cards (Top) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                 <Scissors className="h-4 w-4 text-blue-600" />
               </div>
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('bom.fabric')}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.fabric')}</p>
             </div>
-            <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">meters</span></p>
+            <p className="text-xl font-bold text-foreground">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">meters</span></p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                 <Layers className="h-4 w-4 text-indigo-600" />
               </div>
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('bom.allied')}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.allied')}</p>
             </div>
-            <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">units</span></p>
+            <p className="text-xl font-bold text-foreground">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">units</span></p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
                 <DollarSign className="h-4 w-4 text-emerald-600" />
               </div>
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('bom.cost')}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.cost')}</p>
             </div>
-            <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">₹{estimatedCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-xl font-bold text-foreground">₹{estimatedCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
                 <Box className="h-4 w-4 text-amber-600" />
               </div>
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">{t('bom.shortages')}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.shortages')}</p>
             </div>
-            <p className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{itemsToProcure} <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">{t('procurement.requestsHeader') || 'materials'}</span></p>
+            <p className="text-xl font-bold text-foreground">{itemsToProcure} <span className="text-sm font-normal text-muted-foreground">{t('procurement.requestsHeader') || 'materials'}</span></p>
           </div>
         </div>
 
         {/* 2. Order Configuration (Horizontal Full-Width) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30 rounded-t-xl">
-            <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+        <div className="bg-card rounded-xl shadow-sm border border-border">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 rounded-t-xl">
+            <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
               {t('bom.config')}
             </h2>
           </div>
@@ -468,7 +468,7 @@ export default function BOMCalculationPage() {
             </div>
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
-              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
                 {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
               </div>
             </div>
@@ -489,7 +489,7 @@ export default function BOMCalculationPage() {
                     if (val < 0) val = 0;
                     setWastage(val);
                   }}
-                  className="w-full h-[42px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="w-full h-[42px] px-3 py-2.5 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 />
                 <span className="text-indigo-600 font-bold">%</span>
               </div>
@@ -498,10 +498,10 @@ export default function BOMCalculationPage() {
         </div>
 
         {/* 3. Garment Details */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-5 py-4 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-              <Layers className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4 text-muted-foreground" />
               {t('bom.details')}
             </h2>
             <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-100">
@@ -516,13 +516,13 @@ export default function BOMCalculationPage() {
                 <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
               ) : (
                 activeSpecs.map((spec: any, idx: number) => (
-                  <div key={idx} className="bg-neutral-50 dark:bg-slate-800/50 p-3 rounded-lg border border-neutral-100 dark:border-slate-700 flex justify-between items-center">
+                  <div key={idx} className="bg-neutral-50 dark:bg-neutral-800/50 p-3 rounded-lg border border-neutral-100 dark:border-neutral-700 flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{spec.itemDescription || '-'} - {spec.pattern || '-'}</p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Size: {spec.size || '-'} | Ord: {spec.quantity || 0}</p>
+                      <p className="text-sm font-medium text-foreground">{spec.itemDescription || '-'} - {spec.pattern || '-'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Size: {spec.size || '-'} | Ord: {spec.quantity || 0}</p>
                     </div>
-                    <div className="text-right pl-3 border-l border-neutral-200 dark:border-slate-600">
-                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase">Req.</p>
+                    <div className="text-right pl-3 border-l border-neutral-200 dark:border-neutral-600">
+                      <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
                       <p className="text-sm font-bold text-indigo-700">{Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0))}</p>
                     </div>
                   </div>
@@ -537,7 +537,7 @@ export default function BOMCalculationPage() {
           <div className="bg-red-50 rounded-xl shadow-sm border border-red-200 overflow-hidden">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
-                <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-red-200 flex-shrink-0">
+                <div className="bg-card p-2 rounded-lg border border-red-200 flex-shrink-0">
                   <ShoppingCart className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
@@ -554,15 +554,15 @@ export default function BOMCalculationPage() {
         )}
 
         {/* 4. Materials Calculation Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-          <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-slate-800/30">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{t('bom.materials')}</h2>
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-neutral-800/30">
+            <h2 className="text-lg font-semibold text-card-foreground">{t('bom.materials')}</h2>
           </div>
 
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="bg-white dark:bg-slate-900 border-b border-neutral-100 dark:border-slate-800 text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-medium">
+                <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-4 py-3.5 w-[28%] text-left font-semibold">{t('inventoryVal.materialsHeader') || 'Material'}</th>
                   <th className="px-4 py-3.5 w-[10%] text-left font-semibold whitespace-nowrap">Unit</th>
                   <th className="px-4 py-3.5 w-[13%] text-right font-semibold whitespace-nowrap">Per Piece</th>
@@ -578,21 +578,21 @@ export default function BOMCalculationPage() {
                     <tr key={idx} className={isShortage ? "bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" : "hover:bg-neutral-50/80 dark:hover:bg-slate-800/50 transition-colors"}>
                       <td className="px-4 py-[18px] text-left w-[28%]">
                         <div className="flex flex-col">
-                          <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.name}</span>
-                          <span className={`text-xs ${isShortage ? 'text-red-600 dark:text-red-500' : 'text-neutral-500 dark:text-neutral-400'}`}>{item.category}</span>
+                          <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                          <span className={`text-xs ${isShortage ? 'text-red-600 dark:text-red-500' : 'text-muted-foreground'}`}>{item.category}</span>
                         </div>
                       </td>
                       <td className="px-4 py-[18px] text-left whitespace-nowrap w-[10%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.unit}</span>
+                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{item.unit}</span>
                       </td>
                       <td className="px-4 py-[18px] text-right whitespace-nowrap w-[13%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{item.perPiece}</span>
+                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{item.perPiece}</span>
                       </td>
                       <td className="px-4 py-[18px] text-right whitespace-nowrap w-[14%]">
-                        <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-neutral-900 dark:text-neutral-100'}`}>{item.baseRequired.toLocaleString()}</span>
+                        <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>{item.baseRequired.toLocaleString()}</span>
                       </td>
                       <td className="px-4 py-[18px] text-right whitespace-nowrap w-[20%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400'}`}>{wastage}% <span className={`text-xs ${isShortage ? 'text-red-400 dark:text-red-500' : 'text-neutral-400'}`}>(+{Math.ceil(item.wastageAmount)})</span></span>
+                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{wastage}% <span className={`text-xs ${isShortage ? 'text-red-400 dark:text-red-500' : 'text-neutral-400'}`}>(+{Math.ceil(item.wastageAmount)})</span></span>
                       </td>
                       <td className="px-4 py-[18px] text-right whitespace-nowrap w-[15%]">
                         <span className={`text-sm font-bold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{item.finalQuantity.toLocaleString()}</span>
@@ -603,14 +603,14 @@ export default function BOMCalculationPage() {
               </tbody>
             </table>
           </div>
-          <div className="bg-neutral-50 dark:bg-slate-900 px-4 py-3 border-t border-neutral-200 dark:border-slate-700 text-xs text-neutral-500 dark:text-neutral-400 flex justify-between">
+          <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 border-t border-border text-xs text-muted-foreground flex justify-between">
             <p>{t('bom.wastage') || 'Calculations include wastage margin.'}</p>
             <p>{t('dashboard.recentOrders.headers.amount') || 'Last recalculated: Just now'}</p>
           </div>
         </div>
 
         {/* 5. Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-neutral-200 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-border">
           <div className="flex-1">
             {totalProductionRequired === 0 && (
               <p className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
@@ -620,7 +620,7 @@ export default function BOMCalculationPage() {
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <button className="w-full sm:w-auto px-6 py-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm flex items-center justify-center gap-2">
+            <button className="w-full sm:w-auto px-6 py-2.5 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2">
               <Download className="h-4 w-4" />
               {t('bom.export')}
             </button>
@@ -680,7 +680,7 @@ export default function BOMCalculationPage() {
                 }}
                 disabled={totalProductionRequired === 0}
                 className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0
-                  ? 'bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700'
+                  ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
               >
@@ -692,7 +692,7 @@ export default function BOMCalculationPage() {
                 type="button"
                 disabled
                 title="You do not have permission to access Inventory Check."
-                className="w-full sm:w-auto px-8 py-2.5 bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed border border-neutral-200 dark:border-slate-700 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-2.5 bg-muted text-neutral-400 cursor-not-allowed border border-border rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2"
               >
                 Max Stage Reached
               </button>

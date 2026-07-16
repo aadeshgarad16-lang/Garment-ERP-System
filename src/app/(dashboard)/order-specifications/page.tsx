@@ -78,7 +78,7 @@ const INITIAL_TEMPLATES: AddressTemplate[] = [
 ];
 
 const INPUT_STYLE =
-  "w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 border-neutral-300 dark:border-slate-700 focus:ring-blue-500 transition shadow-sm";
+  "w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 border-neutral-300 dark:border-neutral-700 focus:ring-ring transition shadow-sm";
 
 const SIZE_OPTIONS = ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "XS", "S", "M", "L", "XL", "XXL", "XXXL"].map(s => ({ label: s, value: s }));
 
@@ -179,15 +179,15 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
               {visibleTags.map(val => {
                 const opt = options.find(o => o.value === val);
                 return (
-                  <span key={val} className="flex items-center gap-1 bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 px-2 py-1 rounded-full text-xs font-medium border border-neutral-200 dark:border-slate-700">
+                  <span key={val} className="flex items-center gap-1 bg-muted text-card-foreground px-2 py-1 rounded-full text-xs font-medium border border-border">
                     {isColorMode && opt?.colorCode && (
-                      <span className="w-2 h-2 rounded-full border border-neutral-300 dark:border-slate-600" style={{ background: opt.colorCode }} />
+                      <span className="w-2 h-2 rounded-full border border-border" style={{ background: opt.colorCode }} />
                     )}
                     {opt ? opt.label : val}
                     <button
                       type="button"
                       onClick={(e) => removeSelection(e, val)}
-                      className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 ml-0.5"
+                      className="text-neutral-500 hover:text-foreground ml-0.5"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -195,7 +195,7 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
                 );
               })}
               {hiddenCount > 0 && (
-                <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-800/50 px-2 py-1 rounded-full border border-neutral-200 dark:border-slate-700">
+                <span className="text-xs font-medium text-muted-foreground bg-neutral-50 dark:bg-neutral-800/50 px-2 py-1 rounded-full border border-border">
                   +{hiddenCount} more
                 </span>
               )}
@@ -206,8 +206,8 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-neutral-100 dark:border-slate-800 flex items-center gap-2">
+        <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-neutral-100 dark:border-neutral-700 flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2 h-4 w-4 text-neutral-400" />
               <input
@@ -216,7 +216,7 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-neutral-50 dark:bg-slate-800 border border-transparent focus:border-blue-500 rounded-md focus:outline-none transition-colors text-neutral-800 dark:text-neutral-200"
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-800 border border-transparent focus:border-blue-500 rounded-md focus:outline-none transition-colors text-card-foreground"
               />
             </div>
             {selectedValues.length > 0 && (
@@ -248,14 +248,14 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
                   <div
                     key={opt.value}
                     onClick={(e) => { e.stopPropagation(); toggleSelection(opt.value); }}
-                    className="group flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-slate-800 rounded-md cursor-pointer transition-colors"
+                    className="group flex items-center gap-3 px-3 py-2 hover:bg-muted rounded-md cursor-pointer transition-colors"
                   >
-                    <div className={`flex items-center justify-center w-4 h-4 rounded border ${isSelected ? "bg-blue-500 border-blue-500" : "border-neutral-300 dark:border-slate-600 bg-white dark:bg-slate-900"}`}>
+                    <div className={`flex items-center justify-center w-4 h-4 rounded border ${isSelected ? "bg-blue-500 border-blue-500" : "border-border bg-card"}`}>
                       {isSelected && <Check className="h-3 w-3 text-white" />}
                     </div>
                     <div className="flex items-center gap-2 flex-1">
                       {isColorMode && opt.colorCode && (
-                        <span className="w-3 h-3 rounded-full border border-neutral-200 dark:border-slate-700" style={{ background: opt.colorCode }} />
+                        <span className="w-3 h-3 rounded-full border border-border" style={{ background: opt.colorCode }} />
                       )}
                       <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{opt.label}</span>
                     </div>
@@ -975,34 +975,34 @@ function GarmentSpecsContent() {
       <WorkflowIndicator currentStep="Order Specifications" />
 
       {/* HEADER MARGIN & PREVIEW TOGGLE */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             Order Specifications Matrix
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Input, manage, and configure the material specifications for line items.
           </p>
         </div>
         {isLiveOrder ? (
-          <div className="flex bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 shadow-sm">
+          <div className="flex bg-blue-50 dark:bg-neutral-800/20 px-4 py-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 shadow-sm">
             <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
               Selected Delivery Format: {deliveryType === "single" ? "Single Delivery Address" : "Multi Delivery Address"}
             </span>
           </div>
         ) : (
-          <div className="flex bg-neutral-100 dark:bg-slate-800 p-1 rounded-lg border border-neutral-200 dark:border-slate-700 shadow-inner overflow-hidden">
+          <div className="flex bg-muted p-1 rounded-lg border border-border shadow-inner overflow-hidden">
             <button
               type="button"
               onClick={() => setDeliveryType("single")}
-              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${deliveryType === "single" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200 dark:border-slate-700" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
+              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${deliveryType === "single" ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm border border-border" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
             >
               Preview Format: Single Delivery
             </button>
             <button
               type="button"
               onClick={() => setDeliveryType("multi")}
-              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${deliveryType === "multi" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200 dark:border-slate-700" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
+              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${deliveryType === "multi" ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm border border-border" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"}`}
             >
               Preview Format: Multi Delivery
             </button>
@@ -1011,9 +1011,9 @@ function GarmentSpecsContent() {
       </div>
 
       {/* GARMENT LINE SPECIFICATIONS */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden mb-6">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-4 bg-neutral-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mb-6">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
             Garment Line Specifications
           </h2>
           <button
@@ -1025,20 +1025,20 @@ function GarmentSpecsContent() {
           </button>
         </div>
 
-        <div className="p-6 bg-neutral-50/50 dark:bg-slate-800/30">
+        <div className="p-6 bg-neutral-50/50 dark:bg-neutral-800/30">
           <div className="mb-6 space-y-3">
-            <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-slate-800/50 text-neutral-500 border-neutral-200 dark:border-slate-700 font-semibold text-sm flex items-center gap-2.5 shadow-sm">
+            <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 border-border font-semibold text-sm flex items-center gap-2.5 shadow-sm">
               <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500/80 animate-pulse"></span>
               <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected PO Number:</span>
-              <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
+              <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-neutral-800/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
                 {currentPoNumber.startsWith("PO") ? currentPoNumber : `#${currentPoNumber}`}
               </span>
             </div>
           </div>
           <div className="space-y-8">
             {specs.map((spec, index) => (
-              <div key={spec.id} className="relative bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm mt-4">
-                <div className="absolute -top-3 left-6 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-sm">
+              <div key={spec.id} className="relative bg-card border border-border rounded-2xl p-6 shadow-sm mt-4">
+                <div className="absolute -top-3 left-6 bg-blue-100 dark:bg-neutral-800/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-sm">
                   Item 1
                 </div>
                 {specs.length > 1 && (
@@ -1056,7 +1056,7 @@ function GarmentSpecsContent() {
                   {/* Row 1: Primary Selects, Size & Color */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
                       <select
                         value={spec.category || ""}
                         onChange={(e) => updateRow(spec.id, "category", e.target.value)}
@@ -1071,7 +1071,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Gender <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Gender <span className="text-red-500">*</span></label>
                       <select
                         value={spec.gender || ""}
                         onChange={(e) => updateRow(spec.id, "gender", e.target.value)}
@@ -1084,7 +1084,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Size (Multi-Select) <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Size (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={SIZE_OPTIONS}
                         selectedValues={spec.size ? spec.size.split(',').map(s => s.trim()).filter(Boolean) : []}
@@ -1094,7 +1094,7 @@ function GarmentSpecsContent() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Color (Multi-Select) <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Color (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={COLOR_OPTIONS}
                         selectedValues={spec.color ? spec.color.split(',').map(c => c.trim()).filter(Boolean) : []}
@@ -1109,7 +1109,7 @@ function GarmentSpecsContent() {
                   {/* Row 2: Symmetrical Small Metrics & Action Panel */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">HSN Code <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">HSN Code <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         value={spec.hsnCode || ""}
@@ -1119,7 +1119,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Quantity <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Quantity <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         value={spec.quantity === 0 ? "" : spec.quantity}
@@ -1132,7 +1132,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Unit Price <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Unit Price <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         value={spec.unitPrice === 0 ? "" : spec.unitPrice}
@@ -1145,7 +1145,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Action <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Action <span className="text-red-500">*</span></label>
                       <select
                         value={spec.productionType || "In House"}
                         onChange={(e) => updateRow(spec.id, "productionType", e.target.value as any)}
@@ -1159,7 +1159,7 @@ function GarmentSpecsContent() {
                   </div>
 
                   {deliveryType === "multi" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-neutral-800/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
                       <div>
                         <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5" /> Delivery Address (For this Item) <span className="text-red-500">*</span>
@@ -1168,7 +1168,7 @@ function GarmentSpecsContent() {
                           type="text"
                           value={spec.deliveryAddress || ""}
                           onChange={(e) => updateRow(spec.id, "deliveryAddress", e.target.value)}
-                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-blue-500`}
+                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-ring`}
                           placeholder="Enter complete delivery address"
                         />
                       </div>
@@ -1180,7 +1180,7 @@ function GarmentSpecsContent() {
                           type="text"
                           value={spec.deliveryPin || ""}
                           onChange={(e) => updateRow(spec.id, "deliveryPin", e.target.value)}
-                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-blue-500`}
+                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-ring`}
                           placeholder="e.g. 110001"
                         />
                       </div>
@@ -1190,7 +1190,7 @@ function GarmentSpecsContent() {
                   {/* Row 3: Large Textareas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Item Description <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Item Description <span className="text-red-500">*</span></label>
                       <textarea
                         value={itemSearchQueries[spec.id] !== undefined ? itemSearchQueries[spec.id] : (masterGarments.find(g => g.sku_no === spec.itemDescription)?.description || spec.itemDescription || "")}
                         onChange={(e) => {
@@ -1239,7 +1239,7 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Pattern <span className="text-red-500">*</span></label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Pattern <span className="text-red-500">*</span></label>
                       <textarea
                         value={spec.pattern || ""}
                         onChange={(e) => updateRow(spec.id, "pattern", e.target.value)}
@@ -1251,9 +1251,9 @@ function GarmentSpecsContent() {
 
                   {/* Row 4: Grand Upload Photo Box */}
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Upload Photo <span className="text-red-500">*</span></label>
-                    <label className="cursor-pointer flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition shadow-sm group">
-                      <div className="bg-blue-100 dark:bg-blue-900/60 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                    <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Upload Photo <span className="text-red-500">*</span></label>
+                    <label className="cursor-pointer flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 dark:bg-neutral-800/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition shadow-sm group">
+                      <div className="bg-blue-100 dark:bg-neutral-800/60 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
                         <Upload className="h-6 w-6" />
                       </div>
                       <span className="text-sm font-semibold truncate max-w-[90%] px-2">
@@ -1269,7 +1269,7 @@ function GarmentSpecsContent() {
                                   setPreviewUrl(spec.photoUrl || "");
                                   setIsPreviewOpen(true);
                                 }}
-                                className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline flex items-center gap-1 cursor-pointer font-semibold text-xs ml-2 bg-white dark:bg-slate-800 px-2 py-1 rounded-md border border-neutral-200 dark:border-slate-700 shadow-sm"
+                                className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline flex items-center gap-1 cursor-pointer font-semibold text-xs ml-2 bg-card px-2 py-1 rounded-md border border-border shadow-sm"
                               >
                                 <Eye className="h-3.5 w-3.5" /> View
                               </button>
@@ -1313,8 +1313,8 @@ function GarmentSpecsContent() {
       </div>
 
       {/* COMPLETE SPECIFICATION OVERVIEW */}
-      <div className="mt-8 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50 flex justify-between items-center">
+      <div className="mt-8 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
           <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-indigo-500" />
             Complete Specification Overview
@@ -1323,7 +1323,7 @@ function GarmentSpecsContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-800/80 border-b border-neutral-200 dark:border-slate-700 text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+              <tr className="bg-neutral-50 dark:bg-neutral-800/80 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                 <th className="px-4 py-3 text-left">Garment / Desc</th>
                 <th className="px-4 py-3 text-left">Category / Pattern</th>
                 <th className="px-4 py-3 text-left">Production Type</th>
@@ -1343,8 +1343,8 @@ function GarmentSpecsContent() {
                 specs.map((spec) => {
                   const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id);
                   return (
-                    <tr key={spec.id} className="bg-white dark:bg-slate-900 hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    <tr key={spec.id} className="bg-card hover:bg-muted/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground">
                         {spec.itemDescription}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
@@ -1358,7 +1358,7 @@ function GarmentSpecsContent() {
                         <div>Sz: {spec.size || "-"}</div>
                         <div className="text-xs text-neutral-400">Clr: {spec.color || "-"}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100 text-center">
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground text-center">
                         {spec.quantity}
                       </td>
                       <td className="px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300">
@@ -1367,8 +1367,8 @@ function GarmentSpecsContent() {
                         ) : (
                           <ul className="space-y-1">
                             {specAllocations.map(alloc => (
-                              <li key={alloc.id} className="flex flex-col border border-neutral-100 dark:border-slate-800 rounded p-1.5 bg-neutral-50 dark:bg-slate-800/30">
-                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                              <li key={alloc.id} className="flex flex-col border border-neutral-100 dark:border-neutral-700 rounded p-1.5 bg-neutral-50 dark:bg-neutral-800/30">
+                                <span className="font-semibold text-card-foreground">
                                   {alloc.quantity} units {alloc.size ? `(Sz: ${alloc.size})` : ''} {alloc.color ? `(Clr: ${alloc.color})` : ''}
                                 </span>
                                 <span className="text-neutral-500 truncate max-w-[200px]" title={alloc.deliveryAddress}>
@@ -1389,9 +1389,9 @@ function GarmentSpecsContent() {
       </div>
 
       {/* DETAIL SPEC ALLOCATIONS */}
-      <div id="multi-delivery-allocations" className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-neutral-200 dark:border-slate-700 overflow-hidden">
-        <div className="border-b border-neutral-200 dark:border-slate-700 px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+      <div id="multi-delivery-allocations" className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-card-foreground">
             Detailed Specifications & Allocation
           </h2>
           <div className="flex items-center gap-3">
@@ -1410,7 +1410,7 @@ function GarmentSpecsContent() {
                     }
                     e.target.value = "";
                   }}
-                  className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-700 cursor-pointer shadow-sm transition-colors"
+                  className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card border-neutral-300 dark:border-neutral-700 cursor-pointer shadow-sm transition-colors"
                   defaultValue=""
                 >
                   <option value="" disabled>Address List...</option>
@@ -1426,7 +1426,7 @@ function GarmentSpecsContent() {
                 </select>
                 <button
                   onClick={addAllocationRow}
-                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
+                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-neutral-800/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Plus className="h-4 w-4" /> Add Row
                 </button>
@@ -1437,24 +1437,24 @@ function GarmentSpecsContent() {
 
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
-            <thead className="bg-neutral-50 dark:bg-slate-800">
-              <tr className="text-xs uppercase text-neutral-500 dark:text-neutral-400 font-semibold tracking-wider">
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[70px] text-center">Sr. No.</th>
-                <th className={`px-2 py-3 border-b border-neutral-200 dark:border-slate-700 ${deliveryType === "single" ? "w-[35%]" : "w-[22%]"}`}>Address</th>
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Item</th>
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Size</th>
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Color</th>
+            <thead className="bg-neutral-50 dark:bg-neutral-800">
+              <tr className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
+                <th className="px-2 py-3 border-b border-border w-[70px] text-center">Sr. No.</th>
+                <th className={`px-2 py-3 border-b border-border ${deliveryType === "single" ? "w-[35%]" : "w-[22%]"}`}>Address</th>
+                <th className="px-2 py-3 border-b border-border w-[13%]">Item</th>
+                <th className="px-2 py-3 border-b border-border w-[13%]">Size</th>
+                <th className="px-2 py-3 border-b border-border w-[13%]">Color</th>
                 {deliveryType === "multi" && (
-                  <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Delivery Type</th>
+                  <th className="px-2 py-3 border-b border-border w-[13%]">Delivery Type</th>
                 )}
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 w-[13%]">Quantity</th>
-                <th className="px-2 py-3 border-b border-neutral-200 dark:border-slate-700 text-center w-[13%]">Action</th>
+                <th className="px-2 py-3 border-b border-border w-[13%]">Quantity</th>
+                <th className="px-2 py-3 border-b border-border text-center w-[13%]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-700">
               {detailedAllocations.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                     Add a row above to configure detailed specifications.
                   </td>
                 </tr>
@@ -1478,7 +1478,7 @@ function GarmentSpecsContent() {
 
                   return (
                     <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
-                      <td className="px-2 py-3 font-medium text-neutral-900 dark:text-neutral-100 text-center w-[70px]">
+                      <td className="px-2 py-3 font-medium text-foreground text-center w-[70px]">
                         {index + 1}.
                       </td>
                       <td className="px-2 py-3 align-top">
@@ -1506,9 +1506,9 @@ function GarmentSpecsContent() {
                             }}
                             readOnly={deliveryType === "single"}
                             placeholder="Delivery Location & PIN"
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none text-xs ${deliveryType === "single"
-                              ? "bg-neutral-100 dark:bg-slate-800 border-transparent text-neutral-600 dark:text-neutral-400 cursor-not-allowed"
-                              : "bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none text-xs ${deliveryType === "single"
+                              ? "bg-muted border-transparent text-muted-foreground cursor-not-allowed"
+                              : "bg-card border-border text-foreground"
                               }`}
                           />
                           {deliveryType === "multi" && showAddressDropdownRowId === alloc.id && currentCustomerName !== "" && typeof document !== "undefined" && createPortal(
@@ -1521,13 +1521,13 @@ function GarmentSpecsContent() {
                                 width: `${dropdownCoords.width}px`,
                                 zIndex: 9999,
                               }}
-                              className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
+                              className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
                             >
-                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-slate-800 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 border-b border-neutral-100 dark:border-slate-800 uppercase tracking-wider">
+                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-neutral-700 uppercase tracking-wider">
                                 Saved Addresses for {currentCustomerName}
                               </div>
                               {rowFilteredAddresses.length === 0 ? (
-                                <div className="px-3 py-2.5 text-[11px] text-neutral-500 dark:text-neutral-400 text-center">
+                                <div className="px-3 py-2.5 text-[11px] text-muted-foreground text-center">
                                   No matching saved addresses.
                                 </div>
                               ) : (
@@ -1561,7 +1561,7 @@ function GarmentSpecsContent() {
                           <select
                             value={alloc.itemId}
                             onChange={(e) => updateAllocationRow(alloc.id, "itemId", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm bg-card border-border text-foreground"
                           >
                             <option value="">Select Item</option>
                             {specs.filter((s) => s.category?.trim()).map((s) => (
@@ -1578,7 +1578,7 @@ function GarmentSpecsContent() {
                           <select
                             value={alloc.size}
                             onChange={(e) => updateAllocationRow(alloc.id, "size", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm font-semibold bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-blue-600 dark:text-blue-400"
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
                           >
                             <option value="">Select Size</option>
                             {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.size
@@ -1599,7 +1599,7 @@ function GarmentSpecsContent() {
                           <select
                             value={alloc.color || ""}
                             onChange={(e) => updateAllocationRow(alloc.id, "color", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm font-semibold bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-blue-600 dark:text-blue-400"
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
                           >
                             <option value="">Select Color</option>
                             {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.color
@@ -1621,7 +1621,7 @@ function GarmentSpecsContent() {
                             <select
                               value={alloc.deliveryMethod || ""}
                               onChange={(e) => updateAllocationRow(alloc.id, "deliveryMethod", e.target.value)}
-                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow pr-10 text-sm font-semibold bg-white dark:bg-slate-900 border-neutral-300 dark:border-slate-600 text-neutral-900 dark:text-neutral-100"
+                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-foreground"
                             >
                               <option value="">Select Type</option>
                               <option value="Door Delivery">Door Delivery</option>
@@ -1642,11 +1642,11 @@ function GarmentSpecsContent() {
                             updateAllocationRow(alloc.id, "quantity", val ? Number(val) : 0);
                           }}
                           placeholder="0"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 transition-shadow ${isExceeding ? "border-red-500 ring-1 ring-red-500" : isExact ? "border-green-500 ring-1 ring-green-500" : "border-neutral-300 dark:border-slate-600"}`}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-card transition-shadow ${isExceeding ? "border-red-500 ring-1 ring-red-500" : isExact ? "border-green-500 ring-1 ring-green-500" : "border-border"}`}
                         />
                         {alloc.itemId && targetItem && (
                           <div className="mt-1">
-                            <p className={`text-xs font-medium ${isExceeding ? "text-red-500" : isExact ? "text-green-600 dark:text-green-500" : "text-neutral-500 dark:text-neutral-400"}`}>
+                            <p className={`text-xs font-medium ${isExceeding ? "text-red-500" : isExact ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}>
                               {isExceeding
                                 ? `Target: ${targetQty} (Exceeded by ${Math.abs(remainingQty)} units)`
                                 : isExact
@@ -1679,11 +1679,11 @@ function GarmentSpecsContent() {
 
 
       {/* FOOTER WIDGET BUTTONS */}
-      <div className="w-full flex justify-between items-center mt-6 border-t border-neutral-200 dark:border-slate-700 pt-6">
+      <div className="w-full flex justify-between items-center mt-6 border-t border-border pt-6">
         <button
           type="button"
           onClick={() => router.push("/orders")}
-          className="px-5 py-2.5 border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition shadow-sm"
+          className="px-5 py-2.5 border border-neutral-300 dark:border-neutral-700 bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition shadow-sm"
         >
           ← Back to Order Initiation
         </button>
@@ -1721,35 +1721,35 @@ function GarmentSpecsContent() {
       {/* SUBMIT CONFIRMATION MODAL */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+          <div className="bg-card rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">
                 Confirm Submission
               </h3>
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                className="text-neutral-500 hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-5">
-              <p className="text-neutral-600 dark:text-neutral-400 mb-6 text-sm">
+              <p className="text-muted-foreground mb-6 text-sm">
                 Are you sure you want to submit this order specification? You can also save it as a draft to continue later.
               </p>
               <div className="flex flex-col sm:flex-row justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowConfirmModal(false)}
-                  className="px-4 py-2 border border-neutral-300 dark:border-slate-600 rounded-lg text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={onSaveDraft}
-                  className="px-4 py-2 bg-neutral-100 dark:bg-slate-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-slate-700 transition"
+                  className="px-4 py-2 bg-muted text-card-foreground border border-border rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-slate-700 transition"
                 >
                   Save as Draft
                 </button>
@@ -1768,15 +1768,15 @@ function GarmentSpecsContent() {
 
       {/* DRAWER SECTION SHEET */}
       {showDraftsDrawer && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-neutral-200 dark:border-slate-700 transform transition-transform">
-          <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-card shadow-2xl flex flex-col border-l border-border transform transition-transform">
+          <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50 dark:bg-neutral-800/50">
+            <h3 className="text-lg font-semibold text-foreground">
               Saved Drafts
             </h3>
             <button
               type="button"
               onClick={() => setShowDraftsDrawer(false)}
-              className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+              className="text-neutral-500 hover:text-foreground"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1786,13 +1786,13 @@ function GarmentSpecsContent() {
               <p className="text-neutral-500 text-sm text-center mt-10">No saved drafts found.</p>
             ) : (
               savedDrafts.map((draft) => (
-                <div key={draft.id} className="border border-neutral-200 dark:border-slate-700 rounded-lg p-4 bg-neutral-50 dark:bg-slate-800/50">
+                <div key={draft.id} className="border border-border rounded-lg p-4 bg-neutral-50 dark:bg-neutral-800/50">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{draft.poNumber}</h4>
+                      <h4 className="font-semibold text-sm text-foreground">{draft.poNumber}</h4>
                       <p className="text-xs text-neutral-500 mt-1">{draft.dateSaved}</p>
                     </div>
-                    <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded font-medium">
+                    <span className="bg-blue-100 text-blue-700 dark:bg-neutral-800/30 dark:text-blue-400 text-xs px-2 py-1 rounded font-medium">
                       {draft.totalQuantity} Items
                     </span>
                   </div>
@@ -1805,7 +1805,7 @@ function GarmentSpecsContent() {
                       setShowDraftsDrawer(false);
                       alert(`Draft ${draft.poNumber} loaded successfully!`);
                     }}
-                    className="w-full mt-3 px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-600 rounded-md text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                    className="w-full mt-3 px-3 py-2 bg-card border border-border rounded-md text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                   >
                     Load Draft
                   </button>
@@ -1823,22 +1823,22 @@ function GarmentSpecsContent() {
           onClick={() => setIsPreviewOpen(false)}
         >
           <div
-            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            className="relative bg-card rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-4 border-b border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800/50">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate pr-4">
+            <div className="flex justify-between items-center p-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50">
+              <h3 className="text-sm font-semibold text-foreground truncate pr-4">
                 Image Preview
               </h3>
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(false)}
-                className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 p-1 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-slate-800 transition"
+                className="text-neutral-500 hover:text-foreground p-1 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-slate-800 transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 bg-neutral-100 dark:bg-slate-950 flex items-center justify-center min-h-[300px]">
+            <div className="flex-1 overflow-auto p-4 bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center min-h-[300px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
@@ -1853,9 +1853,9 @@ function GarmentSpecsContent() {
       {/* SAVE NEW ADDRESS CONFIRMATION MODAL */}
       {showSaveNewAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
-            <div className="flex justify-between items-center p-5 border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2 text-left">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2 text-left">
                 <MapPin className="h-5 w-5 text-blue-500" />
                 Save New Address?
               </h3>
@@ -1871,12 +1871,12 @@ function GarmentSpecsContent() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed text-left">
+              <p className="text-sm text-muted-foreground leading-relaxed text-left">
                 This is a new address. Would you like to save it to this customer's profile for future use?
               </p>
-              <div className="bg-neutral-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-slate-800/60 text-left">
+              <div className="bg-neutral-50 dark:bg-neutral-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-700/60 text-left">
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
-                <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200 mt-0.5 mb-2">{currentCustomerName}</p>
+                <p className="text-xs font-bold text-card-foreground mt-0.5 mb-2">{currentCustomerName}</p>
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
                 <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5 leading-relaxed">
                   {pendingSaveAddress.replace(/-\s*PIN:\s*[1-9][0-9]{5}/i, "").trim()}
@@ -1901,7 +1901,7 @@ function GarmentSpecsContent() {
                     lastDeclinedAddress.current = pendingSaveAddress;
                     setShowSaveNewAddressModal(false);
                   }}
-                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition"
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                 >
                   No
                 </button>
@@ -1950,7 +1950,7 @@ export default function GarmentSpecsPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        <div className="p-8 text-center text-sm text-muted-foreground">
           Loading Order Specifications...
         </div>
       }

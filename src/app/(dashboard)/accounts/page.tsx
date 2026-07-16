@@ -11,7 +11,7 @@ export default function AccountsPage() {
       <div className="text-center">
         <PieChart className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-neutral-700 dark:text-neutral-300">{t('dashboard.sidebar.accounts') || 'Accounts'}</h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2">{t('dashboard.sidebar.underDevelopment') || 'This module is currently under development.'}</p>
+        <p className="text-muted-foreground mt-2">{t('dashboard.sidebar.underDevelopment') || 'This module is currently under development.'}</p>
       </div>
     </div>
   );
