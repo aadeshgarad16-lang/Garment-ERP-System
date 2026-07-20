@@ -20,6 +20,13 @@ import {
   ChevronRight,
   List,
   ChevronLeft,
+  Calendar,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import { getAuthHeaders } from "@/lib/api";
@@ -71,7 +78,7 @@ export default function StorePage() {
   // Sync tab state if the URL parameter changes directly
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list')) {
+    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list' || tab === 'overview')) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -83,7 +90,7 @@ export default function StorePage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
-            {activeTab === 'raw' ? 'Raw Material' : activeTab === 'pre' ? 'Pre-Stitched' : 'Material List'}
+            {activeTab === 'raw' ? 'Raw Material' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : 'Material List'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Manage inventory and stock availability
@@ -109,7 +116,7 @@ export default function StorePage() {
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
-            Pre-Stitched
+            Finished Goods
           </button>
 
           <button
@@ -121,6 +128,16 @@ export default function StorePage() {
           >
             Material List
           </button>
+
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "overview"
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+              : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
+              }`}
+          >
+            Stock Overview
+          </button>
         </div>
       </div>
 
@@ -131,6 +148,232 @@ export default function StorePage() {
         setEditRequest({ type, item });
         setActiveTab(type === 'Material' ? 'raw' : 'pre');
       }} />}
+      {activeTab === "overview" && <StockOverviewModule />}
+    </div>
+  );
+}
+
+// ==========================================
+// STOCK OVERVIEW MODULE
+// ==========================================
+function StockOverviewModule() {
+  const [selectedDate, setSelectedDate] = useState("");
+  const [timeframe, setTimeframe] = useState("monthly");
+  const [materialType, setMaterialType] = useState("raw");
+  const [isExportOpen, setIsExportOpen] = useState(false);
+
+  const handleExport = (type: "pdf" | "xlsx") => {
+    setIsExportOpen(false);
+    const reportTitle = `${materialType === 'raw' ? 'Raw Material' : 'Finished Goods'} Stock Overview`;
+    alert(`Downloading ${reportTitle} as ${type.toUpperCase()}...`);
+  };
+
+  const rawMockData = [
+    { id: 1, code: "RM-001", name: "Cotton Fabric", type: "Raw Material", unit: "Mtr", opStock: 500, purchase: 200, issue: 150, wip: 50, rate: 120, colorSize: "-", lastUpdated: "2026-07-20 10:30 AM" },
+    { id: 2, code: "RM-002", name: "Polyester Thread", type: "Raw Material", unit: "Rolls", opStock: 1000, purchase: 0, issue: 300, wip: 100, rate: 45, colorSize: "-", lastUpdated: "2026-07-19 02:15 PM" },
+    { id: 3, code: "FG-101", name: "Men's Formal Shirt", type: "Finished Goods", unit: "Pcs", opStock: 120, purchase: 50, issue: 80, wip: 0, rate: 850, colorSize: "Blue / M", lastUpdated: "2026-07-20 11:00 AM" },
+    { id: 4, code: "FG-102", name: "Denim Jeans", type: "Finished Goods", unit: "Pcs", opStock: 80, purchase: 100, issue: 20, wip: 0, rate: 1200, colorSize: "Black / 32", lastUpdated: "2026-07-18 09:45 AM" },
+  ];
+
+  const mockData = rawMockData.map(item => {
+    const total = item.opStock + item.purchase;
+    const closingStock = total - item.issue;
+    const netTotal = closingStock + item.wip;
+    const totalAmount = closingStock * item.rate;
+    return { ...item, total, closingStock, netTotal, totalAmount };
+  });
+
+  const filteredData = mockData.filter(item => {
+    return materialType === "all" || (materialType === "raw" && item.type === "Raw Material") || (materialType === "pre" && item.type === "Finished Goods");
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Sub-Tabs */}
+      <div className="flex p-1 space-x-1 bg-muted/50 rounded-lg max-w-md border border-border">
+        <button
+          onClick={() => setMaterialType("raw")}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            materialType === "raw" || materialType === "all"
+              ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+              : "text-neutral-500 hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          Raw Material
+        </button>
+        <button
+          onClick={() => setMaterialType("pre")}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            materialType === "pre"
+              ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+              : "text-neutral-500 hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          Finished Goods
+        </button>
+      </div>
+
+      {/* Filter Bar Controls */}
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px] space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Historical Snapshot</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          <div className="flex-1 min-w-[150px] space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Timeframe</label>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm appearance-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="custom">Custom Range</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-[200px] flex justify-end items-end relative ml-auto sm:ml-0">
+            <button
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              Export Report
+              <ChevronDown className="h-4 w-4 ml-1 opacity-80" />
+            </button>
+            
+            {isExportOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-10 py-1">
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2 transition-colors"
+                >
+                  <FileText className="h-4 w-4 text-red-500" />
+                  Export as PDF (.pdf)
+                </button>
+                <button
+                  onClick={() => handleExport("xlsx")}
+                  className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2 transition-colors"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+                  Export as Excel (.xlsx)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm table-fixed">
+            {materialType === "pre" ? (
+              <>
+                <thead className="bg-muted/50 border-b border-border text-[10px] sm:text-xs uppercase whitespace-nowrap">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-center w-[5%]">Sr. No</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-left w-[15%]">Type</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[13%]">Opening Stock</th>
+                    <th className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400 text-right w-[11%]">Production</th>
+                    <th className="px-4 py-3 font-medium text-red-600 dark:text-red-400 text-right w-[9%]">Sale</th>
+                    <th className="px-4 py-3 font-medium text-indigo-600 dark:text-indigo-400 text-right w-[12%]">Closing Stock</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[10%]">COST</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[15%]">Total Amount</th>
+                    <th className="px-4 py-3 pr-4 font-medium text-neutral-600 dark:text-neutral-400 text-center w-[10%]">Unit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredData.length > 0 ? (
+                    filteredData.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-center text-neutral-500 font-medium">{index + 1}</td>
+                        <td className="px-4 py-3 text-left">
+                          <div className="font-medium text-foreground truncate sm:whitespace-normal sm:break-words">{item.name}</div>
+                          <div className="text-[10px] sm:text-xs text-neutral-500">{item.code}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">{item.opStock}</td>
+                        <td className="px-4 py-3 text-right text-emerald-600"><ArrowUpRight className="inline h-3 w-3 mr-0.5" />{item.purchase}</td>
+                        <td className="px-4 py-3 text-right text-red-600"><ArrowDownRight className="inline h-3 w-3 mr-0.5" />{item.issue}</td>
+                        <td className="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">{item.closingStock}</td>
+                        <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">{formatCurrency(item.rate)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(item.totalAmount)}</td>
+                        <td className="px-4 py-3 pr-4 text-center text-neutral-600 dark:text-neutral-400">{item.unit}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center text-neutral-500">
+                        No stock data found matching your filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead className="bg-muted/50 border-b border-border text-[10px] sm:text-xs uppercase whitespace-nowrap">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-left w-[20%]">Description</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-center w-[6%]">Unit</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[8%]">Op. Stock</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[9%]">Purchase</th>
+                    <th className="px-4 py-3 font-medium text-indigo-600 dark:text-indigo-400 text-right w-[8%]">Total</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[7%]">Issue</th>
+                    <th className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400 text-right w-[8%]">Closing</th>
+                    <th className="px-4 py-3 font-medium text-amber-600 dark:text-amber-400 text-right w-[6%]">WIP</th>
+                    <th className="px-4 py-3 font-medium text-indigo-600 dark:text-indigo-400 text-right w-[8%]">Net Total</th>
+                    <th className="px-4 py-3 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[8%]">Rate</th>
+                    <th className="px-4 py-3 pr-4 font-medium text-neutral-600 dark:text-neutral-400 text-right w-[12%]">Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredData.length > 0 ? (
+                    filteredData.map((item) => (
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-left">
+                          <div className="font-medium text-foreground truncate sm:whitespace-normal sm:break-words">{item.name}</div>
+                          <div className="text-[10px] sm:text-xs text-neutral-500">{item.code}</div>
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-400">{item.unit}</td>
+                        <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">{item.opStock}</td>
+                        <td className="px-4 py-3 text-right text-emerald-600"><ArrowUpRight className="inline h-3 w-3 mr-0.5" />{item.purchase}</td>
+                        <td className="px-4 py-3 text-right font-medium text-indigo-600 dark:text-indigo-400">{item.total}</td>
+                        <td className="px-4 py-3 text-right text-red-600"><ArrowDownRight className="inline h-3 w-3 mr-0.5" />{item.issue}</td>
+                        <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">{item.closingStock}</td>
+                        <td className="px-4 py-3 text-right text-amber-600 dark:text-amber-400">{item.wip}</td>
+                        <td className="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">{item.netTotal}</td>
+                        <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">{formatCurrency(item.rate)}</td>
+                        <td className="px-4 py-3 pr-4 text-right font-medium text-foreground truncate">{formatCurrency(item.totalAmount)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={11} className="px-4 py-8 text-center text-neutral-500">
+                        No stock data found matching your filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </>
+            )}
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

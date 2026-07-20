@@ -86,7 +86,9 @@ const navItems = [
     children: [
       { tKey: 'storeDashboard', label: 'Store Dashboard', href: '/store-dashboard', module: 'Store' },
       { tKey: 'rawMaterial', label: 'Raw Material', href: '/store?tab=raw', module: 'Store' },
-      { tKey: 'preStitched', label: 'Pre-stitched Material', href: '/store?tab=pre', module: 'Store' },
+      { tKey: 'preStitched', label: 'Finished Goods', href: '/store?tab=pre', module: 'Store' },
+      { tKey: 'materialList', label: 'Material List', href: '/store?tab=list', module: 'Store' },
+      { tKey: 'stockOverview', label: 'Stock Overview', href: '/store?tab=overview', module: 'Store' },
       { tKey: 'storeReports', label: 'Reports', href: '/reports/store', icon: BarChart3, module: 'Store' }
     ]
   },
