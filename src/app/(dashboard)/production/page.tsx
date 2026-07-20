@@ -38,7 +38,7 @@ export interface TaskAssignment {
   startTime: string;
   endTime: string;
   status: TaskStatus;
-  
+
   // Two-way handshake fields
   handshakeStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   transitingWorkerId?: string;
@@ -65,7 +65,7 @@ export default function ProductionPage() {
   const { t } = useTranslation();
   const [stages, setStages] = useState<StageData[]>([
     { id: 'material', name: 'Material', description: 'Material inspection & allocation', icon: PackageSearch, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '' },
-    { 
+    {
       id: 'cutting', name: 'Cutting', description: 'Fabric cutting as per pattern', icon: Scissors, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
       tasks: [
         { id: 't1', assignee: 'Jamal', materialAllocatedName: 'Sky Blue Fabric', targetQty: 500, startTime: '09:00', endTime: '', status: 'In Progress' },
@@ -73,7 +73,7 @@ export default function ProductionPage() {
         { id: 't3', assignee: 'Christie', materialAllocatedName: 'Sky Blue Fabric', targetQty: 500, startTime: '08:00', endTime: '12:00', status: 'Completed' }
       ]
     },
-    { 
+    {
       id: 'stitching', name: 'Stitching', description: 'Sewing and assembling pieces', icon: Layers, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
       tasks: [
         { id: 't4', assignee: 'Christie', materialAllocatedName: 'Sky Blue Fabric', targetQty: 1000, startTime: '', endTime: '', status: 'Pending' }
@@ -128,7 +128,7 @@ export default function ProductionPage() {
 
   const submitHandover = () => {
     if (!pendingHandoverTask || activeStageIdx === null) return;
-    
+
     // Validate total split quantity does not exceed available
     const totalSplitQuantity = handoverSplits.reduce((sum, split) => sum + split.quantity, 0);
     if (totalSplitQuantity > pendingHandoverTask.targetQty || totalSplitQuantity <= 0) return;
@@ -136,11 +136,11 @@ export default function ProductionPage() {
 
     const nextStageIdx = activeStageIdx + 1;
     if (nextStageIdx >= stages.length) return;
-    
+
     const newStages = [...stages];
     const nextStage = newStages[nextStageIdx];
     if (!nextStage.tasks) nextStage.tasks = [];
-    
+
     handoverSplits.forEach(split => {
       nextStage.tasks!.push({
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -157,7 +157,7 @@ export default function ProductionPage() {
         originalTaskId: pendingHandoverTask.id
       });
     });
-    
+
     setStages(newStages);
     setIsHandoverModalOpen(false);
     setPendingHandoverTask(null);
@@ -173,12 +173,12 @@ export default function ProductionPage() {
     if (stageIdx > 0) {
       const prevStage = newStages[stageIdx - 1];
       const originalTaskIndex = prevStage.tasks?.findIndex(t => t.id === targetTask.originalTaskId) ?? -1;
-      
+
       if (originalTaskIndex !== -1 && prevStage.tasks) {
         const originalTask = prevStage.tasks[originalTaskIndex];
         const deductAmount = targetTask.transferQuantity || targetTask.targetQty;
         originalTask.targetQty -= deductAmount;
-        
+
         // If completely handed over, remove the original task from the sender's board
         if (originalTask.targetQty <= 0) {
           prevStage.tasks.splice(originalTaskIndex, 1);
@@ -216,13 +216,13 @@ export default function ProductionPage() {
     {
       poNumber: "PO-2026-002",
       garments: [
-        { 
+        {
           type: "Shirt", targetQty: 1000, cutting: 1000, stitching: 200, fusing: 25, kajButton: 100, finishing: 500,
           specs: "Color: Sky Blue, Collar: Navy Blue Tipping, Fabric Type: Cotton-Poly Blend",
           sizeGrid: "S: 200, M: 400, L: 300, XL: 100 | Total: 1000",
           materials: ["Sky Blue Fabric: 1800m Issued", "Navy Buttons: 8400pcs Issued", "Thread: 15 Cones Issued"]
         },
-        { 
+        {
           type: "Pant", targetQty: 1000, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
           specs: "Color: Navy Blue, Style: Flat Front, Fabric Type: Poly-Viscose",
           sizeGrid: "W30: 200, W32: 400, W34: 300, W36: 100 | Total: 1000",
@@ -233,13 +233,13 @@ export default function ProductionPage() {
     {
       poNumber: "PO-2026-003",
       garments: [
-        { 
+        {
           type: "Blazer", targetQty: 50, cutting: 50, stitching: 20, fusing: 50, kajButton: 0, finishing: 0,
           specs: "Color: Charcoal Grey, Lining: Maroon Silk, Fabric: Wool Blend",
           sizeGrid: "38R: 10, 40R: 20, 42R: 15, 44R: 5 | Total: 50",
           materials: ["Charcoal Wool: 100m Issued", "Maroon Silk: 60m Issued", "Shoulder Pads: 50 Pairs"]
         },
-        { 
+        {
           type: "Coat", targetQty: 10, cutting: 10, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
           specs: "Color: Camel, Style: Double Breasted, Fabric: Cashmere",
           sizeGrid: "M: 5, L: 5 | Total: 10",
@@ -250,13 +250,13 @@ export default function ProductionPage() {
     {
       poNumber: "PO-2026-005",
       garments: [
-        { 
+        {
           type: "Uniform Shirt", targetQty: 1200, cutting: 1200, stitching: 850, fusing: 850, kajButton: 600, finishing: 400,
           specs: "Color: White, Sleeve: Short, Fabric: Poplin",
           sizeGrid: "S: 300, M: 500, L: 300, XL: 100 | Total: 1200",
           materials: ["White Poplin: 2200m Issued", "Buttons: 8400pcs Issued"]
         },
-        { 
+        {
           type: "Uniform Pant", targetQty: 1200, cutting: 1200, stitching: 1100, fusing: 1100, kajButton: 1050, finishing: 900,
           specs: "Color: Black, Fit: Regular, Fabric: Twill",
           sizeGrid: "W30: 300, W32: 500, W34: 300, W36: 100 | Total: 1200",
@@ -267,13 +267,13 @@ export default function ProductionPage() {
     {
       poNumber: "PO-2026-008",
       garments: [
-        { 
+        {
           type: "Premium Suit", targetQty: 30, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
           specs: "Color: Midnight Blue, Lapel: Peak, Fabric: Italian Wool",
           sizeGrid: "38R: 5, 40R: 15, 42R: 10 | Total: 30",
           materials: ["Italian Wool: 120m Issued", "Bemberg Lining: 80m Issued"]
         },
-        { 
+        {
           type: "Vest", targetQty: 30, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
           specs: "Color: Midnight Blue, Back: Silk, Fabric: Italian Wool",
           sizeGrid: "S: 5, M: 15, L: 10 | Total: 30",
@@ -345,7 +345,7 @@ export default function ProductionPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ poNumber: po, stage: nextStage })
         });
-        
+
         if (res.ok) {
           updateOrderAndLog(po, user?.name || 'System User', 'Updated', `Advanced to ${nextStage}`, (orders) => {
             return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
@@ -516,72 +516,70 @@ export default function ProductionPage() {
                 {poNumber}
               </span>
             )}
-            {currentOrder?.customerName && (
-              <span className="text-neutral-400 dark:text-neutral-500 text-xs flex items-center gap-1">
-                <span>•</span>
-                <span>Customer: <strong className="text-neutral-700 dark:text-neutral-300">{currentOrder.customerName}</strong></span>
+            {(currentOrder?.customerName || currentOrder?.clientName) && (
+              <span className="text-muted-foreground text-sm font-medium">
+                - {currentOrder.customerName || currentOrder.clientName}
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <button 
+            <button
               onClick={() => setPopoverOpen(!popoverOpen)}
-            className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold border transition-colors shadow-sm cursor-pointer ${
-              overallProductionStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200' :
-              overallProductionStatus === 'Rework Required' ? 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200' :
-              'bg-muted text-card-foreground border-border hover:bg-neutral-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            {overallProductionStatus === 'Completed' ? (t('quality.stageComplete') || 'Completed') :
-             overallProductionStatus === 'Rework Required' ? (t('dashboard.stockAlerts.severity.critical') || 'Rework Required') :
-             'Active and Pending'}
-          </button>
-          
-          {popoverOpen && (
-            <div className="absolute right-0 mt-3 w-72 bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
-                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active POs</h3>
+              className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold border transition-colors shadow-sm cursor-pointer ${overallProductionStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200' :
+                overallProductionStatus === 'Rework Required' ? 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200' :
+                  'bg-muted text-card-foreground border-border hover:bg-neutral-200 dark:hover:bg-slate-700'
+                }`}
+            >
+              {overallProductionStatus === 'Completed' ? (t('quality.stageComplete') || 'Completed') :
+                overallProductionStatus === 'Rework Required' ? (t('dashboard.stockAlerts.severity.critical') || 'Rework Required') :
+                  'Active and Pending'}
+            </button>
+
+            {popoverOpen && (
+              <div className="absolute right-0 mt-3 w-72 bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                  <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active POs</h3>
+                </div>
+                <div className="p-2 space-y-1 border-b border-border">
+                  {['PO-2026-002'].map(po => (
+                    <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
+                      <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
+                      <button
+                        onClick={() => {
+                          setPoNumber(po);
+                          setPopoverOpen(false);
+                        }}
+                        className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
+                      >
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                  <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pending POs</h3>
+                </div>
+                <div className="p-2 space-y-1">
+                  {['PO-2026-005', 'PO-2026-008'].map(po => (
+                    <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
+                      <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
+                      <button
+                        onClick={() => {
+                          setPoNumber(po);
+                          setPopoverOpen(false);
+                        }}
+                        className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
+                      >
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="p-2 space-y-1 border-b border-border">
-                {['PO-2026-002'].map(po => (
-                  <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
-                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
-                    <button
-                      onClick={() => {
-                        setPoNumber(po);
-                        setPopoverOpen(false);
-                      }}
-                      className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
-                    >
-                      View
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
-                <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pending POs</h3>
-              </div>
-              <div className="p-2 space-y-1">
-                {['PO-2026-005', 'PO-2026-008'].map(po => (
-                  <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
-                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
-                    <button
-                      onClick={() => {
-                        setPoNumber(po);
-                        setPopoverOpen(false);
-                      }}
-                      className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors shadow-sm"
-                    >
-                      View
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -663,7 +661,7 @@ export default function ProductionPage() {
           );
         })}
         {/* Outsource Custom Card */}
-        <div 
+        <div
           onClick={() => setIsOutsourceModalOpen(true)}
           className="rounded-xl border border-border bg-card p-4 transition-all cursor-pointer hover:bg-muted"
         >
@@ -708,35 +706,43 @@ export default function ProductionPage() {
             </div>
 
             {/* Column 2: PENDING Header */}
-            <div className="px-4 py-4 h-full flex items-center border-t md:border-t-0 md:border-l border-border">
-               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500"></span>Pending</span>
+            <div className={`px-4 py-4 h-full flex items-center border-t md:border-t-0 border-border ${stages[activeStageIdx].id !== 'material' ? 'md:border-l' : ''}`}>
+              {stages[activeStageIdx].id !== 'material' && (
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500"></span>Pending</span>
+              )}
             </div>
 
             {/* Column 3: IN PROGRESS Header */}
-            <div className="px-4 py-4 h-full flex items-center border-t md:border-t-0 md:border-l border-border">
-               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span>In Progress</span>
+            <div className={`px-4 py-4 h-full flex items-center border-t md:border-t-0 border-border ${stages[activeStageIdx].id !== 'material' ? 'md:border-l' : ''}`}>
+              {stages[activeStageIdx].id !== 'material' && (
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span>In Progress</span>
+              )}
             </div>
 
             {/* Column 4: COMPLETED Header + Actions */}
-            <div className="px-4 py-4 h-full flex items-center justify-between gap-4 border-t md:border-t-0 md:border-l border-border">
-               <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5 shrink-0"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Completed</span>
-               
-               <div className="flex items-center">
-                 <button
-                   className="border border-neutral-300 dark:border-neutral-700 bg-card hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
-                 >
-                   + Add Person
-                 </button>
-                 {stages[activeStageIdx].id === 'material' && (
-                   <button
-                     disabled
-                     onClick={() => { /* Functionality to be added later */ }}
-                     className="bg-indigo-600/50 text-white/80 cursor-not-allowed opacity-75 rounded-lg px-3 py-1.5 text-sm font-medium border border-indigo-200/20 shrink-0 ml-2"
-                   >
-                     Return
-                   </button>
-                 )}
-               </div>
+            <div className={`px-4 py-4 h-full flex items-center justify-between gap-4 border-t md:border-t-0 border-border ${stages[activeStageIdx].id !== 'material' ? 'md:border-l' : ''}`}>
+              {stages[activeStageIdx].id !== 'material' ? (
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5 shrink-0"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Completed</span>
+              ) : (
+                <div className="flex-1"></div>
+              )}
+
+              <div className="flex items-center">
+                <button
+                  className="border border-neutral-300 dark:border-neutral-700 bg-card hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
+                >
+                  + Add Person
+                </button>
+                {stages[activeStageIdx].id === 'material' && (
+                  <button
+                    disabled
+                    onClick={() => { /* Functionality to be added later */ }}
+                    className="bg-indigo-600/50 text-white/80 cursor-not-allowed opacity-75 rounded-lg px-3 py-1.5 text-sm font-medium border border-indigo-200/20 shrink-0 ml-2"
+                  >
+                    Return to store
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -764,7 +770,7 @@ export default function ProductionPage() {
                           const availQty = mat.availableQty || 0;
                           const shortage = reqQty > availQty ? reqQty - availQty : 0;
                           const surplus = availQty > reqQty ? availQty - reqQty : 0;
-                          
+
                           return (
                             <tr key={mat.id} className={`transition-colors ${surplus > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-muted/30'}`}>
                               <td className="px-3 py-2 text-left font-semibold text-foreground">{mat.name}</td>
@@ -783,9 +789,9 @@ export default function ProductionPage() {
                                     <option value="Jamal">Jamal</option>
                                     <option value="Christie">Christie</option>
                                   </select>
-                                  <input 
-                                    type="number" 
-                                    placeholder="Qty" 
+                                  <input
+                                    type="number"
+                                    placeholder="Qty"
                                     className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-16 text-neutral-700 dark:text-neutral-300"
                                   />
                                 </div>
@@ -816,190 +822,190 @@ export default function ProductionPage() {
                 </div>
               </div>
             ) : (
-            <>
-              {(() => {
-                const tasks = stages[activeStageIdx].tasks || [];
-                const incomingTransits = tasks.filter(t => t.handshakeStatus === 'PENDING');
-                const activeTasks = tasks.filter(t => t.handshakeStatus !== 'PENDING');
-                
-                // Seed default swimlanes to enforce UI structure even when empty
-                const defaultPersonnel = ['Jamal', 'Christie', 'Alex', 'Maria'];
-                const initialGrouped = defaultPersonnel.reduce((acc, person) => {
-                  acc[person] = [];
-                  return acc;
-                }, {} as Record<string, TaskAssignment[]>);
+              <>
+                {(() => {
+                  const tasks = stages[activeStageIdx].tasks || [];
+                  const incomingTransits = tasks.filter(t => t.handshakeStatus === 'PENDING');
+                  const activeTasks = tasks.filter(t => t.handshakeStatus !== 'PENDING');
 
-                const grouped = activeTasks.reduce((acc, task) => {
-                  if (!acc[task.assignee]) acc[task.assignee] = [];
-                  acc[task.assignee].push(task);
-                  return acc;
-                }, initialGrouped);
+                  // Seed default swimlanes to enforce UI structure even when empty
+                  const defaultPersonnel = ['Jamal', 'Christie', 'Alex', 'Maria'];
+                  const initialGrouped = defaultPersonnel.reduce((acc, person) => {
+                    acc[person] = [];
+                    return acc;
+                  }, {} as Record<string, TaskAssignment[]>);
 
-                return (
-                  <>
-                    {incomingTransits.length > 0 && (
-                      <div className="m-6 mb-0 bg-card border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden shadow-sm">
-                        <div className="bg-blue-50 dark:bg-neutral-800/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
-                          <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300">Incoming Material Transits (Pending Verification)</h3>
-                        </div>
-                        <div className="divide-y divide-neutral-100 dark:divide-slate-800">
-                          {incomingTransits.map(task => (
-                            <div key={task.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-muted rounded-lg text-neutral-500">
-                                  <Layers className="h-4 w-4" />
+                  const grouped = activeTasks.reduce((acc, task) => {
+                    if (!acc[task.assignee]) acc[task.assignee] = [];
+                    acc[task.assignee].push(task);
+                    return acc;
+                  }, initialGrouped);
+
+                  return (
+                    <>
+                      {incomingTransits.length > 0 && (
+                        <div className="m-6 mb-0 bg-card border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden shadow-sm">
+                          <div className="bg-blue-50 dark:bg-neutral-800/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300">Incoming Material Transits (Pending Verification)</h3>
+                          </div>
+                          <div className="divide-y divide-neutral-100 dark:divide-slate-800">
+                            {incomingTransits.map(task => (
+                              <div key={task.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-muted rounded-lg text-neutral-500">
+                                    <Layers className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold text-card-foreground">
+                                      {task.transitingWorkerId || 'Origin Worker'} <span className="text-neutral-400 mx-1">→</span> {task.materialAllocatedName}
+                                    </div>
+                                    <div className="text-xs text-neutral-500 mt-0.5">
+                                      Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} units</strong>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <div className="text-sm font-bold text-card-foreground">
-                                    {task.transitingWorkerId || 'Origin Worker'} <span className="text-neutral-400 mx-1">→</span> {task.materialAllocatedName}
-                                  </div>
-                                  <div className="text-xs text-neutral-500 mt-0.5">
-                                    Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} units</strong>
-                                  </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => rejectHandover(activeStageIdx, task.id)}
+                                    className="border border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
+                                  >
+                                    Reject Handover
+                                  </button>
+                                  <button
+                                    onClick={() => acceptHandover(activeStageIdx, task.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors"
+                                  >
+                                    Accept Allocation
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => rejectHandover(activeStageIdx, task.id)}
-                                  className="border border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
-                                >
-                                  Reject Handover
-                                </button>
-                                <button
-                                  onClick={() => acceptHandover(activeStageIdx, task.id)}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors"
-                                >
-                                  Accept Allocation
-                                </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="divide-y divide-border">
+                          {Object.entries(grouped).map(([assignee, assigneeTasks]) => (
+                            <div key={assignee} className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
+                              {/* Column 1: Row Indicator */}
+                              <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-neutral-900/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                    <User className="h-4 w-4" />
+                                  </div>
+                                  <h3 className="font-bold text-sm text-foreground">{assignee}</h3>
+                                </div>
+                                <span className="text-[10px] font-bold bg-muted text-neutral-500 px-2 py-0.5 rounded-full self-start inline-flex">{assigneeTasks.length} Tasks</span>
+                              </div>
+
+                              {/* Column 2: Pending */}
+                              <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                                {assigneeTasks.filter(t => t.status === 'Pending').length > 0 ? (
+                                  assigneeTasks.filter(t => t.status === 'Pending').map(task => (
+                                    <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-red-500">
+                                      <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
+                                      <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                        </div>
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">Start Time</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                )}
+                              </div>
+
+                              {/* Column 3: In Progress */}
+                              <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                                {assigneeTasks.filter(t => t.status === 'In Progress').length > 0 ? (
+                                  assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
+                                    <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-amber-400">
+                                      <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
+                                      <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                        </div>
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">Start Time</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                )}
+                              </div>
+
+                              {/* Column 4: Completed */}
+                              <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                                {assigneeTasks.filter(t => t.status === 'Completed').length > 0 ? (
+                                  assigneeTasks.filter(t => t.status === 'Completed').map(task => (
+                                    <div key={task.id} className="relative bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-emerald-500">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <p className="text-xs font-bold text-card-foreground pr-6">{task.materialAllocatedName}</p>
+                                        {!task.handshakeStatus && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleInitiateHandover(task);
+                                            }}
+                                            className="absolute top-2 right-2 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors shadow-sm"
+                                            title="Send to Next Stage"
+                                          >
+                                            <ChevronRight className="h-4 w-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                        </div>
+                                        <div>
+                                          <span className="block uppercase tracking-wider opacity-70">End Time</span>
+                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.endTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                      {task.handshakeStatus === 'PENDING' && (
+                                        <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
+                                          <span className="block w-full text-center text-[10px] font-bold py-1 bg-amber-50 text-amber-600 rounded">
+                                            Transit Pending...
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
-                    <div>
-                      <div className="divide-y divide-border">
-                        {Object.entries(grouped).map(([assignee, assigneeTasks]) => (
-                          <div key={assignee} className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
-                            {/* Column 1: Row Indicator */}
-                            <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-neutral-900/10">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                  <User className="h-4 w-4" />
-                                </div>
-                                <h3 className="font-bold text-sm text-foreground">{assignee}</h3>
-                              </div>
-                              <span className="text-[10px] font-bold bg-muted text-neutral-500 px-2 py-0.5 rounded-full self-start inline-flex">{assigneeTasks.length} Tasks</span>
-                            </div>
 
-                            {/* Column 2: Pending */}
-                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
-                              {assigneeTasks.filter(t => t.status === 'Pending').length > 0 ? (
-                                assigneeTasks.filter(t => t.status === 'Pending').map(task => (
-                                  <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-red-500">
-                                    <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
-                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
-                                      </div>
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">Start Time</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
-                              )}
-                            </div>
-
-                            {/* Column 3: In Progress */}
-                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
-                              {assigneeTasks.filter(t => t.status === 'In Progress').length > 0 ? (
-                                assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
-                                  <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-amber-400">
-                                    <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
-                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
-                                      </div>
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">Start Time</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
-                              )}
-                            </div>
-
-                            {/* Column 4: Completed */}
-                            <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
-                              {assigneeTasks.filter(t => t.status === 'Completed').length > 0 ? (
-                                assigneeTasks.filter(t => t.status === 'Completed').map(task => (
-                                  <div key={task.id} className="relative bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-emerald-500">
-                                    <div className="flex justify-between items-start mb-2">
-                                      <p className="text-xs font-bold text-card-foreground pr-6">{task.materialAllocatedName}</p>
-                                      {!task.handshakeStatus && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleInitiateHandover(task);
-                                          }}
-                                          className="absolute top-2 right-2 p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors shadow-sm"
-                                          title="Send to Next Stage"
-                                        >
-                                          <ChevronRight className="h-4 w-4" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
-                                      </div>
-                                      <div>
-                                        <span className="block uppercase tracking-wider opacity-70">End Time</span>
-                                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.endTime || '--:--'}</span>
-                                      </div>
-                                    </div>
-                                    {task.handshakeStatus === 'PENDING' && (
-                                      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
-                                        <span className="block w-full text-center text-[10px] font-bold py-1 bg-amber-50 text-amber-600 rounded">
-                                          Transit Pending...
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      {/* Stage Advancement Flow */}
+                      <div className="mt-8 flex justify-end pt-4 border-t border-border">
+                        <button
+                          onClick={() => handleAdvanceToNextStage(stages[activeStageIdx].id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
+                        >
+                          {`Proceed to ${stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1 < stages.length ? stages[stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1].name : 'Next Stage'}`}
+                        </button>
                       </div>
-                    </div>
-                  
-                  {/* Stage Advancement Flow */}
-                  <div className="mt-8 flex justify-end pt-4 border-t border-border">
-                    <button
-                      onClick={() => handleAdvanceToNextStage(stages[activeStageIdx].id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
-                    >
-                      {`Proceed to ${stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1 < stages.length ? stages[stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1].name : 'Next Stage'}`}
-                    </button>
-                  </div>
-                  </>
-                );
-              })()}
-            </>
+                    </>
+                  );
+                })()}
+              </>
             )}
           </div>
         </div>
@@ -1020,7 +1026,7 @@ export default function ProductionPage() {
                 <h3 className="text-lg font-bold text-card-foreground">Stage Transition Handover Selection</h3>
                 <button onClick={() => setIsHandoverModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">✕</button>
               </div>
-              
+
               <div className="p-6 space-y-5">
                 <div className="bg-blue-50 dark:bg-neutral-800/20 p-4 rounded-lg flex justify-between items-center">
                   <div>
@@ -1036,123 +1042,124 @@ export default function ProductionPage() {
                   </div>
                 </div>
 
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">Target Operators & Split Quantities</label>
-                {handoverSplits.map((split, idx) => {
-                  const currentStatus = split.handshakeStatus || 'PENDING';
-                  return (
-                  <div key={split.id || idx} className="flex items-center gap-3">
-                    <select
-                      value={split.worker}
-                      onChange={(e) => updateHandoverSplit(idx, 'worker', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm"
-                    >
-                      <option value="">Select worker...</option>
-                      <option value="Christie">Christie</option>
-                      <option value="Alex">Alex</option>
-                      <option value="Maria">Maria</option>
-                      <option value="Jamal">Jamal</option>
-                    </select>
-                    <input 
-                      type="number"
-                      min="1"
-                      value={split.quantity || ''}
-                      onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value)}
-                      placeholder="Qty"
-                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
-                    />
-                    <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded uppercase whitespace-nowrap">
-                      {currentStatus}
-                    </span>
-                    {handoverSplits.length > 1 && (
-                      <button 
-                        onClick={() => removeHandoverSplitRow(idx)}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                )})}
-                <button
-                  onClick={addHandoverSplitRow}
-                  className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5"
-                >
-                  + Add Operator Row
-                </button>
-              </div>
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">Target Operators & Split Quantities</label>
+                  {handoverSplits.map((split, idx) => {
+                    const currentStatus = split.handshakeStatus || 'PENDING';
+                    return (
+                      <div key={split.id || idx} className="flex items-center gap-3">
+                        <select
+                          value={split.worker}
+                          onChange={(e) => updateHandoverSplit(idx, 'worker', e.target.value)}
+                          className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm"
+                        >
+                          <option value="">Select worker...</option>
+                          <option value="Christie">Christie</option>
+                          <option value="Alex">Alex</option>
+                          <option value="Maria">Maria</option>
+                          <option value="Jamal">Jamal</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="1"
+                          value={split.quantity || ''}
+                          onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value)}
+                          placeholder="Qty"
+                          className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
+                        />
+                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded uppercase whitespace-nowrap">
+                          {currentStatus}
+                        </span>
+                        {handoverSplits.length > 1 && (
+                          <button
+                            onClick={() => removeHandoverSplitRow(idx)}
+                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <button
+                    onClick={addHandoverSplitRow}
+                    className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5"
+                  >
+                    + Add Operator Row
+                  </button>
+                </div>
 
-              {/* Handover Status History Table */}
-              <div className="border-t border-neutral-100 dark:border-neutral-700 my-4 pt-4">
-                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Handover Status History</h4>
-                <div className="max-h-[160px] overflow-y-auto pr-1">
-                  <table className="table-auto w-full text-sm text-left">
-                    <thead className="bg-neutral-50 dark:bg-neutral-800/50 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Allocated Person</th>
-                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Quantity</th>
-                        <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                      {(() => {
-                        const liveHistory = activeStageIdx !== null && activeStageIdx + 1 < stages.length 
-                          ? (stages[activeStageIdx + 1].tasks || []).filter(t => t.originalTaskId === pendingHandoverTask?.id)
-                          : [];
-                          
-                        const demoHistory = [
-                          { id: 'm1', assignee: "Christie", targetQty: 100, handshakeStatus: "ACCEPTED" },
-                          { id: 'm2', assignee: "Jamal", targetQty: 150, handshakeStatus: "PENDING" },
-                          { id: 'm3', assignee: "Alex M.", targetQty: 150, handshakeStatus: "REJECTED" }
-                        ];
+                {/* Handover Status History Table */}
+                <div className="border-t border-neutral-100 dark:border-neutral-700 my-4 pt-4">
+                  <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Handover Status History</h4>
+                  <div className="max-h-[160px] overflow-y-auto pr-1">
+                    <table className="table-auto w-full text-sm text-left">
+                      <thead className="bg-neutral-50 dark:bg-neutral-800/50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Allocated Person</th>
+                          <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Quantity</th>
+                          <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                        {(() => {
+                          const liveHistory = activeStageIdx !== null && activeStageIdx + 1 < stages.length
+                            ? (stages[activeStageIdx + 1].tasks || []).filter(t => t.originalTaskId === pendingHandoverTask?.id)
+                            : [];
 
-                        const renderList = poNumber ? liveHistory : demoHistory;
+                          const demoHistory = [
+                            { id: 'm1', assignee: "Christie", targetQty: 100, handshakeStatus: "ACCEPTED" },
+                            { id: 'm2', assignee: "Jamal", targetQty: 150, handshakeStatus: "PENDING" },
+                            { id: 'm3', assignee: "Alex M.", targetQty: 150, handshakeStatus: "REJECTED" }
+                          ];
 
-                        if (renderList.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={3} className="px-3 py-4 text-center text-xs text-neutral-500 italic">No historical records found for this block.</td>
+                          const renderList = poNumber ? liveHistory : demoHistory;
+
+                          if (renderList.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={3} className="px-3 py-4 text-center text-xs text-neutral-500 italic">No historical records found for this block.</td>
+                              </tr>
+                            );
+                          }
+
+                          return renderList.map(task => (
+                            <tr key={task.id} className="hover:bg-muted/30">
+                              <td className="px-3 py-2 font-medium text-card-foreground">{task.assignee}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{task.targetQty}</td>
+                              <td className="px-3 py-2">
+                                {task.handshakeStatus === 'PENDING' ? (
+                                  <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md text-xs font-semibold">Pending</span>
+                                ) : task.handshakeStatus === 'ACCEPTED' ? (
+                                  <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-semibold">Approved</span>
+                                ) : task.handshakeStatus === 'REJECTED' ? (
+                                  <span className="text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md text-xs font-semibold">Rejected</span>
+                                ) : (
+                                  <span className="text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-md text-xs font-semibold">Unknown</span>
+                                )}
+                              </td>
                             </tr>
-                          );
-                        }
-
-                        return renderList.map(task => (
-                          <tr key={task.id} className="hover:bg-muted/30">
-                            <td className="px-3 py-2 font-medium text-card-foreground">{task.assignee}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{task.targetQty}</td>
-                            <td className="px-3 py-2">
-                              {task.handshakeStatus === 'PENDING' ? (
-                                <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md text-xs font-semibold">Pending</span>
-                              ) : task.handshakeStatus === 'ACCEPTED' ? (
-                                <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-semibold">Approved</span>
-                              ) : task.handshakeStatus === 'REJECTED' ? (
-                                <span className="text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md text-xs font-semibold">Rejected</span>
-                              ) : (
-                                <span className="text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-md text-xs font-semibold">Unknown</span>
-                              )}
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-neutral-50 dark:bg-neutral-800/50">
-              <button onClick={() => setIsHandoverModalOpen(false)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">Cancel</button>
-              <button 
-                onClick={submitHandover}
-                disabled={
-                  remainingCapacity < 0 ||
-                  handoverSplits.length === 0 ||
-                  handoverSplits.some(split => !split.worker || split.quantity <= 0)
-                }
-                className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg shadow-sm transition-colors"
-              >
-                Confirm Handover
-              </button>
+              <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-neutral-50 dark:bg-neutral-800/50">
+                <button onClick={() => setIsHandoverModalOpen(false)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">Cancel</button>
+                <button
+                  onClick={submitHandover}
+                  disabled={
+                    remainingCapacity < 0 ||
+                    handoverSplits.length === 0 ||
+                    handoverSplits.some(split => !split.worker || split.quantity <= 0)
+                  }
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg shadow-sm transition-colors"
+                >
+                  Confirm Handover
+                </button>
               </div>
             </div>
           </div>
@@ -1204,131 +1211,131 @@ export default function ProductionPage() {
       {isStatusModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} />
-                <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border max-h-[90vh] flex flex-col z-10">
-                  <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
-                    <h2 className="text-lg font-bold text-card-foreground">
-                      {stageName} Stage Breakdown <span className="text-sm font-medium text-neutral-500 ml-2">({poNumber || 'No PO Selected'})</span>
-                    </h2>
-                    <button onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} className="text-neutral-500 hover:text-foreground transition-colors">
-                      Close
-                    </button>
+          <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border max-h-[90vh] flex flex-col z-10">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
+              <h2 className="text-lg font-bold text-card-foreground">
+                {stageName} Stage Breakdown <span className="text-sm font-medium text-neutral-500 ml-2">({poNumber || 'No PO Selected'})</span>
+              </h2>
+              <button onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} className="text-neutral-500 hover:text-foreground transition-colors">
+                Close
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {currentPoGarments.length > 0 ? (
+                <div className="w-full text-left border-collapse border border-border rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-3 bg-muted text-xs uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
+                    <div className="px-4 py-3">Garment</div>
+                    <div className="px-4 py-3 text-right">Target Qty</div>
+                    <div className="px-4 py-3 text-right">{stageName} Status</div>
                   </div>
-                  <div className="p-6 overflow-y-auto">
-                    {currentPoGarments.length > 0 ? (
-                      <div className="w-full text-left border-collapse border border-border rounded-lg overflow-hidden">
-                        <div className="grid grid-cols-3 bg-muted text-xs uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
-                          <div className="px-4 py-3">Garment</div>
-                          <div className="px-4 py-3 text-right">Target Qty</div>
-                          <div className="px-4 py-3 text-right">{stageName} Status</div>
-                        </div>
-                        <div className="divide-y divide-neutral-200 dark:divide-slate-700/50">
-                          {currentPoGarments.map((g: any, i) => {
-                            const quantity = g[stageKey] as number;
-                            return (
-                              <React.Fragment key={i}>
-                                <div 
-                                  onClick={() => setExpandedGarmentIdx(expandedGarmentIdx === i ? null : i)}
-                                  className="grid grid-cols-3 hover:bg-muted/30 transition-colors cursor-pointer group items-center"
-                                >
-                                  <div className="px-4 py-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-2">
-                                    <span className={`transition-transform ${expandedGarmentIdx === i ? 'rotate-90' : ''}`}>▶</span>
-                                    {g.type}
-                                  </div>
-                                  <div className="px-4 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-300 text-right">{g.targetQty}</div>
-                                  <div className="px-4 py-3 text-sm font-medium text-right flex items-center justify-end gap-2">
-                                    <span className={quantity === 0 ? "text-neutral-400" : ""}>{quantity}</span>
-                                    {quantity === 0 && <span className="text-neutral-500 text-[10px] bg-muted px-1.5 py-0.5 rounded">(Not Started)</span>}
-                                    {quantity > 0 && quantity < g.targetQty && <span className="text-blue-600 text-[10px] bg-blue-50 px-1.5 py-0.5 rounded">(In Progress)</span>}
-                                    {quantity >= g.targetQty && <span className="text-emerald-600 text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded">(Completed)</span>}
-                                  </div>
-                                </div>
-                        
-                        {/* Expandable Sub-Panel */}
-                        {expandedGarmentIdx === i && (
-                          <div className="bg-slate-50 dark:bg-neutral-800/40 p-5 border-t border-border shadow-inner">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                              Garment Blueprints
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                              {/* Column A */}
-                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Design & Style Specs</h5>
-                                <div className="space-y-3">
-                                  {g.specs.split(', ').map((specStr: string, idx: number) => {
-                                    const [label, val] = specStr.split(': ');
-                                    return (
-                                      <div key={idx}>
-                                        <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide block mb-0.5">{label}</span>
-                                        <span className="text-sm font-medium text-foreground">{val}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                              {/* Column B */}
-                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Size & Color Matrix</h5>
-                                {(() => {
-                                  const parts = g.sizeGrid.split(' | ');
-                                  const sizesStr = parts[0];
-                                  const totalStr = parts[1] || '';
-                                  const sizes = sizesStr.split(', ').map((s: string) => {
-                                    const [size, qty] = s.split(': ');
-                                    return { size, qty };
-                                  });
-                                  const total = totalStr.includes(':') ? totalStr.split(': ')[1] : totalStr;
-                                  
-                                  return (
-                                    <div className="w-full text-left border border-border rounded-lg overflow-hidden">
-                                      <div className="grid grid-cols-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border">
-                                        <div className="px-3 py-2 border-r border-border">Size</div>
-                                        <div className="px-3 py-2 text-right">Quantity</div>
-                                      </div>
-                                      {sizes.map((s: any, idx: number) => (
-                                        <div key={idx} className="grid grid-cols-2 text-sm text-card-foreground border-b border-neutral-100 dark:border-neutral-700 last:border-b-0">
-                                          <div className="px-3 py-2 border-r border-neutral-100 dark:border-neutral-700 font-medium">{s.size}</div>
-                                          <div className="px-3 py-2 text-right">{s.qty}</div>
-                                        </div>
-                                      ))}
-                                      {total && (
-                                        <div className="grid grid-cols-2 bg-indigo-50 dark:bg-indigo-900/20 text-sm font-bold text-indigo-900 dark:text-indigo-200 border-t border-border">
-                                          <div className="px-3 py-2 border-r border-indigo-100 dark:border-indigo-800/50 uppercase tracking-wide text-[10px] flex items-center">Total</div>
-                                          <div className="px-3 py-2 text-right">{total}</div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                              {/* Column C */}
-                              <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Raw Materials Allocated</h5>
-                                <ul className="divide-y divide-neutral-100 dark:divide-slate-700/50">
-                                  {g.materials.map((mat: string, idx: number) => (
-                                    <li key={idx} className="py-2.5 text-sm text-neutral-700 dark:text-neutral-300 flex items-start gap-2.5 first:pt-1 last:pb-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-[6px] flex-shrink-0" />
-                                      <span className="leading-tight font-medium">{mat}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                  <div className="divide-y divide-neutral-200 dark:divide-slate-700/50">
+                    {currentPoGarments.map((g: any, i) => {
+                      const quantity = g[stageKey] as number;
+                      return (
+                        <React.Fragment key={i}>
+                          <div
+                            onClick={() => setExpandedGarmentIdx(expandedGarmentIdx === i ? null : i)}
+                            className="grid grid-cols-3 hover:bg-muted/30 transition-colors cursor-pointer group items-center"
+                          >
+                            <div className="px-4 py-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-2">
+                              <span className={`transition-transform ${expandedGarmentIdx === i ? 'rotate-90' : ''}`}>▶</span>
+                              {g.type}
+                            </div>
+                            <div className="px-4 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-300 text-right">{g.targetQty}</div>
+                            <div className="px-4 py-3 text-sm font-medium text-right flex items-center justify-end gap-2">
+                              <span className={quantity === 0 ? "text-neutral-400" : ""}>{quantity}</span>
+                              {quantity === 0 && <span className="text-neutral-500 text-[10px] bg-muted px-1.5 py-0.5 rounded">(Not Started)</span>}
+                              {quantity > 0 && quantity < g.targetQty && <span className="text-blue-600 text-[10px] bg-blue-50 px-1.5 py-0.5 rounded">(In Progress)</span>}
+                              {quantity >= g.targetQty && <span className="text-emerald-600 text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded">(Completed)</span>}
                             </div>
                           </div>
-                        )}
-                            </React.Fragment>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-10">
-                        <p className="text-muted-foreground">No garment breakdown data available for this PO.</p>
-                      </div>
-                    )}
+
+                          {/* Expandable Sub-Panel */}
+                          {expandedGarmentIdx === i && (
+                            <div className="bg-slate-50 dark:bg-neutral-800/40 p-5 border-t border-border shadow-inner">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                Garment Blueprints
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                {/* Column A */}
+                                <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Design & Style Specs</h5>
+                                  <div className="space-y-3">
+                                    {g.specs.split(', ').map((specStr: string, idx: number) => {
+                                      const [label, val] = specStr.split(': ');
+                                      return (
+                                        <div key={idx}>
+                                          <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide block mb-0.5">{label}</span>
+                                          <span className="text-sm font-medium text-foreground">{val}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                {/* Column B */}
+                                <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Size & Color Matrix</h5>
+                                  {(() => {
+                                    const parts = g.sizeGrid.split(' | ');
+                                    const sizesStr = parts[0];
+                                    const totalStr = parts[1] || '';
+                                    const sizes = sizesStr.split(', ').map((s: string) => {
+                                      const [size, qty] = s.split(': ');
+                                      return { size, qty };
+                                    });
+                                    const total = totalStr.includes(':') ? totalStr.split(': ')[1] : totalStr;
+
+                                    return (
+                                      <div className="w-full text-left border border-border rounded-lg overflow-hidden">
+                                        <div className="grid grid-cols-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border">
+                                          <div className="px-3 py-2 border-r border-border">Size</div>
+                                          <div className="px-3 py-2 text-right">Quantity</div>
+                                        </div>
+                                        {sizes.map((s: any, idx: number) => (
+                                          <div key={idx} className="grid grid-cols-2 text-sm text-card-foreground border-b border-neutral-100 dark:border-neutral-700 last:border-b-0">
+                                            <div className="px-3 py-2 border-r border-neutral-100 dark:border-neutral-700 font-medium">{s.size}</div>
+                                            <div className="px-3 py-2 text-right">{s.qty}</div>
+                                          </div>
+                                        ))}
+                                        {total && (
+                                          <div className="grid grid-cols-2 bg-indigo-50 dark:bg-indigo-900/20 text-sm font-bold text-indigo-900 dark:text-indigo-200 border-t border-border">
+                                            <div className="px-3 py-2 border-r border-indigo-100 dark:border-indigo-800/50 uppercase tracking-wide text-[10px] flex items-center">Total</div>
+                                            <div className="px-3 py-2 text-right">{total}</div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                {/* Column C */}
+                                <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Raw Materials Allocated</h5>
+                                  <ul className="divide-y divide-neutral-100 dark:divide-slate-700/50">
+                                    {g.materials.map((mat: string, idx: number) => (
+                                      <li key={idx} className="py-2.5 text-sm text-neutral-700 dark:text-neutral-300 flex items-start gap-2.5 first:pt-1 last:pb-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-[6px] flex-shrink-0" />
+                                        <span className="leading-tight font-medium">{mat}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">No garment breakdown data available for this PO.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Overview Matrix Modal */}

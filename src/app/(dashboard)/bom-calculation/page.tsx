@@ -147,6 +147,10 @@ export default function BOMCalculationPage() {
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
   const [wastage, setWastage] = useState(5);
+  const [editableMaterials, setEditableMaterials] = useState<any[]>([]);
+  const [sizePerPieceOverrides, setSizePerPieceOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sizeUnitPriceOverrides, setSizeUnitPriceOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sizeLaborCostOverrides, setSizeLaborCostOverrides] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
     if (selectedPONumber) {
@@ -347,11 +351,75 @@ export default function BOMCalculationPage() {
 
   const calculatedMaterials = getCalculatedMaterials();
 
-  const totalFabric = calculatedMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + curr.finalQuantity, 0);
-  const totalAllied = calculatedMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + curr.finalQuantity, 0);
-  const itemsToProcure = totalProductionRequired > 0 ? calculatedMaterials.filter(m => m.missing > 0).length : 0;
-  // Mock estimation: $5 per meter of fabric, $0.5 per allied material
-  const estimatedCost = (totalFabric * 5) + (totalAllied * 0.5);
+  useEffect(() => {
+    setEditableMaterials(prev => {
+      const newMats = getCalculatedMaterials();
+      return newMats.map(mat => {
+        const existing = prev.find(e => e.id === mat.id);
+        return {
+          ...mat,
+          brand: existing?.brand || '',
+          laborCostPerUnit: existing?.laborCostPerUnit || 0,
+          perUnitPrice: existing?.perUnitPrice !== undefined ? existing.perUnitPrice : (mat.category === 'Fabric' ? 5 : 0.5),
+          totalQty: existing?.totalQty !== undefined ? existing.totalQty : mat.finalQuantity,
+          perPiece: existing?.perPiece !== undefined ? existing.perPiece : mat.perPiece,
+        };
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPONumber, totalProductionRequired, wastage]);
+
+  const updateMaterial = (id: string, field: string, value: any) => {
+    setEditableMaterials(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const updateSizePerPiece = (materialId: string, size: string, value: any) => {
+    setSizePerPieceOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const updateSizeUnitPrice = (materialId: string, size: string, value: any) => {
+    setSizeUnitPriceOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const updateSizeLaborCost = (materialId: string, size: string, value: any) => {
+    setSizeLaborCostOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const uniqueSizes = Array.from(new Set(
+    activeSpecs.flatMap((s: any) => {
+      if (Array.isArray(s.size)) return s.size.map(String).map((x: string) => x.trim());
+      if (typeof s.size === 'string') return s.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+      if (s.size) return [String(s.size).trim()];
+      return [];
+    })
+  ));
+
+  const totalFabric = editableMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
+  const totalAllied = editableMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
+  const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
+  
+  const estimatedCost = editableMaterials.reduce((acc, curr) => {
+    const finalPrice = (Number(curr.totalQty || 0) * Number(curr.perUnitPrice || 0)) + (Number(curr.laborCostPerUnit || 0) * totalProductionRequired);
+    return acc + finalPrice;
+  }, 0);
 
   useEffect(() => {
     if (totalProductionRequired > 0) {
@@ -563,41 +631,284 @@ export default function BOMCalculationPage() {
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                  <th className="px-4 py-3.5 w-[28%] text-left font-semibold">{t('inventoryVal.materialsHeader') || 'Material'}</th>
-                  <th className="px-4 py-3.5 w-[10%] text-left font-semibold whitespace-nowrap">Unit</th>
-                  <th className="px-4 py-3.5 w-[13%] text-right font-semibold whitespace-nowrap">Per Piece</th>
-                  <th className="px-4 py-3.5 w-[14%] text-right font-semibold whitespace-nowrap">Base Qty</th>
-                  <th className="px-4 py-3.5 w-[20%] text-right font-semibold whitespace-nowrap">{t('bom.wastage') || 'Wastage %'}</th>
-                  <th className="px-4 py-3.5 w-[15%] text-right font-semibold whitespace-nowrap">Final Qty</th>
+                  <th className="px-4 py-3.5 w-[20%] text-left font-semibold">Material Inventory</th>
+                  <th className="px-4 py-3.5 w-[14%] text-left font-semibold">Brand</th>
+                  <th className="px-4 py-3.5 w-[12%] text-left font-semibold">Selected Sizes</th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Piece Qty</th>
+                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Total Qty <span className="text-[9px] block text-neutral-400 lowercase">(inc. wastage)</span></th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Unit Price</th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Labor Cost</th>
+                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Final Price</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                {calculatedMaterials.map((item, idx) => {
+                {editableMaterials.map((item, idx) => {
                   const isShortage = item.missing > 0;
+                  
+                  // Calculate size breakdown
+                  const sizeRows = uniqueSizes.map((size: any) => {
+                    let volume = 0;
+                    activeSpecs.forEach((spec: any) => {
+                      let specSizes: string[] = [];
+                      if (Array.isArray(spec.size)) {
+                         specSizes = spec.size.map(String).map((x: string) => x.trim());
+                      } else if (typeof spec.size === 'string') {
+                         specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+                      } else if (spec.size) {
+                         specSizes = [String(spec.size).trim()];
+                      }
+
+                      if (!specSizes.includes(size)) return;
+                      
+                      const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
+                      if (prodReq <= 0) return;
+                      
+                      const sizeVolume = prodReq / specSizes.length;
+                      
+                      const desc = (spec.itemDescription || '').toLowerCase();
+                      const pattern = (spec.pattern || '').toLowerCase();
+                      const neededIds = ['brandTagsWoven'];
+                      
+                      const isDenim = desc.includes('denim') || desc.includes('jeans') || pattern.includes('denim');
+                      const isShirt = desc.includes('shirt') || desc.includes('polo') || desc.includes('top') || pattern.includes('shirt');
+                      const isSilk = desc.includes('silk') || desc.includes('blouse') || desc.includes('dress') || pattern.includes('silk');
+                      const isPant = desc.includes('pant') || desc.includes('trouser') || desc.includes('short');
+                      const isCotton = desc.includes('cotton') || pattern.includes('cotton');
+
+                      if (isDenim) {
+                        neededIds.push('denimFabric12oz', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
+                      } else if (isSilk) {
+                        neededIds.push('silkFabric', 'standardThreadWhite', 'metalZippers15cm');
+                      } else if (isShirt || isCotton) {
+                        neededIds.push('cottonFabric', 'standardThreadWhite', 'collarHooks', 'metalButtonsSilver');
+                      } else if (isPant) {
+                        neededIds.push('cottonFabric', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
+                      } else {
+                        neededIds.push('cottonFabric', 'standardThreadWhite');
+                      }
+
+                      if (neededIds.includes(item.id)) {
+                        volume += sizeVolume;
+                      }
+                    });
+
+                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[size] ?? Number(item.perPiece || 0);
+                    const baseReq = volume * currentPerPiece;
+                    const wastageAmount = baseReq * (wastage / 100);
+                    const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
+                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[size] ?? Number(item.perUnitPrice || 0);
+                    const currentLaborCost = sizeLaborCostOverrides[item.id]?.[size] ?? Number(item.laborCostPerUnit || 0);
+                    const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice) + (currentLaborCost * volume);
+
+                    return {
+                      size,
+                      volume,
+                      sizeTotalQty,
+                      sizeFinalPrice
+                    };
+                  }).filter(sr => sr.volume > 0);
+
+                  const hasSizeBreakdown = sizeRows.length > 0;
+                  
+                  const combinedTotalQty = hasSizeBreakdown 
+                    ? sizeRows.reduce((sum, sr) => sum + sr.sizeTotalQty, 0)
+                    : Number(item.totalQty || 0);
+                  
+                  const combinedFinalPrice = hasSizeBreakdown
+                    ? sizeRows.reduce((sum, sr) => sum + sr.sizeFinalPrice, 0)
+                    : (combinedTotalQty * Number(item.perUnitPrice || 0)) + (Number(item.laborCostPerUnit || 0) * totalProductionRequired);
+
                   return (
-                    <tr key={idx} className={isShortage ? "bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" : "hover:bg-neutral-50/80 dark:hover:bg-slate-800/50 transition-colors"}>
-                      <td className="px-4 py-[18px] text-left w-[28%]">
-                        <div className="flex flex-col">
-                          <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
-                          <span className={`text-xs ${isShortage ? 'text-red-600 dark:text-red-500' : 'text-muted-foreground'}`}>{item.category}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-[18px] text-left whitespace-nowrap w-[10%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{item.unit}</span>
-                      </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[13%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{item.perPiece}</span>
-                      </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[14%]">
-                        <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-300' : 'text-foreground'}`}>{item.baseRequired.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[20%]">
-                        <span className={`text-sm ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{wastage}% <span className={`text-xs ${isShortage ? 'text-red-400 dark:text-red-500' : 'text-neutral-400'}`}>(+{Math.ceil(item.wastageAmount)})</span></span>
-                      </td>
-                      <td className="px-4 py-[18px] text-right whitespace-nowrap w-[15%]">
-                        <span className={`text-sm font-bold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{item.finalQuantity.toLocaleString()}</span>
-                      </td>
-                    </tr>
+                    <React.Fragment key={idx}>
+                      {!hasSizeBreakdown ? (
+                        <tr className={isShortage ? "bg-red-50/50 dark:bg-red-900/10" : "bg-neutral-50/30 dark:bg-slate-800/20"}>
+                          <td className="px-4 py-3 text-left align-top">
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-neutral-700">
+                                  {item.unit}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-left align-top">
+                             <input 
+                               type="text" 
+                               value={item.brand} 
+                               onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                               placeholder="Enter brand"
+                               className="w-full bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-2 py-1 text-sm transition-colors mb-2"
+                             />
+                             <select
+                               onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                               className="w-full bg-zinc-900 border border-zinc-700 text-white rounded px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                             >
+                               <option value="">Standard Size</option>
+                               <option value="44-45">44-45</option>
+                               <option value="58-60">58-60</option>
+                             </select>
+                          </td>
+                          <td className="px-4 py-3 text-left align-top pt-4">
+                            <span className="text-xs text-muted-foreground pl-2">-</span>
+                          </td>
+                          <td className="px-4 py-3 text-right align-top">
+                             <input 
+                               type="number"
+                               min="0"
+                               step="0.1"
+                               value={item.perPiece} 
+                               onChange={(e) => updateMaterial(item.id, 'perPiece', e.target.value)}
+                               className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                             />
+                          </td>
+                          <td className="px-4 py-3 text-right align-top pt-4">
+                               <input 
+                                 type="number" 
+                                 min="0"
+                                 value={item.totalQty} 
+                                 onChange={(e) => updateMaterial(item.id, 'totalQty', e.target.value)}
+                                 className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm font-semibold transition-colors"
+                               />
+                          </td>
+                          <td className="px-4 py-3 text-right align-top">
+                             <div className="relative flex items-center">
+                               <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                               <input 
+                                 type="number" 
+                                 min="0"
+                                 value={item.perUnitPrice} 
+                                 onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
+                                 className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                               />
+                             </div>
+                          </td>
+                          <td className="px-4 py-3 text-right align-top">
+                             <div className="relative flex items-center">
+                               <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                               <input 
+                                 type="number" 
+                                 min="0"
+                                 value={item.laborCostPerUnit || 0} 
+                                 onChange={(e) => updateMaterial(item.id, 'laborCostPerUnit', e.target.value)}
+                                 className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                               />
+                             </div>
+                          </td>
+                          <td className="px-4 py-3 text-right align-top pt-4">
+                              <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                          </td>
+                        </tr>
+                      ) : (
+                        sizeRows.map((sr, sIdx) => (
+                          <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
+                            {sIdx === 0 && (
+                              <>
+                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-[#121212] border-b border-neutral-100 dark:border-slate-800/50">
+                                  <div className="flex flex-col">
+                                    <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-neutral-700">
+                                        {item.unit}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-[#121212] border-b border-neutral-100 dark:border-slate-800/50">
+                                   <input 
+                                     type="text" 
+                                     value={item.brand} 
+                                     onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                     placeholder="Enter brand"
+                                     className="w-full bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-2 py-1 text-sm transition-colors mb-2"
+                                   />
+                                   <select
+                                     onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                     className="w-full bg-zinc-900 border border-zinc-700 text-white rounded px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                   >
+                                     <option value="">Standard Size</option>
+                                     <option value="44-45">44-45</option>
+                                     <option value="58-60">58-60</option>
+                                   </select>
+                                </td>
+                              </>
+                            )}
+                            <td className="px-4 py-2 text-left pl-6">
+                              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold px-2 py-1 rounded">
+                                {sr.size}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                               <input 
+                                 type="number"
+                                 min="0"
+                                 step="0.1"
+                                 value={sizePerPieceOverrides[item.id]?.[sr.size] ?? item.perPiece} 
+                                 onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
+                                 className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
+                               />
+                            </td>
+                            <td className="px-4 py-2 text-right pt-4">
+                              <span className="text-sm font-semibold text-foreground pr-3">{sr.sizeTotalQty}</span>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                               <div className="relative flex items-center">
+                                 <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                 <input 
+                                   type="number" 
+                                   min="0"
+                                   step="0.1"
+                                   value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice} 
+                                   onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
+                                   className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                 />
+                               </div>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                               <div className="relative flex items-center">
+                                 <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                 <input 
+                                   type="number" 
+                                   min="0"
+                                   step="0.1"
+                                   value={(sizeLaborCostOverrides[item.id]?.[sr.size] ?? item.laborCostPerUnit) || 0} 
+                                   onChange={(e) => updateSizeLaborCost(item.id, sr.size, e.target.value)}
+                                   className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                 />
+                               </div>
+                            </td>
+                            <td className="px-4 py-2 text-right pt-4">
+                              <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                                ₹{sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+
+                      {hasSizeBreakdown && (
+                        <tr className="bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-900/50">
+                          <td colSpan={4} className="px-4 py-2.5 text-right">
+                            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider pr-3">
+                              Total Combined Amount
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
+                              {combinedTotalQty}
+                            </span>
+                          </td>
+                          <td colSpan={2} className="px-4 py-2.5"></td>
+                          <td className="px-4 py-2.5 text-right">
+                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
+                              ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -631,14 +942,17 @@ export default function BOMCalculationPage() {
                       try {
                         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
                         
-                        const bomLines = calculatedMaterials.map(m => ({
+                        const bomLines = editableMaterials.map(m => ({
                           material_id: m.id,
                           material_name: m.name,
                           category: m.category,
                           unit: m.unit,
-                          per_piece_qty: m.perPiece,
-                          final_qty: m.finalQuantity,
-                          amount: m.finalQuantity * (m.category === 'Fabric' ? 5 : 0.5)
+                          per_piece_qty: Number(m.perPiece || 0),
+                          final_qty: Number(m.totalQty || 0),
+                          brand: m.brand || '',
+                          labor_cost: Number(m.laborCostPerUnit || 0),
+                          unit_price: Number(m.perUnitPrice || 0),
+                          amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0)) + (Number(m.laborCostPerUnit || 0) * totalProductionRequired)
                         }));
 
                         const res = await fetch(`${BACKEND_URL}/api/bom/save`, {

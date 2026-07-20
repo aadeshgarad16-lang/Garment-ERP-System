@@ -51,24 +51,6 @@ export default function ProductionMaterialAllocation() {
         {/* Main Workspace */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Vendor Selection */}
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">1. Select Vendor</h2>
-            <div className="relative">
-              <select 
-                className="w-full appearance-none bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-neutral-800 text-slate-800 dark:text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer font-medium"
-                value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
-              >
-                <option value="" disabled>Choose a production vendor...</option>
-                {vendors.map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" size={18} />
-            </div>
-          </div>
-
           {/* BOM Allocation Table */}
           <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center bg-slate-50 dark:bg-[#18181b]/50 dark:bg-[#1a1a1a]">
@@ -121,8 +103,27 @@ export default function ProductionMaterialAllocation() {
         </div>
 
         {/* Right Column: Dispatch Summary */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm sticky top-6">
+        <div className="space-y-6 sticky top-6">
+
+          {/* Vendor Selection */}
+          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">1. Select Vendor</h2>
+            <div className="relative">
+              <select 
+                className="w-full appearance-none bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-neutral-800 text-slate-800 dark:text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer font-medium"
+                value={selectedVendor}
+                onChange={(e) => setSelectedVendor(e.target.value)}
+              >
+                <option value="" disabled>Choose a production vendor...</option>
+                {vendors.map(v => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" size={18} />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
               <Box className="text-emerald-600" size={20} />
               Dispatch Summary
