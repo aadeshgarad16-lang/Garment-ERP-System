@@ -52,13 +52,13 @@ export default function ProductionMaterialAllocation() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* BOM Allocation Table */}
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center bg-slate-50 dark:bg-[#18181b]/50 dark:bg-[#1a1a1a]">
+          <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-border flex justify-between items-center bg-slate-50 dark:bg-card/50 dark:bg-[#1a1a1a]">
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">2. Material Dispatch List (BOM)</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-[#18181b] text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold border-b border-slate-200 dark:border-neutral-800">
+                <thead className="bg-slate-50 dark:bg-card text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold border-b border-slate-200 dark:border-border">
                   <tr>
                     <th className="px-6 py-4">Material Item</th>
                     <th className="px-6 py-4 text-center">Required</th>
@@ -68,7 +68,7 @@ export default function ProductionMaterialAllocation() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {materials.map(mat => (
-                    <tr key={mat.id} className="hover:bg-slate-50 dark:bg-[#18181b]/50 dark:bg-[#1a1a1a] transition-colors">
+                    <tr key={mat.id} className="hover:bg-slate-50 dark:bg-card/50 dark:bg-[#1a1a1a] transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800 dark:text-slate-100">{mat.name}</div>
                         <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{mat.id} &bull; {mat.category}</div>
@@ -90,7 +90,7 @@ export default function ProductionMaterialAllocation() {
                             value={mat.allocated || ''}
                             onChange={(e) => handleAllocationChange(mat.id, e.target.value)}
                             placeholder="0"
-                            className="w-24 border border-slate-200 dark:border-neutral-800 rounded-lg px-3 py-2 text-center text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 font-medium"
+                            className="w-24 border border-slate-200 dark:border-border rounded-lg px-3 py-2 text-center text-slate-800 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 font-medium"
                           />
                         </div>
                       </td>
@@ -106,11 +106,11 @@ export default function ProductionMaterialAllocation() {
         <div className="space-y-6 sticky top-6">
 
           {/* Vendor Selection */}
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm">
+          <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">1. Select Vendor</h2>
             <div className="relative">
               <select 
-                className="w-full appearance-none bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-neutral-800 text-slate-800 dark:text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer font-medium"
+                className="w-full appearance-none bg-slate-50 dark:bg-card border border-slate-200 dark:border-border text-slate-800 dark:text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer font-medium"
                 value={selectedVendor}
                 onChange={(e) => setSelectedVendor(e.target.value)}
               >
@@ -123,7 +123,7 @@ export default function ProductionMaterialAllocation() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm">
+          <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
               <Box className="text-emerald-600" size={20} />
               Dispatch Summary
@@ -140,7 +140,7 @@ export default function ProductionMaterialAllocation() {
                 <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Total Required Units:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100">{totalRequired}</span>
               </div>
-              <div className="flex justify-between items-center text-sm pb-4 border-b border-slate-100 dark:border-neutral-800">
+              <div className="flex justify-between items-center text-sm pb-4 border-b border-slate-100 dark:border-border">
                 <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Total Allocated Units:</span>
                 <span className={`font-bold ${totalAllocated > 0 ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-100'}`}>{totalAllocated}</span>
               </div>

@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/contexts/order-context";
 import { updateOrderAndLog } from "@/lib/logger";
 import { getCustomerAddressesAPI, saveCustomerAddressAPI, CustomerAddress, getAuthHeaders } from "@/lib/api";
+import { compareSizes, sortSizesAscending } from "@/utils/orderUtils";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
@@ -78,7 +79,7 @@ const INITIAL_TEMPLATES: AddressTemplate[] = [
 ];
 
 const INPUT_STYLE =
-  "w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 border-neutral-300 dark:border-neutral-700 focus:ring-ring transition shadow-sm";
+  "w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 border-neutral-300 dark:border-border focus:ring-ring transition shadow-sm";
 
 const SIZE_OPTIONS = ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60", "XS", "S", "M", "L", "XL", "XXL", "XXXL"].map(s => ({ label: s, value: s }));
 
@@ -195,7 +196,7 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
                 );
               })}
               {hiddenCount > 0 && (
-                <span className="text-xs font-medium text-muted-foreground bg-neutral-50 dark:bg-neutral-800/50 px-2 py-1 rounded-full border border-border">
+                <span className="text-xs font-medium text-muted-foreground bg-neutral-50 dark:bg-card/50 px-2 py-1 rounded-full border border-border">
                   +{hiddenCount} more
                 </span>
               )}
@@ -207,7 +208,7 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
 
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-neutral-100 dark:border-neutral-700 flex items-center gap-2">
+          <div className="p-2 border-b border-neutral-100 dark:border-border flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2 h-4 w-4 text-neutral-400" />
               <input
@@ -216,7 +217,7 @@ function CustomMultiSelect({ options, selectedValues, onChange, placeholder, isC
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-800 border border-transparent focus:border-blue-500 rounded-md focus:outline-none transition-colors text-card-foreground"
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-neutral-50 dark:bg-card border border-transparent focus:border-blue-500 rounded-md focus:outline-none transition-colors text-card-foreground"
               />
             </div>
             {selectedValues.length > 0 && (
@@ -985,7 +986,7 @@ function GarmentSpecsContent() {
           </p>
         </div>
         {isLiveOrder ? (
-          <div className="flex bg-blue-50 dark:bg-neutral-800/20 px-4 py-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 shadow-sm">
+          <div className="flex bg-blue-50 dark:bg-card/20 px-4 py-2.5 rounded-lg border border-blue-100 dark:border-blue-800/50 shadow-sm">
             <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
               Selected Delivery Format: {deliveryType === "single" ? "Single Delivery Address" : "Multi Delivery Address"}
             </span>
@@ -1012,7 +1013,7 @@ function GarmentSpecsContent() {
 
       {/* GARMENT LINE SPECIFICATIONS */}
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mb-6">
-        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex justify-between items-center">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
             Garment Line Specifications
           </h2>
@@ -1025,12 +1026,12 @@ function GarmentSpecsContent() {
           </button>
         </div>
 
-        <div className="p-6 bg-neutral-50/50 dark:bg-neutral-800/30">
+        <div className="p-6 bg-neutral-50/50 dark:bg-card/30">
           <div className="mb-6 space-y-3">
-            <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 border-border font-semibold text-sm flex items-center gap-2.5 shadow-sm">
+            <div className="w-full px-4 py-3 border rounded-xl bg-neutral-50 dark:bg-card/50 text-neutral-500 border-border font-semibold text-sm flex items-center gap-2.5 shadow-sm">
               <span className="flex h-2.5 w-2.5 rounded-full bg-blue-500/80 animate-pulse"></span>
               <span className="text-neutral-700 dark:text-neutral-300 font-semibold">Selected PO Number:</span>
-              <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-neutral-800/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
+              <span className="text-blue-700 bg-blue-50 border border-blue-100 dark:text-blue-400 dark:bg-card/30 dark:border-blue-800/50 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
                 {currentPoNumber.startsWith("PO") ? currentPoNumber : `#${currentPoNumber}`}
               </span>
             </div>
@@ -1038,7 +1039,7 @@ function GarmentSpecsContent() {
           <div className="space-y-8">
             {specs.map((spec, index) => (
               <div key={spec.id} className="relative bg-card border border-border rounded-2xl p-6 shadow-sm mt-4">
-                <div className="absolute -top-3 left-6 bg-blue-100 dark:bg-neutral-800/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-sm">
+                <div className="absolute -top-3 left-6 bg-blue-100 dark:bg-card/40 text-blue-700 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-sm">
                   Item 1
                 </div>
                 {specs.length > 1 && (
@@ -1159,7 +1160,7 @@ function GarmentSpecsContent() {
                   </div>
 
                   {deliveryType === "multi" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-neutral-800/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-card/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
                       <div>
                         <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5" /> Delivery Address (For this Item) <span className="text-red-500">*</span>
@@ -1252,8 +1253,8 @@ function GarmentSpecsContent() {
                   {/* Row 4: Grand Upload Photo Box */}
                   <div>
                     <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Upload Photo <span className="text-red-500">*</span></label>
-                    <label className="cursor-pointer flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 dark:bg-neutral-800/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition shadow-sm group">
-                      <div className="bg-blue-100 dark:bg-neutral-800/60 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                    <label className="cursor-pointer flex flex-col items-center justify-center w-full h-[120px] border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 dark:bg-card/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition shadow-sm group">
+                      <div className="bg-blue-100 dark:bg-card/60 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
                         <Upload className="h-6 w-6" />
                       </div>
                       <span className="text-sm font-semibold truncate max-w-[90%] px-2">
@@ -1314,7 +1315,7 @@ function GarmentSpecsContent() {
 
       {/* COMPLETE SPECIFICATION OVERVIEW */}
       <div className="mt-8 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
+        <div className="px-5 py-4 border-b border-border bg-neutral-50 dark:bg-card/50 flex justify-between items-center">
           <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-indigo-500" />
             Complete Specification Overview
@@ -1323,7 +1324,7 @@ function GarmentSpecsContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800/80 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              <tr className="bg-neutral-50 dark:bg-card/80 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                 <th className="px-4 py-3 text-left">Garment / Desc</th>
                 <th className="px-4 py-3 text-left">Category / Pattern</th>
                 <th className="px-4 py-3 text-left">Production Type</th>
@@ -1341,7 +1342,7 @@ function GarmentSpecsContent() {
                 </tr>
               ) : (
                 specs.map((spec) => {
-                  const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id);
+                  const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id).sort((a, b) => compareSizes(a.size || '', b.size || ''));
                   return (
                     <tr key={spec.id} className="bg-card hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-foreground">
@@ -1355,7 +1356,7 @@ function GarmentSpecsContent() {
                         {spec.productionType}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300 text-center">
-                        <div>Sz: {spec.size || "-"}</div>
+                        <div>Sz: {spec.size ? sortSizesAscending(spec.size.split(',').map(s => s.trim())).join(', ') : "-"}</div>
                         <div className="text-xs text-neutral-400">Clr: {spec.color || "-"}</div>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-foreground text-center">
@@ -1367,7 +1368,7 @@ function GarmentSpecsContent() {
                         ) : (
                           <ul className="space-y-1">
                             {specAllocations.map(alloc => (
-                              <li key={alloc.id} className="flex flex-col border border-neutral-100 dark:border-neutral-700 rounded p-1.5 bg-neutral-50 dark:bg-neutral-800/30">
+                              <li key={alloc.id} className="flex flex-col border border-neutral-100 dark:border-border rounded p-1.5 bg-neutral-50 dark:bg-card/30">
                                 <span className="font-semibold text-card-foreground">
                                   {alloc.quantity} units {alloc.size ? `(Sz: ${alloc.size})` : ''} {alloc.color ? `(Clr: ${alloc.color})` : ''}
                                 </span>
@@ -1390,7 +1391,7 @@ function GarmentSpecsContent() {
 
       {/* DETAIL SPEC ALLOCATIONS */}
       <div id="multi-delivery-allocations" className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+        <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-card-foreground">
             Detailed Specifications & Allocation
           </h2>
@@ -1410,7 +1411,7 @@ function GarmentSpecsContent() {
                     }
                     e.target.value = "";
                   }}
-                  className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card border-neutral-300 dark:border-neutral-700 cursor-pointer shadow-sm transition-colors"
+                  className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card border-neutral-300 dark:border-border cursor-pointer shadow-sm transition-colors"
                   defaultValue=""
                 >
                   <option value="" disabled>Address List...</option>
@@ -1426,7 +1427,7 @@ function GarmentSpecsContent() {
                 </select>
                 <button
                   onClick={addAllocationRow}
-                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-neutral-800/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
+                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-card/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Plus className="h-4 w-4" /> Add Row
                 </button>
@@ -1437,7 +1438,7 @@ function GarmentSpecsContent() {
 
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
-            <thead className="bg-neutral-50 dark:bg-neutral-800">
+            <thead className="bg-neutral-50 dark:bg-card">
               <tr className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
                 <th className="px-2 py-3 border-b border-border w-[70px] text-center">Sr. No.</th>
                 <th className={`px-2 py-3 border-b border-border ${deliveryType === "single" ? "w-[35%]" : "w-[22%]"}`}>Address</th>
@@ -1459,7 +1460,31 @@ function GarmentSpecsContent() {
                   </td>
                 </tr>
               ) : (
-                detailedAllocations.map((alloc, index) => {
+                (() => {
+                  const sortedAllocations = [...detailedAllocations].sort((a, b) => {
+                    const itemA = specs.find(s => s.id === a.itemId)?.item || "";
+                    const itemB = specs.find(s => s.id === b.itemId)?.item || "";
+                    if (itemA !== itemB) return itemA.localeCompare(itemB);
+
+                    if (a.color !== b.color) return (a.color || "").localeCompare(b.color || "");
+
+                    const sizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL", "5XL"];
+                    const isNumA = !isNaN(Number(a.size)) && a.size !== "";
+                    const isNumB = !isNaN(Number(b.size)) && b.size !== "";
+
+                    if (isNumA && isNumB) {
+                      return Number(a.size) - Number(b.size);
+                    } else if (!isNumA && !isNumB) {
+                      const idxA = sizeOrder.indexOf(a.size?.toUpperCase() || "");
+                      const idxB = sizeOrder.indexOf(b.size?.toUpperCase() || "");
+                      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                      return (a.size || "").localeCompare(b.size || "");
+                    } else {
+                      return isNumA ? -1 : 1;
+                    }
+                  });
+
+                  return sortedAllocations.map((alloc, index) => {
                   const targetItem = alloc.itemId ? specs.find((s) => s.id === alloc.itemId) : null;
                   const targetQty = targetItem?.quantity || 0;
                   const allocatedQty = alloc.itemId ? calculateAllocatedQty(alloc.itemId) : 0;
@@ -1523,7 +1548,7 @@ function GarmentSpecsContent() {
                               }}
                               className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
                             >
-                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-neutral-700 uppercase tracking-wider">
+                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-card text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-border uppercase tracking-wider">
                                 Saved Addresses for {currentCustomerName}
                               </div>
                               {rowFilteredAddresses.length === 0 ? (
@@ -1671,6 +1696,7 @@ function GarmentSpecsContent() {
                     </tr>
                   );
                 })
+                })()
               )}
             </tbody>
           </table>
@@ -1683,7 +1709,7 @@ function GarmentSpecsContent() {
         <button
           type="button"
           onClick={() => router.push("/orders")}
-          className="px-5 py-2.5 border border-neutral-300 dark:border-neutral-700 bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition shadow-sm"
+          className="px-5 py-2.5 border border-neutral-300 dark:border-border bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition shadow-sm"
         >
           ← Back to Order Initiation
         </button>
@@ -1769,7 +1795,7 @@ function GarmentSpecsContent() {
       {/* DRAWER SECTION SHEET */}
       {showDraftsDrawer && (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-card shadow-2xl flex flex-col border-l border-border transform transition-transform">
-          <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50 dark:bg-neutral-800/50">
+          <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50 dark:bg-card/50">
             <h3 className="text-lg font-semibold text-foreground">
               Saved Drafts
             </h3>
@@ -1786,13 +1812,13 @@ function GarmentSpecsContent() {
               <p className="text-neutral-500 text-sm text-center mt-10">No saved drafts found.</p>
             ) : (
               savedDrafts.map((draft) => (
-                <div key={draft.id} className="border border-border rounded-lg p-4 bg-neutral-50 dark:bg-neutral-800/50">
+                <div key={draft.id} className="border border-border rounded-lg p-4 bg-neutral-50 dark:bg-card/50">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-semibold text-sm text-foreground">{draft.poNumber}</h4>
                       <p className="text-xs text-neutral-500 mt-1">{draft.dateSaved}</p>
                     </div>
-                    <span className="bg-blue-100 text-blue-700 dark:bg-neutral-800/30 dark:text-blue-400 text-xs px-2 py-1 rounded font-medium">
+                    <span className="bg-blue-100 text-blue-700 dark:bg-card/30 dark:text-blue-400 text-xs px-2 py-1 rounded font-medium">
                       {draft.totalQuantity} Items
                     </span>
                   </div>
@@ -1826,7 +1852,7 @@ function GarmentSpecsContent() {
             className="relative bg-card rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="flex justify-between items-center p-4 border-b border-border bg-neutral-50 dark:bg-card/50">
               <h3 className="text-sm font-semibold text-foreground truncate pr-4">
                 Image Preview
               </h3>
@@ -1838,7 +1864,7 @@ function GarmentSpecsContent() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center min-h-[300px]">
+            <div className="flex-1 overflow-auto p-4 bg-neutral-100 dark:bg-background flex items-center justify-center min-h-[300px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
@@ -1854,7 +1880,7 @@ function GarmentSpecsContent() {
       {showSaveNewAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
-            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-card/30">
               <h3 className="text-base font-bold text-foreground flex items-center gap-2 text-left">
                 <MapPin className="h-5 w-5 text-blue-500" />
                 Save New Address?
@@ -1874,7 +1900,7 @@ function GarmentSpecsContent() {
               <p className="text-sm text-muted-foreground leading-relaxed text-left">
                 This is a new address. Would you like to save it to this customer's profile for future use?
               </p>
-              <div className="bg-neutral-50 dark:bg-neutral-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-700/60 text-left">
+              <div className="bg-neutral-50 dark:bg-card/40 p-3.5 rounded-xl border border-neutral-100 dark:border-border/60 text-left">
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
                 <p className="text-xs font-bold text-card-foreground mt-0.5 mb-2">{currentCustomerName}</p>
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
@@ -1901,7 +1927,7 @@ function GarmentSpecsContent() {
                     lastDeclinedAddress.current = pendingSaveAddress;
                     setShowSaveNewAddressModal(false);
                   }}
-                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-border rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                 >
                   No
                 </button>

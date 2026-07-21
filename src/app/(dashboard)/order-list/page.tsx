@@ -50,10 +50,10 @@ const stepToUrlMap: { [key: string]: string } = {
 
 const getStatusColor = (status: string) => {
   switch (status?.toUpperCase()) {
-    case 'SUBMITTED': return 'bg-blue-100 text-blue-800 dark:bg-neutral-800/30 dark:text-blue-300';
-    case 'DRAFT': return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300';
+    case 'SUBMITTED': return 'bg-blue-100 text-blue-800 dark:bg-card/30 dark:text-blue-300';
+    case 'DRAFT': return 'bg-neutral-100 text-neutral-800 dark:bg-card dark:text-neutral-300';
     case 'COMPLETED': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
-    default: return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300';
+    default: return 'bg-neutral-100 text-neutral-800 dark:bg-card dark:text-neutral-300';
   }
 };
 
@@ -128,7 +128,7 @@ export default function OrderListPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-neutral-50 dark:bg-card/50 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-6 py-4">PO Number</th>
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Date Created</th>
@@ -218,8 +218,8 @@ export default function OrderListPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-neutral-50/50 dark:bg-neutral-800/50">
-              <div className="mb-4 text-sm text-neutral-600 dark:text-neutral-300 bg-blue-50 dark:bg-neutral-800/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-lg flex gap-2 items-start">
+            <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-neutral-50/50 dark:bg-card/50">
+              <div className="mb-4 text-sm text-neutral-600 dark:text-neutral-300 bg-blue-50 dark:bg-card/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-lg flex gap-2 items-start">
                 <ExternalLink className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                 <p>Select a stage below to make edits. You can only edit information for stages up to the order's current stage. Future stages are locked until you progress the workflow.</p>
               </div>
@@ -249,7 +249,7 @@ export default function OrderListPage() {
                       <div className="flex items-center gap-3">
                         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${
                           isEnabled 
-                            ? 'bg-blue-100 text-blue-700 dark:bg-neutral-800/30 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-card/30 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors'
                             : 'bg-neutral-200 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'
                         }`}>
                           {index + 1}

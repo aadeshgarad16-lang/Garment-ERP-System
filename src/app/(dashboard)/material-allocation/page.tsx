@@ -208,26 +208,27 @@ export default function MaterialAllocationPage() {
         body: JSON.stringify({ poNumber, allocations }),
       });
 
-      if (res.ok) {
-        const resData = await res.json();
-        const stage = resData.next_stage || 'Production';
-        setNextStage(stage);
-
-        // Mark all lines as locked
-        setBomLines(prev => prev.map(l => ({ ...l, isLocked: true, status: l.shortage_qty > 0 ? 'Shortage' : 'Locked' })));
-
-        // Update localStorage
-        updateOrderAndLog(poNumber, user?.name || 'System User', 'Updated', `Materials Allocated → ${stage}`, (orders) =>
-          orders.map((o: any) => o.poNumber === poNumber ? { ...o, stage } : o)
-        );
-        window.dispatchEvent(new Event('orders-updated'));
-
-        setAllocationResult('success');
-        setAllocationMessage(resData.message || `Materials allocated. Order advanced to ${stage}.`);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Server returned ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("API Error Response:", text);
+        throw new Error(`Server returned status ${res.status}`);
       }
+
+      const resData = await res.json();
+      const stage = resData.next_stage || 'Production';
+      setNextStage(stage);
+
+      // Mark all lines as locked
+      setBomLines(prev => prev.map(l => ({ ...l, isLocked: true, status: l.shortage_qty > 0 ? 'Shortage' : 'Locked' })));
+
+      // Update localStorage
+      updateOrderAndLog(poNumber, user?.name || 'System User', 'Updated', `Materials Allocated → ${stage}`, (orders) =>
+        orders.map((o: any) => o.poNumber === poNumber ? { ...o, stage } : o)
+      );
+      window.dispatchEvent(new Event('orders-updated'));
+
+      setAllocationResult('success');
+      setAllocationMessage(resData.message || `Materials allocated. Order advanced to ${stage}.`);
     } catch (err: any) {
       console.error('Allocation failed:', err);
       // Graceful offline fallback: lock locally, update localStorage
@@ -376,7 +377,7 @@ export default function MaterialAllocationPage() {
 
       {/* BOM Allocation Table */}
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex items-center justify-between">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/30 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
             <Box className="h-4 w-4 text-indigo-500" />
             Reservation &amp; Allocation Table
@@ -406,7 +407,7 @@ export default function MaterialAllocationPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-4 py-3.5">Material Name</th>
                 <th className="px-4 py-3.5">Category</th>
                 <th className="px-4 py-3.5 text-right">Required Qty</th>
@@ -521,7 +522,7 @@ export default function MaterialAllocationPage() {
         </div>
 
         {/* Bottom action bar */}
-        <div className="border-t border-neutral-100 dark:border-neutral-700 px-4 py-3 bg-neutral-50/50 dark:bg-neutral-800/30 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="border-t border-neutral-100 dark:border-border px-4 py-3 bg-neutral-50/50 dark:bg-card/30 flex flex-col sm:flex-row justify-between items-center gap-3">
           <div className="flex items-center gap-4 text-xs text-neutral-500">
             <span><span className="font-semibold text-neutral-700 dark:text-neutral-300">{stats.locked}</span> / {stats.total} lines reserved</span>
             {stats.shortage > 0 && (

@@ -432,7 +432,7 @@ export default function ManageUsersPage() {
                     {/* TAB 1 CONTENT: ADD / EDIT FORM */}
                     {activeTab === "add" && (
                         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50">
                                 <h2 className="text-lg font-semibold text-card-foreground">
                                     User Details {editingUserId && "(Editing User)"}
                                 </h2>
@@ -488,7 +488,7 @@ export default function ManageUsersPage() {
                                         <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                                             Username
                                         </label>
-                                        <input type="text" value={formData.mobileNumber} readOnly disabled placeholder="Same as Contact No" className="w-full px-3 py-2 border border-border rounded-lg text-muted-foreground bg-neutral-50 dark:bg-neutral-800/50 text-sm focus:outline-none cursor-not-allowed" />
+                                        <input type="text" value={formData.mobileNumber} readOnly disabled placeholder="Same as Contact No" className="w-full px-3 py-2 border border-border rounded-lg text-muted-foreground bg-neutral-50 dark:bg-card/50 text-sm focus:outline-none cursor-not-allowed" />
                                         {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                                     </div>
                                     <div>
@@ -529,7 +529,7 @@ export default function ManageUsersPage() {
                                                     checked={formData.modules.includes(mod)}
                                                     onChange={() => handleModuleToggle(mod)}
                                                     disabled={isReadOnly}
-                                                    className="w-4 h-4 text-indigo-600 border-neutral-300 rounded focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="w-4 h-4 text-indigo-600 border-neutral-300 rounded focus:ring-indigo-500 dark:border-neutral-600 dark:bg-card disabled:opacity-60 disabled:cursor-not-allowed"
                                                 />
                                                 <span className="text-sm text-neutral-700 dark:text-neutral-300">{mod}</span>
                                             </label>
@@ -540,7 +540,7 @@ export default function ManageUsersPage() {
                                 {/* SECTION 5: ACTION BUTTONS */}
                                 <hr className="border-border" />
                                 <div className="flex justify-end gap-3 pt-2">
-                                    <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors">
+                                    <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 dark:bg-card dark:text-neutral-300 dark:border-border dark:hover:bg-slate-800 flex items-center gap-2 transition-colors">
                                         <X className="w-4 h-4" /> Cancel
                                     </button>
                                     <button onClick={handleReset} className="px-5 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 flex items-center gap-2 transition-colors">
@@ -559,7 +559,7 @@ export default function ManageUsersPage() {
                     {/* TAB 2 CONTENT: USER LIST TABLE */}
                     {activeTab === "list" && (
                         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <Users className="w-5 h-5 text-indigo-500" />
                                     User Records Directory
@@ -586,7 +586,7 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse table-fixed min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-card/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-3 py-4 w-[110px]">Employee ID</th>
                                             <th className="px-3 py-4 w-[140px]">Full Name</th>
                                             <th className="px-3 py-4 w-[120px]">Username</th>
@@ -611,7 +611,7 @@ export default function ManageUsersPage() {
                                                     <td className="px-3 py-4 text-sm text-neutral-700 dark:text-neutral-300 truncate" title={user.fullName}>{user.fullName}</td>
                                                     <td className="px-3 py-4 text-sm text-muted-foreground truncate" title={user.username}>{user.username}</td>
                                                     <td className="px-3 py-4 text-sm text-muted-foreground">
-                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 border border-border truncate max-w-full" title={user.role}>
+                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-700 dark:bg-card dark:text-neutral-300 border border-border truncate max-w-full" title={user.role}>
                                                             {user.role}
                                                         </span>
                                                     </td>
@@ -657,7 +657,7 @@ export default function ManageUsersPage() {
                     {/* TAB 3 CONTENT: USER LOGS */}
                     {activeTab === "logs" && (
                         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50">
                                 <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-indigo-500" />
                                     User Activity Audit Trail
@@ -666,7 +666,7 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-card/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-6 py-4">Operator & Role</th>
                                             <th className="px-6 py-4">Action Performed</th>
                                             <th className="px-6 py-4">Timestamp</th>
@@ -691,7 +691,7 @@ export default function ManageUsersPage() {
                     {/* TAB 4 CONTENT: ENABLE/DISABLE ACCESS CONTROL */}
                     {activeTab === "status" && (
                         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+                            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50">
                                 <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                                     <UserCheck className="w-5 h-5 text-indigo-500" />
                                     Enable / Disable Access Status
@@ -700,7 +700,7 @@ export default function ManageUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-full">
                                     <thead>
-                                        <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                                        <tr className="bg-neutral-50 dark:bg-card/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-6 py-4">Full Name</th>
                                             <th className="px-6 py-4">Role</th>
                                             <th className="px-6 py-4">Current Status</th>
@@ -742,7 +742,7 @@ export default function ManageUsersPage() {
                 {viewingUser && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                         <div className="bg-card rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-700">
+                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-border">
                                 <h3 className="text-xl font-bold text-foreground">User Details</h3>
                                 <button onClick={() => setViewingUser(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
                                     <X className="w-5 h-5" />
@@ -758,7 +758,7 @@ export default function ManageUsersPage() {
                                     <div className="space-y-6">
                                         {/* Basic User Information Grid */}
                                         <div>
-                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-neutral-700 pb-2">User Information</h4>
+                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-border pb-2">User Information</h4>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                                                 <div>
                                                     <label className="text-xs text-muted-foreground block">Employee ID</label>
@@ -801,13 +801,13 @@ export default function ManageUsersPage() {
 
                                         {/* Allotted Access Pages / Modules Grid */}
                                         <div>
-                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-neutral-700 pb-2">Allotted Access Pages</h4>
+                                            <h4 className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4 border-b border-neutral-100 dark:border-border pb-2">Allotted Access Pages</h4>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                                 {viewingUser.modules_access && viewingUser.modules_access.length > 0 ? (
                                                     viewingUser.modules_access.map((mod: string) => (
                                                         <div
                                                             key={mod}
-                                                            className="flex items-center gap-2 p-2 rounded-lg border text-sm border-blue-100 bg-blue-50/50 text-blue-700 dark:border-blue-900/30 dark:bg-neutral-800/10 dark:text-blue-400"
+                                                            className="flex items-center gap-2 p-2 rounded-lg border text-sm border-blue-100 bg-blue-50/50 text-blue-700 dark:border-blue-900/30 dark:bg-card/10 dark:text-blue-400"
                                                         >
                                                             <div className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center bg-blue-600 text-white">
                                                                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -827,7 +827,7 @@ export default function ManageUsersPage() {
                                     </div>
                                 )}
                             </div>
-                            <div className="p-6 border-t border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 flex justify-end">
+                            <div className="p-6 border-t border-neutral-100 dark:border-border bg-neutral-50 dark:bg-card/50 flex justify-end">
                                 <button onClick={() => setViewingUser(null)} className="px-6 py-2 bg-card border border-border rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-muted transition-colors font-medium text-sm">Close</button>
                             </div>
                         </div>
@@ -838,7 +838,7 @@ export default function ManageUsersPage() {
                 {resettingPasswordUserId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                         <div className="bg-card rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-border">
-                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-700">
+                            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-border">
                                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                                     <ShieldAlert className="w-5 h-5 text-purple-600" />
                                     Super Admin Password Reset
@@ -857,8 +857,8 @@ export default function ManageUsersPage() {
                                     <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 flex justify-end gap-2">
-                                <button onClick={() => setResettingPasswordUserId(null)} className="px-4 py-2 text-xs font-medium bg-white border rounded-lg text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">Cancel</button>
+                            <div className="p-4 border-t border-neutral-100 dark:border-border bg-neutral-50 dark:bg-card/50 flex justify-end gap-2">
+                                <button onClick={() => setResettingPasswordUserId(null)} className="px-4 py-2 text-xs font-medium bg-white border rounded-lg text-neutral-700 dark:bg-card dark:text-neutral-300 dark:border-border">Cancel</button>
                                 <button onClick={handleSuperAdminPasswordReset} disabled={isResetLoading} className="px-4 py-2 text-xs font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm transition-colors">
                                     {isResetLoading ? "Resetting..." : "Confirm Reset"}
                                 </button>

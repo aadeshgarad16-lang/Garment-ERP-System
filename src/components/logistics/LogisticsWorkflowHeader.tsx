@@ -28,7 +28,7 @@ export default function LogisticsWorkflowHeader({ currentStep, completedSteps }:
     const isCompleted = completedSteps.includes(step.id);
     const isActive = currentStep === step.id;
 
-    let bgClass = 'bg-muted text-muted-foreground border-border';
+    let bgClass = 'bg-card dark:bg-[#131b2e] dark:border-[#26334d] border-dashed text-muted-foreground border-border';
     if (isCompleted) bgClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
     else if (isActive) bgClass = 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500';
 

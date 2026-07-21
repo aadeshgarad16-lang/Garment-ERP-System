@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
-import { isStageMatch } from '@/utils/orderUtils';
+import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
 interface GarmentSpec {
   id: string;
@@ -480,7 +480,7 @@ function StockCalculationContent() {
       </div>
 
       <div className="bg-card rounded-xl shadow-sm border border-border mt-6">
-        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 rounded-t-xl">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50 rounded-t-xl">
           <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
             <Box className="h-5 w-5 text-muted-foreground" />
             Stock Calculation
@@ -510,7 +510,7 @@ function StockCalculationContent() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">PO Date</label>
               <div
-                className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800/40 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
+                className="w-full px-3 py-2 bg-neutral-50 dark:bg-card/40 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
               >
                 {formatDate(orderAnalysis.derivedPODate) || "—"}
               </div>
@@ -519,14 +519,14 @@ function StockCalculationContent() {
 
           <div className="mb-6">
             {!selectedPONumber || !displayOrder ? (
-              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800/30 text-muted-foreground text-sm italic">
+              <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-border rounded-xl bg-neutral-50 dark:bg-card/30 text-muted-foreground text-sm italic">
                 Please select a PO number.
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
-                    <tr className="bg-neutral-50 dark:bg-neutral-800/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    <tr className="bg-neutral-50 dark:bg-card/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                       <th className="px-6 py-3.5">PO Number</th>
                       <th className="px-6 py-3.5 whitespace-nowrap">PO Date</th>
                       <th className="px-6 py-3.5 whitespace-nowrap">Delivery Date</th>
@@ -542,9 +542,9 @@ function StockCalculationContent() {
                       <td className="px-6 py-4 text-xs text-muted-foreground space-y-2">
                         {displayOrder.specs && displayOrder.specs.length > 0 ? (
                           displayOrder.specs.map((spec: any) => (
-                            <div key={spec.id || spec.spec_id} className="flex justify-between border-b border-neutral-100 dark:border-neutral-700 last:border-0 pb-1.5 last:pb-0 min-h-[24px] items-center">
-                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{spec.garment_name || spec.itemDescription} ({spec.size}) - {spec.pattern}</span>
-                              <span className="font-semibold bg-gray-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-foreground">Qty: {spec.quantity}</span>
+                            <div key={spec.id || spec.spec_id} className="flex justify-between border-b border-neutral-100 dark:border-border last:border-0 pb-1.5 last:pb-0 min-h-[24px] items-center">
+                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{spec.garment_name || spec.itemDescription} ({typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : spec.size}) - {spec.pattern}</span>
+                              <span className="font-semibold bg-gray-100 dark:bg-card px-2 py-0.5 rounded text-foreground">Qty: {spec.quantity}</span>
                             </div>
                           ))
                         ) : (
@@ -558,7 +558,7 @@ function StockCalculationContent() {
                             const req = spec.quantity || 0;
                             
                             // Dynamic validation: 'Pending Selection' if not explicitly set/calculated yet
-                            const hasMaterials = spec.rawMaterialsSelected || (spec.materials && spec.materials.length > 0) || spec.stockStatus;
+                            const hasMaterials = spec.articlesSelected || (spec.materials && spec.materials.length > 0) || spec.stockStatus;
                             const status = hasMaterials 
                               ? (avail >= req ? 'In Stock' : (avail > 0 ? 'Low Stock' : 'Out of Stock')) 
                               : 'Pending Selection';
@@ -572,7 +572,7 @@ function StockCalculationContent() {
                               <div key={`status-${spec.id || spec.spec_id}`} className="flex items-center justify-between border-b border-transparent last:border-0 pb-1.5 last:pb-0 min-h-[24px]">
                                 <div>
                                   {isPending ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 border border-border">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-card dark:text-neutral-400 border border-border">
                                       Pending Selection
                                     </span>
                                   ) : isAvailable ? (
@@ -606,7 +606,7 @@ function StockCalculationContent() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-neutral-100 dark:border-neutral-700 pt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-neutral-100 dark:border-border pt-6">
             <div className="flex-1">
               {displayOrder && displayOrder.hasAllocationError && (
                 <p className="text-sm text-red-600 dark:text-red-400 font-semibold flex items-center gap-1.5">

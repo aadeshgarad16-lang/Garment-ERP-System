@@ -25,6 +25,7 @@ import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { getAllOrdersAPI } from '@/lib/api';
 
 type StageName = 'Material' | 'Cutting' | 'Stitching' | 'Fusing' | 'Kaj Button' | 'Finishing';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
@@ -89,6 +90,23 @@ export default function ProductionPage() {
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [poNumber, setPoNumber] = useState<string>('');
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [activePOs, setActivePOs] = useState<string[]>([]);
+  const [pendingPOs, setPendingPOs] = useState<string[]>([]);
+
+  useEffect(() => {
+    getAllOrdersAPI().then((orders) => {
+      const active = orders
+        .filter(o => o.status !== "DRAFT" && o.stage === "Production")
+        .map(o => o.poNumber)
+        .filter(Boolean);
+      const pending = orders
+        .filter(o => o.status !== "DRAFT" && ['Order Initiation', 'Order Specifications', 'Stock Check', 'BOM Calculation', 'Inventory Check', 'Material Allocation', 'Procurement', 'Material Release'].includes(o.stage || ''))
+        .map(o => o.poNumber)
+        .filter(Boolean);
+      setActivePOs(active);
+      setPendingPOs(pending);
+    }).catch(console.error);
+  }, []);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
   const [isOutsourceModalOpen, setIsOutsourceModalOpen] = useState(false);
@@ -201,13 +219,58 @@ export default function ProductionPage() {
     setStages(newStages);
   };
 
-  const handleAdvanceToNextStage = (currentStageId: string) => {
+  const handleAdvanceToNextStage = async (currentStageId: string) => {
     if (currentStageId === 'cutting') {
       // Convert raw supply units (e.g., fabric tracking in meters) into finished product block inventory counts
-      updateOrderAndLog(poNumber, user?.name || 'System', 'Updated', `Cutting Stage finalized. Raw material inventory converted into product blocks (e.g., 20 Shirts). Handing off to Stitching.`, (orders) => orders);
+      updateOrderAndLog(poNumber, user?.name || 'System', 'Updated', `Cutting Stage finalized. Article inventory converted into product blocks (e.g., 20 Shirts). Handing off to Stitching.`, (orders) => orders);
     }
+    
+    if (currentStageId === 'material') {
+      // Create initial tasks for the next stage (Cutting) based on partial allocations
+      const nextStageIdx = currentIndex + 1;
+      if (nextStageIdx < stages.length) {
+        const nextStage = stages[nextStageIdx];
+        if (!nextStage.tasks) nextStage.tasks = [];
+        
+        allocatedMaterials.forEach(mat => {
+          if (mat.allocated_qty > 0 && mat.allocated_person) {
+            nextStage.tasks!.push({
+              id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              assignee: mat.allocated_person,
+              materialAllocatedName: mat.materials_inventory || mat.name,
+              targetQty: Number(mat.allocated_qty),
+              startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              endTime: '',
+              status: 'In Progress',
+              handshakeStatus: 'ACCEPTED',
+              unit: mat.unit,
+              per_piece_qty: mat.per_piece_qty
+            });
+          }
+        });
+      }
+
+      updateOrderAndLog(poNumber, user?.name || 'System', 'Updated', `Materials allocated to cutting stage. Handing off to Cutting.`, (orders) => orders.map(o => o.poNumber === poNumber ? { ...o, stage: 'Cutting' } : o));
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      try {
+        await fetch(`${BACKEND_URL}/purchase_orders/update_stage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ poNumber, stage: "Cutting" })
+        });
+        
+        // Also save material allocations
+        await fetch(`${BACKEND_URL}/api/production/allocate-material`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ poNumber, stage: "Cutting", allocations: allocatedMaterials })
+        });
+      } catch (e) {}
+    }
+
     const currentIndex = stages.findIndex(s => s.id === currentStageId);
     if (currentIndex !== -1 && currentIndex + 1 < stages.length) {
+      if (currentStageId === 'material') handleCompleteStage(currentIndex);
       setActiveStageIdx(currentIndex + 1);
     }
   };
@@ -367,7 +430,49 @@ export default function ProductionPage() {
   const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
   const [consumedMaterials, setConsumedMaterials] = useState<Record<string, number>>({});
 
-  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
+  const mockMaterials = [
+    {
+      id: 1,
+      materials_inventory: "Cotton Fabric [FAB-001]",
+      category: "Fabric",
+      required_qty: 1000,
+      available_qty: 1000,
+      shortage_qty: 0,
+      unit: "Meters",
+      status: "Allocated",
+      allocated_person: "John Doe"
+    },
+    {
+      id: 2,
+      materials_inventory: "Buttons [BT-002]",
+      category: "Alid",
+      required_qty: 5000,
+      available_qty: 5000,
+      shortage_qty: 0,
+      unit: "Pcs",
+      status: "Allocated",
+      allocated_person: "Jane Smith"
+    }
+  ];
+
+  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>(mockMaterials);
+  const [productionPersonnel, setProductionPersonnel] = useState<{name: string}[]>([
+    { name: 'John Doe' },
+    { name: 'Jane Smith' },
+    { name: 'Jamal' },
+    { name: 'Christie' },
+    { name: 'Aadesh' },
+    { name: 'Sam' }
+  ]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/personnel`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setProductionPersonnel(data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -378,7 +483,9 @@ export default function ProductionPage() {
       fetch(`${BACKEND_URL}/api/inventory/allocated?poNumber=${po}`)
         .then(res => res.json())
         .then(data => {
-          if (data && data.allocatedMaterials) {
+          if (data && Array.isArray(data)) {
+            setAllocatedMaterials(data);
+          } else if (data && data.allocatedMaterials) {
             setAllocatedMaterials(data.allocatedMaterials);
           }
         })
@@ -539,11 +646,11 @@ export default function ProductionPage() {
 
             {popoverOpen && (
               <div className="absolute right-0 mt-3 w-72 bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                <div className="bg-neutral-50 dark:bg-card/80 px-4 py-3 border-b border-border">
                   <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active POs</h3>
                 </div>
                 <div className="p-2 space-y-1 border-b border-border">
-                  {['PO-2026-002'].map(po => (
+                  {activePOs.length > 0 ? activePOs.map(po => (
                     <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
                       <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
                       <button
@@ -556,13 +663,15 @@ export default function ProductionPage() {
                         View
                       </button>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="px-3 py-2.5 text-xs text-muted-foreground text-center">No active POs</div>
+                  )}
                 </div>
-                <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+                <div className="bg-neutral-50 dark:bg-card/80 px-4 py-3 border-b border-border">
                   <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pending POs</h3>
                 </div>
                 <div className="p-2 space-y-1">
-                  {['PO-2026-005', 'PO-2026-008'].map(po => (
+                  {pendingPOs.length > 0 ? pendingPOs.map(po => (
                     <div key={po} className="flex justify-between items-center px-3 py-2.5 hover:bg-muted rounded-xl transition-colors group">
                       <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{po}</span>
                       <button
@@ -575,7 +684,9 @@ export default function ProductionPage() {
                         View
                       </button>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="px-3 py-2.5 text-xs text-muted-foreground text-center">No pending POs</div>
+                  )}
                 </div>
               </div>
             )}
@@ -651,7 +762,7 @@ export default function ProductionPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm">{stage.id === 'material' ? 'Material' : (t(`production.${stage.id}`) !== `production.${stage.id}` ? t(`production.${stage.id}`) : stage.name)}</h3>
-                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">{stage.id === 'material' ? 'Inspect and verify allocated raw materials and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description)}</p>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">{stage.id === 'material' ? 'Inspect and verify allocated articles and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description)}</p>
                   <p className="text-xs font-medium text-muted-foreground">
                     {stage.completedQty > 0 ? `${stage.completedQty} ${t('production.unitsProcessed') || 'units processed'}` : (t('dashboard.recentOrders.status.pending') || 'Not started')}
                   </p>
@@ -685,7 +796,7 @@ export default function ProductionPage() {
 
       {activeStageIdx !== null && ActiveIcon && (
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6 animate-in fade-in slide-in-from-top-4">
-          <div className="border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30 grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] items-center">
+          <div className="border-b border-border bg-neutral-50/50 dark:bg-card/30 grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] items-center">
             {/* Column 1: Title */}
             <div className="px-6 py-4 flex items-center gap-3">
               <button onClick={() => setActiveStageIdx(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1.5 -ml-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0" aria-label="Go Back">
@@ -729,7 +840,7 @@ export default function ProductionPage() {
 
               <div className="flex items-center">
                 <button
-                  className="border border-neutral-300 dark:border-neutral-700 bg-card hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
+                  className="border border-neutral-300 dark:border-border bg-card hover:bg-neutral-50 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
                 >
                   + Add Person
                 </button>
@@ -753,7 +864,7 @@ export default function ProductionPage() {
                   <div className="w-full overflow-x-auto border border-border rounded-lg">
                     <table className="w-full table-auto min-w-[800px] text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-neutral-50 dark:bg-neutral-800 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                        <tr className="bg-neutral-50 dark:bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                           <th className="px-4 py-3 whitespace-nowrap">Materials Inventory</th>
                           <th className="px-4 py-3 whitespace-nowrap">Category</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Required Qty</th>
@@ -766,35 +877,67 @@ export default function ProductionPage() {
                       </thead>
                       <tbody className="divide-y divide-neutral-200 dark:divide-slate-700/50">
                         {allocatedMaterials.length > 0 ? allocatedMaterials.map((mat) => {
-                          const reqQty = mat.requiredQty || 0;
-                          const availQty = mat.availableQty || 0;
-                          const shortage = reqQty > availQty ? reqQty - availQty : 0;
-                          const surplus = availQty > reqQty ? availQty - reqQty : 0;
+                          const reqQty = mat.required_qty || mat.requiredQty || 0;
+                          const availQtyOriginal = mat.available_qty || mat.availableQty || 0;
+                          const allocatedQty = Number(mat.allocated_qty || 0);
+                          const availQty = availQtyOriginal - allocatedQty;
+                          const shortage = reqQty > availQtyOriginal ? reqQty - availQtyOriginal : 0;
+                          const surplus = availQtyOriginal > reqQty ? availQtyOriginal - reqQty : 0;
+                          
+                          let statusBadge = 'PENDING ALLOCATION';
+                          let badgeClasses = 'bg-neutral-100 text-neutral-500';
+                          if (allocatedQty > 0) {
+                            if (allocatedQty >= reqQty) {
+                              statusBadge = 'FULLY ALLOCATED';
+                              badgeClasses = 'bg-emerald-100 text-emerald-700';
+                            } else {
+                              statusBadge = 'PARTIALLY ALLOCATED';
+                              badgeClasses = 'bg-amber-100 text-amber-700';
+                            }
+                          } else if (shortage > 0) {
+                            statusBadge = 'SHORTAGE';
+                            badgeClasses = 'bg-red-100 text-red-700';
+                          }
 
                           return (
                             <tr key={mat.id} className={`transition-colors ${surplus > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-muted/30'}`}>
-                              <td className="px-3 py-2 text-left font-semibold text-foreground">{mat.name}</td>
-                              <td className="px-3 py-2 text-left text-muted-foreground">{mat.category || 'Raw Material'}</td>
+                              <td className="px-3 py-2 text-left font-semibold text-foreground">{mat.materials_inventory || mat.name}</td>
+                              <td className="px-3 py-2 text-left text-muted-foreground">{mat.category || 'Article'}</td>
                               <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{reqQty}</td>
                               <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{availQty}</td>
-                              <td className="px-3 py-2 text-right text-neutral-400">{shortage > 0 ? shortage : '-'}</td>
+                              <td className="px-3 py-2 text-right text-neutral-400">{mat.shortage_qty || (shortage > 0 ? shortage : '-')}</td>
                               <td className="px-3 py-2 text-center text-muted-foreground">{mat.unit}</td>
                               <td className="px-3 py-2 text-center">
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${shortage > 0 ? 'bg-amber-100 text-amber-700' : surplus > 0 ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>{shortage > 0 ? 'Shortage' : surplus > 0 ? 'Surplus' : 'Fully Allocated'}</span>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClasses}`}>{statusBadge}</span>
                               </td>
                               <td className="px-3 py-2 text-right">
-                                <div className="flex items-center gap-2 justify-end min-w-[180px]">
-                                  <select className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300">
-                                    <option value="">Select Worker</option>
-                                    <option value="Jamal">Jamal</option>
-                                    <option value="Christie">Christie</option>
-                                  </select>
-                                  <input
-                                    type="number"
-                                    placeholder="Qty"
-                                    className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-16 text-neutral-700 dark:text-neutral-300"
-                                  />
-                                </div>
+                                  <div className="flex items-center gap-2 justify-end min-w-[180px]">
+                                    <select 
+                                      className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300"
+                                      value={mat.allocated_person || ""}
+                                      onChange={(e) => {
+                                        const next = [...allocatedMaterials];
+                                        next[next.indexOf(mat)] = { ...mat, allocated_person: e.target.value };
+                                        setAllocatedMaterials(next);
+                                      }}
+                                    >
+                                      <option value="">Select Worker</option>
+                                      {productionPersonnel.map(p => (
+                                        <option key={p.name} value={p.name}>{p.name}</option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      type="number"
+                                      placeholder="Qty"
+                                      value={mat.allocated_qty || ""}
+                                      onChange={(e) => {
+                                        const next = [...allocatedMaterials];
+                                        next[next.indexOf(mat)] = { ...mat, allocated_qty: e.target.value };
+                                        setAllocatedMaterials(next);
+                                      }}
+                                      className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-20 text-neutral-700 dark:text-neutral-300"
+                                    />
+                                  </div>
                               </td>
                             </tr>
                           );
@@ -815,7 +958,8 @@ export default function ProductionPage() {
                 <div className="flex justify-end mt-4">
                   <button
                     onClick={() => handleAdvanceToNextStage('material')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
+                    disabled={allocatedMaterials.length === 0}
+                    className={`rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors ${allocatedMaterials.length === 0 ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                   >
                     Allocate to Cutting Stage
                   </button>
@@ -845,7 +989,7 @@ export default function ProductionPage() {
                     <>
                       {incomingTransits.length > 0 && (
                         <div className="m-6 mb-0 bg-card border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden shadow-sm">
-                          <div className="bg-blue-50 dark:bg-neutral-800/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
+                          <div className="bg-blue-50 dark:bg-card/20 px-4 py-3 border-b border-blue-200 dark:border-blue-900/50 flex items-center gap-2">
                             <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300">Incoming Material Transits (Pending Verification)</h3>
                           </div>
@@ -861,7 +1005,14 @@ export default function ProductionPage() {
                                       {task.transitingWorkerId || 'Origin Worker'} <span className="text-neutral-400 mx-1">→</span> {task.materialAllocatedName}
                                     </div>
                                     <div className="text-xs text-neutral-500 mt-0.5">
-                                      Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} units</strong>
+                                      {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
+                                        <>
+                                          Quantity Received: <strong className="text-neutral-700 dark:text-neutral-300">{Math.floor((task.transferQuantity || task.targetQty) / task.per_piece_qty)} Pcs</strong> 
+                                          <span className="ml-1 text-neutral-400">(Converted from {task.transferQuantity || task.targetQty} {task.unit || 'units'} at {task.per_piece_qty} {task.unit}/pc)</span>
+                                        </>
+                                      ) : (
+                                        <>Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} {task.unit || 'units'}</strong></>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -889,7 +1040,7 @@ export default function ProductionPage() {
                           {Object.entries(grouped).map(([assignee, assigneeTasks]) => (
                             <div key={assignee} className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
                               {/* Column 1: Row Indicator */}
-                              <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-neutral-900/10">
+                              <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-[#151c2c]">
                                 <div className="flex items-center gap-2 mb-2">
                                   <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
                                     <User className="h-4 w-4" />
@@ -903,22 +1054,26 @@ export default function ProductionPage() {
                               <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
                                 {assigneeTasks.filter(t => t.status === 'Pending').length > 0 ? (
                                   assigneeTasks.filter(t => t.status === 'Pending').map(task => (
-                                    <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-red-500">
+                                    <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-red-500/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-red-500">
                                       <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
+                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
+                                          ) : (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
+                                          )}
                                         </div>
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">Start Time</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Start Time</span>
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
                                         </div>
                                       </div>
                                     </div>
                                   ))
                                 ) : (
-                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                  <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
                                 )}
                               </div>
 
@@ -926,22 +1081,26 @@ export default function ProductionPage() {
                               <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
                                 {assigneeTasks.filter(t => t.status === 'In Progress').length > 0 ? (
                                   assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
-                                    <div key={task.id} className="bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-amber-400">
+                                    <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-amber-400/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-amber-400">
                                       <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
+                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
+                                          ) : (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
+                                          )}
                                         </div>
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">Start Time</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.startTime || '--:--'}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Start Time</span>
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
                                         </div>
                                       </div>
                                     </div>
                                   ))
                                 ) : (
-                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                  <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
                                 )}
                               </div>
 
@@ -949,7 +1108,7 @@ export default function ProductionPage() {
                               <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
                                 {assigneeTasks.filter(t => t.status === 'Completed').length > 0 ? (
                                   assigneeTasks.filter(t => t.status === 'Completed').map(task => (
-                                    <div key={task.id} className="relative bg-card rounded-lg shadow-sm border border-border p-3 border-l-4 border-l-emerald-500">
+                                    <div key={task.id} className="relative bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-emerald-500/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-emerald-500">
                                       <div className="flex justify-between items-start mb-2">
                                         <p className="text-xs font-bold text-card-foreground pr-6">{task.materialAllocatedName}</p>
                                         {!task.handshakeStatus && (
@@ -967,16 +1126,20 @@ export default function ProductionPage() {
                                       </div>
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">Target Qty</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.targetQty}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
+                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
+                                          ) : (
+                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
+                                          )}
                                         </div>
                                         <div>
-                                          <span className="block uppercase tracking-wider opacity-70">End Time</span>
-                                          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{task.endTime || '--:--'}</span>
+                                          <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">End Time</span>
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{task.endTime || '--:--'}</span>
                                         </div>
                                       </div>
                                       {task.handshakeStatus === 'PENDING' && (
-                                        <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
+                                        <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-border">
                                           <span className="block w-full text-center text-[10px] font-bold py-1 bg-amber-50 text-amber-600 rounded">
                                             Transit Pending...
                                           </span>
@@ -985,7 +1148,7 @@ export default function ProductionPage() {
                                     </div>
                                   ))
                                 ) : (
-                                  <div className="border border-neutral-200/50 dark:border-neutral-800/50 rounded-lg h-[92px] w-full bg-neutral-50/30 dark:bg-neutral-900/20"></div>
+                                  <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
                                 )}
                               </div>
                             </div>
@@ -1022,13 +1185,13 @@ export default function ProductionPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsHandoverModalOpen(false)} />
             <div className="relative w-full max-w-lg mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border z-10 animate-in fade-in zoom-in-95 duration-200">
-              <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
+              <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-card/50 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-card-foreground">Stage Transition Handover Selection</h3>
                 <button onClick={() => setIsHandoverModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">✕</button>
               </div>
 
               <div className="p-6 space-y-5">
-                <div className="bg-blue-50 dark:bg-neutral-800/20 p-4 rounded-lg flex justify-between items-center">
+                <div className="bg-blue-50 dark:bg-card/20 p-4 rounded-lg flex justify-between items-center">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-bold mb-1">Transfer Block</p>
                     <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{pendingHandoverTask?.materialAllocatedName}</p>
@@ -1051,7 +1214,7 @@ export default function ProductionPage() {
                         <select
                           value={split.worker}
                           onChange={(e) => updateHandoverSplit(idx, 'worker', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm"
+                          className="flex-1 px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm"
                         >
                           <option value="">Select worker...</option>
                           <option value="Christie">Christie</option>
@@ -1065,7 +1228,7 @@ export default function ProductionPage() {
                           value={split.quantity || ''}
                           onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value)}
                           placeholder="Qty"
-                          className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
+                          className="w-24 px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
                         />
                         <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded uppercase whitespace-nowrap">
                           {currentStatus}
@@ -1090,11 +1253,11 @@ export default function ProductionPage() {
                 </div>
 
                 {/* Handover Status History Table */}
-                <div className="border-t border-neutral-100 dark:border-neutral-700 my-4 pt-4">
+                <div className="border-t border-neutral-100 dark:border-border my-4 pt-4">
                   <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Handover Status History</h4>
                   <div className="max-h-[160px] overflow-y-auto pr-1">
                     <table className="table-auto w-full text-sm text-left">
-                      <thead className="bg-neutral-50 dark:bg-neutral-800/50 sticky top-0">
+                      <thead className="bg-neutral-50 dark:bg-card/50 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Allocated Person</th>
                           <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Quantity</th>
@@ -1147,7 +1310,7 @@ export default function ProductionPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-neutral-50 dark:bg-neutral-800/50">
+              <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-neutral-50 dark:bg-card/50">
                 <button onClick={() => setIsHandoverModalOpen(false)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">Cancel</button>
                 <button
                   onClick={submitHandover}
@@ -1171,7 +1334,7 @@ export default function ProductionPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOutsourceModalOpen(false)} />
           <div className="relative w-full max-w-sm mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border z-10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-neutral-800/50 flex justify-between items-center">
+            <div className="px-6 py-4 border-b border-border bg-neutral-50 dark:bg-card/50 flex justify-between items-center">
               <h3 className="text-lg font-bold text-card-foreground">Outsource Assignment</h3>
               <button onClick={() => setIsOutsourceModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">✕</button>
             </div>
@@ -1212,7 +1375,7 @@ export default function ProductionPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => { setIsStatusModalOpen(false); setExpandedGarmentIdx(null); }} />
           <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border max-h-[90vh] flex flex-col z-10">
-            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-card/50">
               <h2 className="text-lg font-bold text-card-foreground">
                 {stageName} Stage Breakdown <span className="text-sm font-medium text-neutral-500 ml-2">({poNumber || 'No PO Selected'})</span>
               </h2>
@@ -1252,7 +1415,7 @@ export default function ProductionPage() {
 
                           {/* Expandable Sub-Panel */}
                           {expandedGarmentIdx === i && (
-                            <div className="bg-slate-50 dark:bg-neutral-800/40 p-5 border-t border-border shadow-inner">
+                            <div className="bg-slate-50 dark:bg-card/40 p-5 border-t border-border shadow-inner">
                               <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                                 Garment Blueprints
@@ -1260,7 +1423,7 @@ export default function ProductionPage() {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 {/* Column A */}
                                 <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Design & Style Specs</h5>
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-border pb-2 mb-1">Design & Style Specs</h5>
                                   <div className="space-y-3">
                                     {g.specs.split(', ').map((specStr: string, idx: number) => {
                                       const [label, val] = specStr.split(': ');
@@ -1275,7 +1438,7 @@ export default function ProductionPage() {
                                 </div>
                                 {/* Column B */}
                                 <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Size & Color Matrix</h5>
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-border pb-2 mb-1">Size & Color Matrix</h5>
                                   {(() => {
                                     const parts = g.sizeGrid.split(' | ');
                                     const sizesStr = parts[0];
@@ -1293,8 +1456,8 @@ export default function ProductionPage() {
                                           <div className="px-3 py-2 text-right">Quantity</div>
                                         </div>
                                         {sizes.map((s: any, idx: number) => (
-                                          <div key={idx} className="grid grid-cols-2 text-sm text-card-foreground border-b border-neutral-100 dark:border-neutral-700 last:border-b-0">
-                                            <div className="px-3 py-2 border-r border-neutral-100 dark:border-neutral-700 font-medium">{s.size}</div>
+                                          <div key={idx} className="grid grid-cols-2 text-sm text-card-foreground border-b border-neutral-100 dark:border-border last:border-b-0">
+                                            <div className="px-3 py-2 border-r border-neutral-100 dark:border-border font-medium">{s.size}</div>
                                             <div className="px-3 py-2 text-right">{s.qty}</div>
                                           </div>
                                         ))}
@@ -1310,7 +1473,7 @@ export default function ProductionPage() {
                                 </div>
                                 {/* Column C */}
                                 <div className="bg-card rounded-xl border border-border p-4 shadow-sm flex flex-col gap-3">
-                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-700 pb-2 mb-1">Raw Materials Allocated</h5>
+                                  <h5 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100 dark:border-border pb-2 mb-1">Articles Allocated</h5>
                                   <ul className="divide-y divide-neutral-100 dark:divide-slate-700/50">
                                     {g.materials.map((mat: string, idx: number) => (
                                       <li key={idx} className="py-2.5 text-sm text-neutral-700 dark:text-neutral-300 flex items-start gap-2.5 first:pt-1 last:pb-1">
@@ -1343,7 +1506,7 @@ export default function ProductionPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOverviewModalOpen(false)} />
           <div className="relative w-full max-w-4xl mx-auto bg-card rounded-2xl shadow-2xl overflow-hidden border border-border flex flex-col z-10 max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-neutral-50 dark:bg-card/50">
               <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
                 <Table className="w-5 h-5 text-indigo-500" />
                 Global Status Matrix <span className="text-sm font-medium text-neutral-500 ml-1">({poNumber || 'No PO Selected'})</span>

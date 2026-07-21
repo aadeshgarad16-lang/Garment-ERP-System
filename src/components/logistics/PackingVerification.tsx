@@ -56,7 +56,7 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
                   type="text" 
                   value={manifestId}
                   onChange={(e) => setManifestId(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-border rounded-lg text-sm text-muted-foreground focus:outline-none"
+                  className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none"
                   readOnly
                 />
               </div>
@@ -89,7 +89,7 @@ export default function PackingVerification({ onComplete, order }: PackingVerifi
             </div>
           </div>
           
-          <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6 border border-border flex flex-col">
+          <div className="bg-neutral-50 dark:bg-card rounded-xl p-6 border border-border flex flex-col">
             <h3 className="text-sm font-bold text-card-foreground mb-4 uppercase tracking-wider">{t('logistics.manifestSummary') || 'Manifest Summary'}</h3>
             <div className="space-y-4 flex-1">
               <div className="flex justify-between items-center pb-3 border-b border-border">

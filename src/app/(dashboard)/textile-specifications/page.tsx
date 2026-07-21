@@ -14,7 +14,7 @@ export default function TextileSpecificationsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-neutral-50 dark:bg-neutral-800 min-h-screen">
+    <div className="max-w-7xl mx-auto p-6 bg-neutral-50 dark:bg-card min-h-screen">
       <div className="bg-card rounded-xl shadow-sm border border-border p-8">
         <h1 className="text-3xl font-bold text-foreground mb-8 border-b pb-4">
           Textile Order Specifications
@@ -23,7 +23,7 @@ export default function TextileSpecificationsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Configuration Details Section */}
           <div className="lg:w-1/3">
-            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-6 border border-border">
+            <div className="bg-neutral-50 dark:bg-card/50 rounded-lg p-6 border border-border">
               <h2 className="text-xl font-semibold text-card-foreground mb-4">
                 Configuration Details
               </h2>
@@ -43,14 +43,14 @@ export default function TextileSpecificationsPage() {
           {/* Detailed Specifications Table */}
           <div className="lg:w-2/3">
             <div className="bg-card rounded-lg border border-border overflow-hidden">
-              <div className="bg-neutral-50 dark:bg-neutral-800/50 px-6 py-4 border-b border-border">
+              <div className="bg-neutral-50 dark:bg-card/50 px-6 py-4 border-b border-border">
                 <h2 className="text-xl font-semibold text-card-foreground">
                   Detailed Specifications
                 </h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-border">
+                  <thead className="bg-neutral-50 dark:bg-card border-b border-border">
                     <tr className="text-sm uppercase text-muted-foreground font-semibold">
                       <th className="px-6 py-4 border-r border-border w-24">Item Number</th>
                       <th className="px-6 py-4 border-r border-border">Address</th>

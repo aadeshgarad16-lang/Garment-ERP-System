@@ -276,15 +276,15 @@ export default function MaterialReleasePage() {
           <div className="p-6">
             <h3 className="text-md font-bold text-card-foreground mb-4">{t('procurement.releaseSummary') || 'Release Summary'}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">{t('procurement.releaseId') || 'Release ID'}</p>
                 <p className="font-semibold text-foreground">REL-2026-042</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">{t('orderInitiation.orderForm.orderId') || 'Order ID'}</p>
                 <p className="font-semibold text-foreground">PO-2026-004</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">Allocate material</p>
                 <p className="font-semibold text-foreground">{releaseInfo.productionFloor || 'Allocate to Person 1'}</p>
               </div>
@@ -295,7 +295,7 @@ export default function MaterialReleasePage() {
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full text-left border-collapse whitespace-nowrap">
                 <thead>
-                  <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  <tr className="bg-neutral-50 dark:bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                     <th scope="col" className="px-6 py-3">{t('inventory.materials.table.headers.name') || 'Material Name'}</th>
                     <th scope="col" className="px-6 py-3 text-right">{t('procurement.releasedQty') || 'Released Qty'}</th>
                   </tr>
@@ -326,14 +326,14 @@ export default function MaterialReleasePage() {
         <>
           {/* Main Release Table */}
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+            <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
               <h2 className="text-lg font-semibold text-card-foreground">{t('procurement.issueInventory') || 'Issue Inventory to Production'}</h2>
             </div>
 
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse ">
                 <thead>
-                  <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                     <th scope="col" className="px-4 py-3">{t('inventory.materials.table.headers.name') || 'Material Name'}</th>
                     <th scope="col" className="px-4 py-3">{t('inventory.materials.table.headers.category') || 'Category'}</th>
                     <th scope="col" className="px-4 py-3 text-right">{t('procurement.frozenQty') || 'Frozen Qty'}</th>

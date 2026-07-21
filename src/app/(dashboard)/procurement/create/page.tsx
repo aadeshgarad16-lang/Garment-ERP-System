@@ -442,15 +442,15 @@ export default function CreateProcurementPage() {
 
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</p>
                 <p className="font-semibold text-foreground">{formData.poNumber}</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.customer') || 'Requested By'}</p>
                 <p className="font-semibold text-foreground">{formData.requestedBy} ({formData.department})</p>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700 md:col-span-2">
+              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border md:col-span-2">
                 <p className="text-xs text-muted-foreground mb-2">{t('inventoryVal.materialsHeader') || 'Materials Requested'}</p>
                 <div className="divide-y divide-neutral-200 dark:divide-slate-700 border border-border rounded-lg overflow-hidden bg-card">
                   {requestedMaterials.map((item, idx) => {
@@ -489,7 +489,7 @@ export default function CreateProcurementPage() {
           <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             {showArchive ? (
               <div className="flex flex-col h-full">
-                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                     <Archive className="h-5 w-5 text-indigo-600" />
                     {t('procurement.archiveDashboard') || 'Archived Items Dashboard'}
@@ -503,7 +503,7 @@ export default function CreateProcurementPage() {
                 </div>
                 <div className="p-6">
                   {archivedItems.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-neutral-800/50">
+                    <div className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-card/50">
                       <Archive className="h-10 w-10 text-neutral-300 dark:text-slate-600 mx-auto mb-3" />
                       <p className="text-muted-foreground font-medium">{t('procurement.noArchivedItems') || 'No archived materials found.'}</p>
                     </div>
@@ -511,7 +511,7 @@ export default function CreateProcurementPage() {
                     <div className="overflow-x-auto border border-border rounded-xl">
                       <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
-                          <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                          <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                             <th className="px-4 py-3">{t('inventoryVal.materialsHeader') || 'Material Name'}</th>
                             <th className="px-4 py-3">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</th>
                             <th className="px-4 py-3">{t('procurement.archivedDate') || 'Archived Date'}</th>
@@ -545,7 +545,7 @@ export default function CreateProcurementPage() {
               </div>
             ) : (
               <>
-                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
                   <h2 className="text-lg font-semibold text-card-foreground">
                     {t('procurement.requestFormTitle') || 'Purchase Request Configuration'}
                   </h2>
@@ -581,7 +581,7 @@ export default function CreateProcurementPage() {
                         lang="en-GB"
                         value={formData.requestDate}
                         disabled
-                        className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-border text-muted-foreground rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-card border border-border text-muted-foreground rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -619,7 +619,7 @@ export default function CreateProcurementPage() {
                   </div>
 
                   {/* Dynamic Materials List Component */}
-                  <div className="border-t border-neutral-100 dark:border-neutral-700 pt-6 space-y-4">
+                  <div className="border-t border-neutral-100 dark:border-border pt-6 space-y-4">
                     <div className="flex justify-between items-center bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
                       <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 text-xs font-semibold uppercase tracking-wider">
                         <FileCheck2 className="h-4 w-4" />
@@ -648,7 +648,7 @@ export default function CreateProcurementPage() {
                     <div className="border border-border rounded-xl overflow-hidden bg-card">
                       <div className="w-full">
                         {/* Header Row */}
-                        <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider whitespace-nowrap px-6 py-3">
+                        <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-card border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider whitespace-nowrap px-6 py-3">
                           <div>{t('inventoryVal.materialsHeader') || 'Material'}</div>
                           <div>QUANTITY</div>
                           <div>UNIT</div>
@@ -798,7 +798,7 @@ export default function CreateProcurementPage() {
                     ></textarea>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-neutral-700">
+                  <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-border">
                     <button
                       type="button"
                       onClick={() => advanceStage('/procurement', 'Procurement')}
@@ -822,7 +822,7 @@ export default function CreateProcurementPage() {
           <div className="space-y-6">
             {/* Consolidated Purchase Request Summary Card */}
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30">
+              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30">
                 <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
                   <Layers className="h-4 w-4 text-muted-foreground" />
                   {t('procurement.shortageProfile') || 'Purchase Proposal Summary'}
@@ -838,7 +838,7 @@ export default function CreateProcurementPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-neutral-700">
+                <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-border">
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
                       TOTAL VOLUME
@@ -866,7 +866,7 @@ export default function CreateProcurementPage() {
                       {requestedMaterials.map((item, idx) => {
                         const details = getMaterialDetails(item.materialId);
                         return (
-                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground bg-neutral-50 dark:bg-neutral-800 p-2 rounded border border-neutral-100 dark:border-neutral-700">
+                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground bg-neutral-50 dark:bg-card p-2 rounded border border-neutral-100 dark:border-border">
                             <span className="font-medium truncate max-w-[120px]">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
                             <span className="font-bold text-foreground">{item.quantity} {details.unit}</span>
                           </div>
@@ -880,7 +880,7 @@ export default function CreateProcurementPage() {
 
             {/* Supplier Information Summary Card */}
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30">
+              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30">
                 <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                   {t('procurement.supplierProfile') || 'Active Suppliers'}
@@ -890,7 +890,7 @@ export default function CreateProcurementPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-border bg-neutral-50/50 dark:bg-neutral-800/50">
+                      <tr className="border-b border-border bg-neutral-50/50 dark:bg-card/50">
                         <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Supplier Name</th>
                         <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material Specialities</th>
                         <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Leadtime</th>

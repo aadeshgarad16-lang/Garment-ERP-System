@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
-import { isStageMatch } from '@/utils/orderUtils';
+import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
 function SearchableDropdown({
   options,
@@ -403,14 +403,14 @@ export default function BOMCalculationPage() {
     }));
   };
 
-  const uniqueSizes = Array.from(new Set(
+  const uniqueSizes = sortSizesAscending(Array.from(new Set(
     activeSpecs.flatMap((s: any) => {
       if (Array.isArray(s.size)) return s.size.map(String).map((x: string) => x.trim());
       if (typeof s.size === 'string') return s.size.split(',').map((x: string) => x.trim()).filter(Boolean);
       if (s.size) return [String(s.size).trim()];
       return [];
     })
-  ));
+  )));
 
   const totalFabric = editableMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
   const totalAllied = editableMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
@@ -504,7 +504,7 @@ export default function BOMCalculationPage() {
 
         {/* 2. Order Configuration (Horizontal Full-Width) */}
         <div className="bg-card rounded-xl shadow-sm border border-border">
-          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 rounded-t-xl">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30 rounded-t-xl">
             <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               {t('bom.config')}
@@ -536,7 +536,7 @@ export default function BOMCalculationPage() {
             </div>
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
-              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
                 {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
               </div>
             </div>
@@ -567,7 +567,7 @@ export default function BOMCalculationPage() {
 
         {/* 3. Garment Details */}
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
             <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Layers className="h-4 w-4 text-muted-foreground" />
               {t('bom.details')}
@@ -584,10 +584,10 @@ export default function BOMCalculationPage() {
                 <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
               ) : (
                 activeSpecs.map((spec: any, idx: number) => (
-                  <div key={idx} className="bg-neutral-50 dark:bg-neutral-800/50 p-3 rounded-lg border border-neutral-100 dark:border-neutral-700 flex justify-between items-center">
+                  <div key={idx} className="bg-neutral-50 dark:bg-card/50 p-3 rounded-lg border border-neutral-100 dark:border-border flex justify-between items-center">
                     <div>
                       <p className="text-sm font-medium text-foreground">{spec.itemDescription || '-'} - {spec.pattern || '-'}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Size: {spec.size || '-'} | Ord: {spec.quantity || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Size: {typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}</p>
                     </div>
                     <div className="text-right pl-3 border-l border-neutral-200 dark:border-neutral-600">
                       <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
@@ -623,21 +623,20 @@ export default function BOMCalculationPage() {
 
         {/* 4. Materials Calculation Table */}
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="border-b border-border px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-card/30">
             <h2 className="text-lg font-semibold text-card-foreground">{t('bom.materials')}</h2>
           </div>
 
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-4 py-3.5 w-[20%] text-left font-semibold">Material Inventory</th>
                   <th className="px-4 py-3.5 w-[14%] text-left font-semibold">Brand</th>
                   <th className="px-4 py-3.5 w-[12%] text-left font-semibold">Selected Sizes</th>
                   <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Piece Qty</th>
                   <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Total Qty <span className="text-[9px] block text-neutral-400 lowercase">(inc. wastage)</span></th>
                   <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Unit Price</th>
-                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Labor Cost</th>
                   <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Final Price</th>
                 </tr>
               </thead>
@@ -697,8 +696,7 @@ export default function BOMCalculationPage() {
                     const wastageAmount = baseReq * (wastage / 100);
                     const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
                     const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[size] ?? Number(item.perUnitPrice || 0);
-                    const currentLaborCost = sizeLaborCostOverrides[item.id]?.[size] ?? Number(item.laborCostPerUnit || 0);
-                    const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice) + (currentLaborCost * volume);
+                    const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
 
                     return {
                       size,
@@ -716,7 +714,7 @@ export default function BOMCalculationPage() {
                   
                   const combinedFinalPrice = hasSizeBreakdown
                     ? sizeRows.reduce((sum, sr) => sum + sr.sizeFinalPrice, 0)
-                    : (combinedTotalQty * Number(item.perUnitPrice || 0)) + (Number(item.laborCostPerUnit || 0) * totalProductionRequired);
+                    : (combinedTotalQty * Number(item.perUnitPrice || 0));
 
                   return (
                     <React.Fragment key={idx}>
@@ -726,7 +724,7 @@ export default function BOMCalculationPage() {
                             <div className="flex flex-col">
                               <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
                               <div className="flex items-center gap-2 mt-1">
-                                <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-neutral-700">
+                                <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
                                   {item.unit}
                                 </span>
                               </div>
@@ -783,18 +781,6 @@ export default function BOMCalculationPage() {
                                />
                              </div>
                           </td>
-                          <td className="px-4 py-3 text-right align-top">
-                             <div className="relative flex items-center">
-                               <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                               <input 
-                                 type="number" 
-                                 min="0"
-                                 value={item.laborCostPerUnit || 0} 
-                                 onChange={(e) => updateMaterial(item.id, 'laborCostPerUnit', e.target.value)}
-                                 className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                               />
-                             </div>
-                          </td>
                           <td className="px-4 py-3 text-right align-top pt-4">
                               <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                 ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -806,17 +792,17 @@ export default function BOMCalculationPage() {
                           <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
                             {sIdx === 0 && (
                               <>
-                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-[#121212] border-b border-neutral-100 dark:border-slate-800/50">
+                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
                                   <div className="flex flex-col">
                                     <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-neutral-700">
+                                      <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
                                         {item.unit}
                                       </span>
                                     </div>
                                   </div>
                                 </td>
-                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-[#121212] border-b border-neutral-100 dark:border-slate-800/50">
+                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
                                    <input 
                                      type="text" 
                                      value={item.brand} 
@@ -866,19 +852,6 @@ export default function BOMCalculationPage() {
                                  />
                                </div>
                             </td>
-                            <td className="px-4 py-2 text-right">
-                               <div className="relative flex items-center">
-                                 <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                                 <input 
-                                   type="number" 
-                                   min="0"
-                                   step="0.1"
-                                   value={(sizeLaborCostOverrides[item.id]?.[sr.size] ?? item.laborCostPerUnit) || 0} 
-                                   onChange={(e) => updateSizeLaborCost(item.id, sr.size, e.target.value)}
-                                   className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                                 />
-                               </div>
-                            </td>
                             <td className="px-4 py-2 text-right pt-4">
                               <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
                                 ₹{sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -900,7 +873,7 @@ export default function BOMCalculationPage() {
                               {combinedTotalQty}
                             </span>
                           </td>
-                          <td colSpan={2} className="px-4 py-2.5"></td>
+                          <td className="px-4 py-2.5"></td>
                           <td className="px-4 py-2.5 text-right">
                             <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
                               ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -914,7 +887,7 @@ export default function BOMCalculationPage() {
               </tbody>
             </table>
           </div>
-          <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 border-t border-border text-xs text-muted-foreground flex justify-between">
+          <div className="bg-neutral-50 dark:bg-card px-4 py-3 border-t border-border text-xs text-muted-foreground flex justify-between">
             <p>{t('bom.wastage') || 'Calculations include wastage margin.'}</p>
             <p>{t('dashboard.recentOrders.headers.amount') || 'Last recalculated: Just now'}</p>
           </div>
@@ -950,9 +923,8 @@ export default function BOMCalculationPage() {
                           per_piece_qty: Number(m.perPiece || 0),
                           final_qty: Number(m.totalQty || 0),
                           brand: m.brand || '',
-                          labor_cost: Number(m.laborCostPerUnit || 0),
                           unit_price: Number(m.perUnitPrice || 0),
-                          amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0)) + (Number(m.laborCostPerUnit || 0) * totalProductionRequired)
+                          amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0))
                         }));
 
                         const res = await fetch(`${BACKEND_URL}/api/bom/save`, {

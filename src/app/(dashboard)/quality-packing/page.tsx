@@ -182,10 +182,10 @@ export default function QualityPackingPage() {
   };
 
   const getStageCardColor = (status: StageStatus, isActive: boolean) => {
-    if (isActive) return 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10 dark:bg-neutral-800/20';
+    if (isActive) return 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10 dark:bg-card/20';
     switch (status) {
       case 'Completed': return 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-900/20';
-      case 'In Progress': return 'border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-neutral-800/20';
+      case 'In Progress': return 'border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-card/20';
       case 'Rework Required':
       case 'Failed': return 'border-red-200 dark:border-red-800/50 bg-red-50/30 dark:bg-red-900/20';
       default: return 'border-border bg-card hover:bg-muted cursor-pointer';
@@ -193,10 +193,10 @@ export default function QualityPackingPage() {
   };
 
   const getIconColor = (status: StageStatus, isActive: boolean) => {
-    if (isActive) return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-neutral-800/40';
+    if (isActive) return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-card/40';
     switch (status) {
       case 'Completed': return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40';
-      case 'In Progress': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-neutral-800/40';
+      case 'In Progress': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-card/40';
       case 'Rework Required':
       case 'Failed': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40';
       default: return 'text-muted-foreground bg-muted';
@@ -251,7 +251,7 @@ export default function QualityPackingPage() {
           
           {popoverOpen && (
             <div className="absolute right-0 mt-3 w-72 bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="bg-neutral-50 dark:bg-neutral-800/80 px-4 py-3 border-b border-border">
+              <div className="bg-neutral-50 dark:bg-card/80 px-4 py-3 border-b border-border">
                 <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pending at Quality & Packing</h3>
               </div>
               <div className="p-2 space-y-1">
@@ -365,7 +365,7 @@ export default function QualityPackingPage() {
       {/* Tracking Form */}
       {activeStageIdx !== null && ActiveIcon && (
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6 animate-in fade-in slide-in-from-top-4">
-          <div className="border-b border-border px-4 py-3 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+          <div className="border-b border-border px-4 py-3 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
               <ActiveIcon className="h-5 w-5 text-indigo-500" />
               {t(`orderInitiation.tracker.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} {t('quality.dataEntry') || 'Data Entry'}
@@ -465,7 +465,7 @@ export default function QualityPackingPage() {
 
               {/* QC Specific Block */}
               {stages[activeStageIdx].id === 'qc' && (
-                <div className="md:col-span-2 bg-neutral-50 dark:bg-neutral-800 p-4 rounded-lg border border-border mt-2">
+                <div className="md:col-span-2 bg-neutral-50 dark:bg-card p-4 rounded-lg border border-border mt-2">
                   <div className="flex items-start gap-3 mb-4">
                     <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
                     <div>
@@ -527,7 +527,7 @@ export default function QualityPackingPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-neutral-700">
+            <div className="mt-6 flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-border">
               {stages[activeStageIdx].status === 'Pending' && (
                 <button
                   onClick={() => handleStartStage(activeStageIdx)}

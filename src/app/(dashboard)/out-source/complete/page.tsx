@@ -69,14 +69,14 @@ export default function CompleteOutsourcedTracking() {
         <div className="space-y-6 lg:col-span-8">
           
           {/* Product & Quantity Breakdown Table */}
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-neutral-800 flex items-center gap-2 bg-slate-50 dark:bg-[#18181b]/50 dark:bg-[#1a1a1a]">
+          <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-border flex items-center gap-2 bg-slate-50 dark:bg-card/50 dark:bg-[#1a1a1a]">
               <ShoppingCart className="text-blue-600" size={20} />
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Product & Quantity Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-[#18181b] text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold border-b border-slate-200 dark:border-neutral-800">
+                <thead className="bg-slate-50 dark:bg-card text-slate-500 dark:text-slate-400 dark:text-slate-500 font-semibold border-b border-slate-200 dark:border-border">
                   <tr>
                     <th className="px-6 py-4">PO Number</th>
                     <th className="px-6 py-4">Product Type</th>
@@ -87,7 +87,7 @@ export default function CompleteOutsourcedTracking() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {orderProducts.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:bg-[#18181b]/50 dark:bg-[#1a1a1a] transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50 dark:bg-card/50 dark:bg-[#1a1a1a] transition-colors">
                       <td className="px-6 py-4 text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">{item.poNumber}</td>
                       <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">{item.type}</td>
                       <td className="px-6 py-4 text-slate-500 dark:text-slate-400 dark:text-slate-500">{item.sku}</td>
@@ -97,7 +97,7 @@ export default function CompleteOutsourcedTracking() {
                       <td className="px-6 py-4 text-center font-bold text-slate-800 dark:text-slate-100">{item.quantity}</td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-50 dark:bg-[#18181b] border-t-2 border-slate-200 dark:border-neutral-800">
+                  <tr className="bg-slate-50 dark:bg-card border-t-2 border-slate-200 dark:border-border">
                     <td colSpan={4} className="px-6 py-4 text-right font-semibold text-slate-600 dark:text-slate-300">Total Order Units:</td>
                     <td className="px-6 py-4 text-center font-bold text-blue-700 text-base">
                       {orderProducts.reduce((sum, item) => sum + item.quantity, 0)}
@@ -113,7 +113,7 @@ export default function CompleteOutsourcedTracking() {
 
         {/* Right Column: Vendor Details */}
         <div className="space-y-6 lg:col-span-4">
-          <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-neutral-800 p-6 shadow-sm sticky top-6">
+          <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border p-6 shadow-sm sticky top-6">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
               <Building2 className="text-blue-600" size={20} />
               Vendor Allocation
@@ -129,7 +129,7 @@ export default function CompleteOutsourcedTracking() {
                         type="checkbox" 
                         checked={selectedVendors.includes(vendor.id)}
                         onChange={() => toggleVendor(vendor.id)}
-                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 dark:border-neutral-700 dark:bg-[#202020]"
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 dark:border-border dark:bg-[#202020]"
                       />
                       <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{vendor.name}</span>
                     </label>
@@ -138,13 +138,13 @@ export default function CompleteOutsourcedTracking() {
               </div>
 
               {selectedVendors.length > 0 && (
-                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-neutral-800">
+                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-border">
                   <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Assigned Capacities:</p>
                   {selectedVendors.map(vid => {
                     const vendor = availableVendors.find(v => v.id === vid);
                     if (!vendor) return null;
                     return (
-                      <div key={vid} className="bg-slate-50 dark:bg-[#18181b] rounded-xl p-4 border border-slate-100 dark:border-neutral-800 space-y-3">
+                      <div key={vid} className="bg-slate-50 dark:bg-card rounded-xl p-4 border border-slate-100 dark:border-border space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
                             {vendor.initials}
@@ -161,7 +161,7 @@ export default function CompleteOutsourcedTracking() {
                             min="0"
                             value={vendorAllocations[vid] || ''}
                             onChange={(e) => updateAllocation(vid, parseInt(e.target.value) || 0)}
-                            className="w-24 text-right bg-white dark:bg-[#121212] border border-slate-200 dark:border-neutral-700 rounded px-2 py-1 text-sm font-bold text-slate-800 dark:text-slate-100"
+                            className="w-24 text-right bg-white dark:bg-background border border-slate-200 dark:border-border rounded px-2 py-1 text-sm font-bold text-slate-800 dark:text-slate-100"
                           />
                         </div>
                       </div>

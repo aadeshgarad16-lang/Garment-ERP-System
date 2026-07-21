@@ -116,7 +116,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">{formatRole(currentUser?.userRole)}</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-100 dark:border-neutral-700">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-100 dark:border-border">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
                     <User className="h-3.5 w-3.5" />
@@ -153,7 +153,7 @@ export default function ProfilePage() {
                     value={currentUser?.loginPhoneNumber || "N/A"}
                     disabled
                     readOnly
-                    className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-neutral-800 border border-border rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
+                    className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-card border border-border rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
                   />
                 </div>
               </div>

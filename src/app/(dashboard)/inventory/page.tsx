@@ -18,6 +18,7 @@ import {
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
+import { MetricCard } from '@/components/MetricCard';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 
@@ -351,47 +352,34 @@ export default function InventoryPage() {
 
       {/* Allocation Preview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-100 dark:bg-emerald-950/50">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('inventoryVal.fullyAvailable')}</p>
-            <p className="text-2xl font-bold text-foreground">{summary.fullyAvailableCount}</p>
-          </div>
-        </div>
+        <MetricCard
+          title={t('inventoryVal.fullyAvailable') as string}
+          value={summary.fullyAvailableCount}
+          icon={CheckCircle2}
+          variant="green"
+        />
 
-        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-950/50">
-            <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('inventoryVal.partiallyAvailable')}</p>
-            <p className="text-2xl font-bold text-foreground">{summary.partiallyAvailableCount}</p>
-          </div>
-        </div>
+        <MetricCard
+          title={t('inventoryVal.partiallyAvailable') as string}
+          value={summary.partiallyAvailableCount}
+          icon={AlertTriangle}
+          variant="amber"
+        />
 
-        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-100 dark:bg-red-950/50">
-            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('inventoryVal.criticalShortages')}</p>
-            <p className="text-2xl font-bold text-foreground">{summary.criticalCount}</p>
-          </div>
-        </div>
+        <MetricCard
+          title={t('inventoryVal.criticalShortages') as string}
+          value={summary.criticalCount}
+          icon={AlertCircle}
+          variant="red"
+        />
 
-        <div className="bg-card rounded-xl shadow-sm border border-border p-4 sm:p-5 flex items-center gap-4">
-          <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${hasShortage ? 'bg-indigo-100 dark:bg-indigo-950/50' : 'bg-emerald-100 dark:bg-emerald-950/50'}`}>
-            <Layers className={`h-6 w-6 ${hasShortage ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('inventoryVal.readiness')}</p>
-            <p className={`text-sm font-bold mt-1 ${hasShortage ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-              {hasShortage ? (t('procurement.procCompletion') || 'Procurement Required') : (t('orderInitiation.tracker.materialAllocation') || 'Ready for Allocation')}
-            </p>
-          </div>
-        </div>
+        <MetricCard
+          title={t('inventoryVal.readiness') as string}
+          value={hasShortage ? 'Required' : 'Ready'}
+          subtitle={hasShortage ? 'Procurement' : 'For Allocation'}
+          icon={Layers}
+          variant={hasShortage ? "blue" : "green"}
+        />
       </div>
 
       {/* Main Inventory Table Component Container */}
@@ -447,7 +435,7 @@ export default function InventoryPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-neutral-50 dark:bg-card/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th scope="col" className="px-6 py-3 min-w-[200px]">{t('inventoryVal.materialsHeader')}</th>
                 <th scope="col" className="px-4 py-3">Category</th>
                 <th scope="col" className="px-4 py-3 text-right">Required Qty</th>
@@ -523,7 +511,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Pagination Controls */}
-        <div className="bg-neutral-50 dark:bg-neutral-800 px-6 py-3 border-t border-border flex items-center justify-between">
+        <div className="bg-neutral-50 dark:bg-card px-6 py-3 border-t border-border flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {t('inventoryVal.showing') || 'Showing'}{' '}
             <span className="font-medium text-foreground">
@@ -552,13 +540,13 @@ export default function InventoryPage() {
 
       {/* Available Materials Table */}
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6">
-        <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+        <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
           <h2 className="text-lg font-semibold text-card-foreground">Available Materials</h2>
         </div>
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse table-fixed">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-neutral-50 dark:bg-card/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th scope="col" className="px-6 py-4 w-1/5 text-left">Material Name</th>
                 <th scope="col" className="px-6 py-4 w-1/5 text-left">Required Qty</th>
                 <th scope="col" className="px-6 py-4 w-1/5 text-left">Available Qty</th>

@@ -174,7 +174,7 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
               </div>
               <div className="max-h-48 overflow-y-auto custom-scrollbar">
                 {stageOrders.map(order => (
-                  <div key={order.id} className="flex justify-between items-center gap-2 px-3 py-2 text-xs border-b border-neutral-100 dark:border-neutral-700/50 last:border-0 hover:bg-neutral-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <div key={order.id} className="flex justify-between items-center gap-2 px-3 py-2 text-xs border-b border-neutral-100 dark:border-border/50 last:border-0 hover:bg-neutral-50 dark:hover:bg-slate-700/30 transition-colors">
                     <span className="font-medium text-neutral-700 dark:text-neutral-300" title={order.poNumber || 'Draft Order'}>
                       {order.poNumber || 'Draft Order'}
                     </span>
@@ -211,7 +211,7 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
           Reset Workflow Data
         </button>
       </div>
-      <div className="bg-card dark:bg-[#18181b] rounded-2xl border border-border dark:border-zinc-800 shadow-sm p-4 w-full mb-8">
+      <div className="bg-card dark:bg-card rounded-2xl border border-border dark:border-border shadow-sm p-4 w-full mb-8">
         <div className="flex flex-nowrap justify-between items-center w-full gap-0.5 sm:gap-1 lg:gap-2">
           {displaySteps.map((step, index) => renderStep(step, index, displaySteps.length))}
         </div>

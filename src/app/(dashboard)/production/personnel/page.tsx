@@ -78,7 +78,7 @@ export default function PersonnelOverviewPage() {
       {personnelList.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {personnelList.map((person, i) => (
-            <div key={i} className="bg-card border border-neutral-100 dark:border-neutral-700 rounded-2xl shadow-sm p-5 flex flex-col gap-5">
+            <div key={i} className="bg-card border border-neutral-100 dark:border-border rounded-2xl shadow-sm p-5 flex flex-col gap-5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-base shadow-inner">
                   {person.name.substring(0, 2).toUpperCase()}
@@ -90,10 +90,10 @@ export default function PersonnelOverviewPage() {
                   </p>
                 </div>
               </div>
-              <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 space-y-3 border border-neutral-100 dark:border-neutral-700 flex-1">
+              <div className="bg-neutral-50 dark:bg-card/50 rounded-xl p-4 space-y-3 border border-neutral-100 dark:border-border flex-1">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Assigned Stage</span>
-                  <span className="px-2 py-0.5 bg-blue-50 dark:bg-neutral-800/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded uppercase tracking-wider">{person.activeStage}</span>
+                  <span className="px-2 py-0.5 bg-blue-50 dark:bg-card/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded uppercase tracking-wider">{person.activeStage}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Active PO Batch</span>
@@ -108,8 +108,8 @@ export default function PersonnelOverviewPage() {
           ))}
         </div>
       ) : (
-        <div className="w-full border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-10 flex flex-col items-center justify-center text-center bg-neutral-50/50 dark:bg-neutral-800/20">
-          <div className="p-4 bg-card rounded-full shadow-sm mb-4 border border-neutral-100 dark:border-neutral-700">
+        <div className="w-full border-2 border-dashed border-neutral-300 dark:border-border rounded-xl p-10 flex flex-col items-center justify-center text-center bg-neutral-50/50 dark:bg-card/20">
+          <div className="p-4 bg-card rounded-full shadow-sm mb-4 border border-neutral-100 dark:border-border">
             <User className="h-8 w-8 text-neutral-400" />
           </div>
           <p className="text-card-foreground font-bold text-lg mb-1">No personnel deployed on the floor</p>
@@ -143,7 +143,7 @@ export default function PersonnelOverviewPage() {
                   value={personName}
                   onChange={(e) => setPersonName(e.target.value)}
                   placeholder="Enter employee name"
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
                 />
               </div>
               
@@ -154,7 +154,7 @@ export default function PersonnelOverviewPage() {
                   value={contactNumber}
                   onChange={(e) => setContactNumber(e.target.value)}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
                 />
               </div>
 
@@ -163,7 +163,7 @@ export default function PersonnelOverviewPage() {
                 <select 
                   value={assignedStage}
                   onChange={(e) => setAssignedStage(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent text-neutral-700 dark:text-neutral-200"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent text-neutral-700 dark:text-neutral-200"
                 >
                   <option value="Cutting">Cutting</option>
                   <option value="Stitching">Stitching</option>
@@ -174,7 +174,7 @@ export default function PersonnelOverviewPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-border bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-border bg-neutral-50 dark:bg-card/50">
               <button 
                 onClick={() => setIsOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-neutral-300"

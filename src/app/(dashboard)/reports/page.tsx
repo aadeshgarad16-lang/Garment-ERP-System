@@ -26,7 +26,7 @@ const KPIData = [
     trend: 'up',
     icon: Package,
     color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-neutral-800/30',
+    bg: 'bg-blue-100 dark:bg-card/30',
   },
   {
     title: 'Active Allocations',
@@ -175,7 +175,7 @@ export default function ReportsPage() {
           
           <div className="flex-1 flex flex-col justify-center gap-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-neutral-800/10 border border-blue-100 dark:border-blue-800/30">
+              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-card/10 border border-blue-100 dark:border-blue-800/30">
                 <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Total Received</p>
                 <p className="text-2xl font-bold text-foreground">1,245</p>
               </div>
@@ -196,7 +196,7 @@ export default function ReportsPage() {
             {/* Visual ratio bar */}
             <div className="mt-2">
                <p className="text-sm font-medium text-muted-foreground mb-2">Order Completion Ratio</p>
-               <div className="w-full flex h-3 rounded-full overflow-hidden border border-neutral-100 dark:border-neutral-700">
+               <div className="w-full flex h-3 rounded-full overflow-hidden border border-neutral-100 dark:border-border">
                  <div className="bg-emerald-500" style={{ width: '71%' }} title="Completed (71%)"></div>
                  <div className="bg-amber-400" style={{ width: '26%' }} title="Pending (26%)"></div>
                  <div className="bg-red-500" style={{ width: '3%' }} title="Delayed (3%)"></div>
@@ -213,7 +213,7 @@ export default function ReportsPage() {
 
       {/* Data Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+        <div className="px-6 py-5 border-b border-border bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
           <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
             <FileText className="h-5 w-5 text-neutral-500" />
             Recent Generated Reports

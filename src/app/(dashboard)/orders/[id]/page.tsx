@@ -122,7 +122,7 @@ export default function OrderDetailsPage() {
           <h2 className="text-lg font-semibold flex items-center gap-2 border-b border-border pb-3 text-card-foreground"><Package className="h-5 w-5 text-purple-600" /> Order Specifications</h2>
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-3">SKU</th>
                 <th className="px-4 py-3">Size</th>
                 <th className="px-4 py-3">Design</th>

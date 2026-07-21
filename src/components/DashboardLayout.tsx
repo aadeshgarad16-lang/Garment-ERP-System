@@ -85,7 +85,7 @@ const navItems = [
     module: 'Store',
     children: [
       { tKey: 'storeDashboard', label: 'Store Dashboard', href: '/store-dashboard', module: 'Store' },
-      { tKey: 'rawMaterial', label: 'Raw Material', href: '/store?tab=raw', module: 'Store' },
+      { tKey: 'article', label: 'Article', href: '/store?tab=raw', module: 'Store' },
       { tKey: 'preStitched', label: 'Finished Goods', href: '/store?tab=pre', module: 'Store' },
       { tKey: 'materialList', label: 'Material List', href: '/store?tab=list', module: 'Store' },
       { tKey: 'stockOverview', label: 'Stock Overview', href: '/store?tab=overview', module: 'Store' },
@@ -209,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname, mounted]);
 
   return (
-    <div className="fixed inset-0 flex bg-neutral-100 dark:bg-neutral-900 font-sans">
+    <div className="fixed inset-0 flex bg-neutral-100 dark:bg-background font-sans">
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -221,7 +221,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 bg-[#1e293b] dark:bg-[#0b0b0c] border-r border-transparent dark:border-white/5 text-neutral-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
+        fixed inset-y-0 left-0 z-50 bg-[#1e293b] dark:bg-background border-r border-transparent dark:border-border text-neutral-300 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex-shrink-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         ${sidebarCollapsed ? 'w-20' : 'w-64'}
       `}>
@@ -328,8 +328,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {sidebarCollapsed && (
                     <div className="hidden group-hover:block absolute left-full top-0 pl-3 z-[60] w-56">
                       {hasChildren ? (
-                        <div className="bg-[#121212] dark:bg-[#18181b] border border-zinc-800 rounded-lg p-2 shadow-xl">
-                          <div className="px-2 py-1 mb-1 border-b border-zinc-800 font-bold text-xs text-neutral-400 uppercase tracking-wider">
+                        <div className="bg-card dark:bg-card border border-border rounded-lg p-2 shadow-xl">
+                          <div className="px-2 py-1 mb-1 border-b border-border font-bold text-xs text-neutral-400 uppercase tracking-wider">
                             {itemName}
                           </div>
                           <div className="flex flex-col">
@@ -354,7 +354,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-[#121212] dark:bg-[#18181b] border border-zinc-800 text-zinc-200 text-xs font-medium px-3 py-2 rounded shadow-xl whitespace-nowrap mt-2 relative">
+                        <div className="bg-card dark:bg-card border border-border text-zinc-200 text-xs font-medium px-3 py-2 rounded shadow-xl whitespace-nowrap mt-2 relative">
                           {itemName}
                           <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-zinc-800"></div>
                         </div>
@@ -372,7 +372,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         {/* Top Navbar */}
-        <header className="flex-shrink-0 h-16 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm z-30">
+        <header className="flex-shrink-0 h-16 bg-white dark:bg-card border-b border-neutral-200 dark:border-border flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm z-30">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -381,7 +381,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="h-6 w-6" />
             </button>
 
-            <div className="hidden sm:flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-lg px-3 py-2 w-72">
+            <div className="hidden sm:flex items-center bg-neutral-100 dark:bg-card rounded-lg px-3 py-2 w-72">
               <Search className="h-4 w-4 text-neutral-400" />
               <input
                 type="text"
@@ -410,7 +410,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onChange={(e) => setCurrentDate(e.target.value)}
                 className="absolute opacity-0 w-0 h-0"
               />
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors pointer-events-none">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-card rounded-lg text-sm font-medium border border-neutral-200 dark:border-border hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors pointer-events-none">
                 <Calendar className="w-4 h-4 text-blue-500" />
                 <span className="text-neutral-700 dark:text-neutral-300">
                   {mounted && currentDate ? formatDateDisplay(currentDate) : ''}
@@ -434,7 +434,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-neutral-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-card/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
                   {(user as any)?.fullName ? (user as any).fullName.charAt(0).toUpperCase() : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
                 </div>
                 <div className="hidden md:block text-left">
@@ -445,7 +445,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-800 rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-neutral-700 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-card rounded-xl shadow-lg py-1 border border-neutral-200 dark:border-border z-50 overflow-hidden">
                   <Link
                     href="/profile"
                     onClick={() => setProfileDropdownOpen(false)}
@@ -454,7 +454,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <User className="h-4 w-4 text-neutral-400" />
                     {t('actions.viewProfile')}
                   </Link>
-                  <div className="border-t border-neutral-100 dark:border-neutral-700 my-1"></div>
+                  <div className="border-t border-neutral-100 dark:border-border my-1"></div>
                   <button
                     onClick={() => {
                       logout();
@@ -472,7 +472,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Main Scrollable Content */}
-        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900 p-4 sm:p-5 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-background p-4 sm:p-5 lg:p-8">
           {children}
         </main>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 import { useRouter } from 'next/navigation';
 import { useOrders } from '@/contexts/order-context';
 import {
@@ -174,7 +175,7 @@ export default function ProductionDashboardPage() {
       case 'Delayed': 
       case 'Failed':
       case 'Rework Required': return 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/30';
-      case 'In Progress': return 'bg-blue-100 dark:bg-neutral-900/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
+      case 'In Progress': return 'bg-blue-100 dark:bg-background/40 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-900/30';
       default: return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
@@ -217,25 +218,23 @@ export default function ProductionDashboardPage() {
       {/* Analytics Metric Blocks */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {metrics.map((stat) => {
-          const IconComponent = stat.icon;
+          let variant: MetricCardVariant = 'default';
+          if (stat.title === 'Active Production POs') variant = 'blue';
+          if (stat.title === 'Total Pieces In Progress') variant = 'purple';
+          if (stat.title === 'Completed Stages Today') variant = 'green';
+          if (stat.title === 'Production Alerts') variant = 'red';
+
           return (
-            <div key={stat.title} className={`rounded-xl shadow-sm border p-5 flex items-center gap-4 hover:shadow-md transition-shadow bg-white
-              ${stat.title === 'Active Production POs' ? 'border-blue-200 dark:border-blue-500/50 dark:bg-[#11131e]' : 
-                stat.title === 'Total Pieces In Progress' ? 'border-indigo-200 dark:border-indigo-500/50 dark:bg-[#11131e]' : 
-                stat.title === 'Completed Stages Today' ? 'border-emerald-200 dark:border-emerald-500/50 dark:bg-[#0e1713]' : 
-                stat.title === 'Production Alerts' ? 'border-red-200 dark:border-red-500/50 dark:bg-[#1d1112]' : 'border-border dark:border-neutral-800 dark:bg-[#121212]'}
-            `}>
-              <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${stat.bg}`}>
-                <IconComponent className={`h-6 w-6 ${stat.color}`} />
-              </div>
-              <div>
-                <p className={`text-xs font-bold uppercase tracking-wider ${stat.titleColor}`}>{stat.title}</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</span>
-                </div>
-                <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-1">{stat.subtitle}</p>
-              </div>
-            </div>
+            <MetricCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              subtitle={stat.subtitle}
+              icon={stat.icon}
+              variant={variant}
+              layout="icon-left"
+              titleUppercase={true}
+            />
           );
         })}
       </div>
@@ -250,7 +249,7 @@ export default function ProductionDashboardPage() {
           </button>
         </div>
         {/* Evenly distributed full width flex row container */}
-        <div className="flex items-center justify-between overflow-visible p-5 bg-card rounded-xl border border-gray-100 dark:border-neutral-700 shadow-sm w-full">
+        <div className="flex items-center justify-between overflow-visible p-5 bg-card rounded-xl border border-gray-100 dark:border-border shadow-sm w-full">
           {productionSteps.map((step, idx) => {
             const count = processedOrders.filter(o => o.computedActiveStage.toLowerCase() === step.name.toLowerCase()).length;
             const isActive = activeFilterStage?.toLowerCase() === step.name.toLowerCase();
@@ -262,7 +261,7 @@ export default function ProductionDashboardPage() {
                     {step.icon && <step.icon className={`h-5 w-5 ${step.color} opacity-90 drop-shadow-sm`} />}
                     <button 
                       onClick={() => setActiveFilterStage(isActive ? null : step.name)}
-                      className={`text-sm font-medium transition-colors whitespace-nowrap px-2 py-1 rounded ${isActive ? 'text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-neutral-800/10 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400'}`}
+                      className={`text-sm font-medium transition-colors whitespace-nowrap px-2 py-1 rounded ${isActive ? 'text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-card/10 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400'}`}
                     >
                       {step.name}
                     </button>
@@ -272,7 +271,7 @@ export default function ProductionDashboardPage() {
                       e.stopPropagation();
                       setActivePopoverStage(activePopoverStage === step.name ? null : step.name);
                     }}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 ${count > 0 || isActive || activePopoverStage === step.name ? 'bg-blue-100 dark:bg-neutral-800/40 text-blue-700 dark:text-blue-400' : 'bg-muted text-muted-foreground hover:bg-neutral-200 dark:hover:bg-slate-700'}`}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 ${count > 0 || isActive || activePopoverStage === step.name ? 'bg-blue-100 dark:bg-card/40 text-blue-700 dark:text-blue-400' : 'bg-muted text-muted-foreground hover:bg-neutral-200 dark:hover:bg-slate-700'}`}
                   >
                     {count} Pending
                   </button>
@@ -280,7 +279,7 @@ export default function ProductionDashboardPage() {
                   {/* Floating Popover Menu */}
                   {activePopoverStage === step.name && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-56 bg-card rounded-xl shadow-md border border-border z-50 p-3">
-                      <div className="text-xs font-bold text-card-foreground mb-2 border-b border-neutral-100 dark:border-neutral-700 pb-2">
+                      <div className="text-xs font-bold text-card-foreground mb-2 border-b border-neutral-100 dark:border-border pb-2">
                         Pending at {step.name}
                       </div>
                       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
@@ -318,8 +317,8 @@ export default function ProductionDashboardPage() {
 
       <div className="flex flex-col w-full space-y-6">
         {/* Production Datatable */}
-        <div className="bg-card rounded-xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden w-full">
-            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+        <div className="bg-card rounded-xl shadow-sm border border-gray-100 dark:border-border overflow-hidden w-full">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <h2 className="text-lg font-semibold text-card-foreground">
@@ -327,7 +326,7 @@ export default function ProductionDashboardPage() {
                 </h2>
               </div>
               {activeFilterStage && (
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-neutral-800/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800">
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-card/30 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800">
                   Filtered View
                 </span>
               )}

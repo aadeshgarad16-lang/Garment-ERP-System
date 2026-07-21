@@ -43,7 +43,7 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
           
           <div className="flex flex-col">
             <div 
-              className="flex-1 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-slate-700 transition-colors flex flex-col items-center justify-center p-8 text-center cursor-pointer group"
+              className="flex-1 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-card hover:bg-neutral-100 dark:hover:bg-slate-700 transition-colors flex flex-col items-center justify-center p-8 text-center cursor-pointer group"
               onClick={() => fileInputRef.current?.click()}
             >
               <input 
@@ -78,7 +78,7 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
                 </div>
               ) : (
                 uploadedDocs.map((doc, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-lg">
+                  <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-card border border-neutral-100 dark:border-border rounded-lg">
                     <div className="flex items-center gap-3">
                       <FileCheck className="h-5 w-5 text-emerald-500" />
                       <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">{doc}</span>

@@ -71,7 +71,7 @@ function OrderDetailsView({
 
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-      <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/30 flex justify-between items-center">
+      <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
@@ -94,7 +94,7 @@ function OrderDetailsView({
       <div className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+            <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
               <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Date & Time</div></th>
               <th className="px-6 py-4"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Person</div></th>
               <th className="px-6 py-4 w-1/4">Old Data</th>
@@ -192,12 +192,12 @@ export default function LogsPage() {
   const getActionColor = (action: string) => {
     switch (action) {
       case 'Created': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50';
-      case 'Updated': return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-neutral-900/40 dark:text-blue-400 dark:border-blue-900/50';
+      case 'Updated': return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-background/40 dark:text-blue-400 dark:border-blue-900/50';
       case 'Multiple Actions': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/50';
       case 'Deleted': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50';
       case 'Approved': return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/50';
       case 'Rejected': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50';
-      default: return 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-800';
+      default: return 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-background dark:text-neutral-400 dark:border-border';
     }
   };
 
@@ -409,7 +409,7 @@ export default function LogsPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> Order No</div></th>
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Person</div></th>
                 <th className="px-6 py-4"><div className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5" /> Action Type</div></th>
@@ -462,7 +462,7 @@ export default function LogsPage() {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="bg-neutral-50 dark:bg-neutral-800 border-t border-border px-6 py-4 flex items-center justify-between">
+          <div className="bg-neutral-50 dark:bg-card border-t border-border px-6 py-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Showing <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredLogs.length)}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredLogs.length)}</span> of <span className="font-medium">{filteredLogs.length}</span> results
             </p>

@@ -41,7 +41,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
           
           <div 
             className={`border-2 border-dashed rounded-xl transition-colors flex flex-col items-center justify-center p-10 text-center cursor-pointer group ${
-              podImage ? 'border-emerald-300 bg-emerald-50' : 'border-border bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-slate-700'
+              podImage ? 'border-emerald-300 bg-emerald-50' : 'border-border bg-neutral-50 dark:bg-card hover:bg-neutral-100 dark:hover:bg-slate-700'
             }`}
             onClick={() => fileInputRef.current?.click()}
           >

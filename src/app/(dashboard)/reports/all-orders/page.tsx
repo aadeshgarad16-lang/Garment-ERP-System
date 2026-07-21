@@ -68,7 +68,7 @@ export default function AllOrdersPage() {
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
 
         {/* Filters */}
-        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
@@ -108,7 +108,7 @@ export default function AllOrdersPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
+              <tr className="bg-neutral-50/50 dark:bg-card/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
                 <th className="px-4 py-3">PO Number</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Items</th>
@@ -149,7 +149,7 @@ export default function AllOrdersPage() {
         </div>
 
         {/* Footer info */}
-        <div className="bg-neutral-50 dark:bg-neutral-800 px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
+        <div className="bg-neutral-50 dark:bg-card px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
           <p>Showing {filteredData.length.toLocaleString()} records</p>
           <p>Last updated: Just now</p>
         </div>

@@ -267,7 +267,7 @@ export default function ProcurementPage() {
               type="text"
               value={poInput}
               onChange={(e) => setPoInput(e.target.value)}
-              className="border border-border rounded-lg px-3 py-1.5 text-sm dark:bg-neutral-800 focus:ring-indigo-500 focus:border-indigo-500 w-32 sm:w-48 text-foreground"
+              className="border border-border rounded-lg px-3 py-1.5 text-sm dark:bg-card focus:ring-indigo-500 focus:border-indigo-500 w-32 sm:w-48 text-foreground"
               placeholder="Enter PO"
             />
           </div>
@@ -397,7 +397,7 @@ export default function ProcurementPage() {
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse ">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-800 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+              <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <th className="px-4 py-3">{t('inventoryVal.materialsHeader')}</th>
                 <th className="px-4 py-3 text-right">Required</th>
                 <th className="px-4 py-3 text-right">Available</th>
@@ -466,7 +466,7 @@ export default function ProcurementPage() {
           </table>
         </div>
 
-        <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 border-t border-border flex items-center justify-between">
+        <div className="bg-neutral-50 dark:bg-card px-4 py-3 border-t border-border flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {t('inventoryVal.showing') || 'Showing'} <span className="font-medium text-foreground">1</span> {t('inventoryVal.to') || 'to'} <span className="font-medium text-foreground">{filteredShortages.length}</span> {t('inventoryVal.of') || 'of'} <span className="font-medium text-foreground">{mockShortages.length}</span>
           </p>
@@ -486,7 +486,7 @@ export default function ProcurementPage() {
 
         {/* Supplier Summary */}
         <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
             <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
               <Building2 className="h-5 w-5 text-muted-foreground" />
               {t('procurement.supplierSummary') || 'Supplier Directory Summary'}
@@ -495,7 +495,7 @@ export default function ProcurementPage() {
           <div className="w-full">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="bg-card border-b border-neutral-100 dark:border-neutral-700 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-2 py-3 w-[22%] break-words">{t('bom.customer') || 'Supplier Name'}</th>
                   <th className="px-2 py-3 w-[25%] break-words">{t('inventoryVal.materialsHeader') || 'Materials Supplied'}</th>
                   <th className="px-2 py-3 w-[15%] break-words">{t('leadTime') || 'Lead Time'}</th>
@@ -547,7 +547,7 @@ export default function ProcurementPage() {
 
         {/* Workflow Progression */}
         <div className="lg:col-span-1 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-900/30 rounded-xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 overflow-hidden flex flex-col">
-          <div className="border-b border-indigo-100 dark:border-indigo-800/50 px-6 py-5 bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm">
+          <div className="border-b border-indigo-100 dark:border-indigo-800/50 px-6 py-5 bg-white/50 dark:bg-card/50 backdrop-blur-sm">
             <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               {t('procurement.procCompletion') || 'Procurement Completion'}
@@ -609,13 +609,13 @@ export default function ProcurementPage() {
       {/* Archive Box */}
       {archivedRequests.length > 0 && (
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-8">
-          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-neutral-800/30">
+          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
             <h2 className="text-lg font-semibold text-card-foreground">Archive Box</h2>
           </div>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                <tr className="bg-neutral-50 dark:bg-card/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                   <th className="px-6 py-3">Material Name</th>
                   <th className="px-4 py-3">PO Number</th>
                   <th className="px-4 py-3">Archived Date</th>

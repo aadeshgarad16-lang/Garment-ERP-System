@@ -240,7 +240,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
           <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.supplier}</td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
-                item.status === 'Ordered' ? 'bg-blue-100 text-blue-800 dark:bg-neutral-800/40 dark:text-blue-300' :
+                item.status === 'Ordered' ? 'bg-blue-100 text-blue-800 dark:bg-card/40 dark:text-blue-300' :
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
               }`}>
               {item.status}
@@ -322,7 +322,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
             },
             {
               id: 'In Production', label: 'In Production', icon: Factory, count: reportStats.inProduction,
-              bg: 'bg-blue-100 dark:bg-neutral-800/30', text: 'text-blue-600 dark:text-blue-400', active: 'ring-1 ring-blue-500 border-blue-500 shadow-md', hover: 'hover:border-blue-300 dark:hover:border-blue-700'
+              bg: 'bg-blue-100 dark:bg-card/30', text: 'text-blue-600 dark:text-blue-400', active: 'ring-1 ring-blue-500 border-blue-500 shadow-md', hover: 'hover:border-blue-300 dark:hover:border-blue-700'
             },
             {
               id: 'Cutting', label: 'Cutting', icon: Scissors, count: reportStats.cutting,
@@ -360,7 +360,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
 
         {/* Filters */}
-        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+        <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50 flex flex-col md:flex-row md:items-center gap-4 justify-between">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
@@ -400,7 +400,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
+              <tr className="bg-neutral-50/50 dark:bg-card/50 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
                 {tableHeaders.map((header, i) => (
                   <th key={i} className={`px-4 py-3 ${i === tableHeaders.length - 1 && type === 'total-orders' ? 'text-right' : ''}`}>
                     {header}
@@ -423,7 +423,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         </div>
 
         {/* Footer info */}
-        <div className="bg-neutral-50 dark:bg-neutral-800 px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
+        <div className="bg-neutral-50 dark:bg-card px-6 py-4 border-t border-border text-xs text-muted-foreground flex justify-between">
           <p>
             {type === 'active-production'
               ? `Showing ${filteredData.length} orders representing ${filteredData.reduce((sum: any, item: any) => sum + (item.qty || 0), 0).toLocaleString()} total units`

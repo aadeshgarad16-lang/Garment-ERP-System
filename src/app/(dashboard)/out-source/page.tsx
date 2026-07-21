@@ -24,7 +24,7 @@ export default function OutSourcePage() {
           {/* Option 1: Complete Outsourced */}
           <div
             onClick={() => router.push('/out-source/complete')}
-            className="cursor-pointer rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 transition-all duration-200 group bg-white dark:bg-[#18181b] hover:border-blue-500 hover:shadow-md"
+            className="cursor-pointer rounded-2xl p-6 border border-slate-200 dark:border-border transition-all duration-200 group bg-white dark:bg-card hover:border-blue-500 hover:shadow-md"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 rounded-xl transition-colors bg-blue-100/10 text-blue-500 group-hover:bg-blue-500/20">
@@ -42,7 +42,7 @@ export default function OutSourcePage() {
           {/* Option 2: Outsource Service */}
           <div
             onClick={() => router.push('/out-source/Outsource-Service')}
-            className="cursor-pointer rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 transition-all duration-200 group bg-white dark:bg-[#18181b] hover:border-emerald-500 hover:shadow-md"
+            className="cursor-pointer rounded-2xl p-6 border border-slate-200 dark:border-border transition-all duration-200 group bg-white dark:bg-card hover:border-emerald-500 hover:shadow-md"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 rounded-xl transition-colors bg-emerald-100/10 text-emerald-500 group-hover:bg-emerald-500/20">

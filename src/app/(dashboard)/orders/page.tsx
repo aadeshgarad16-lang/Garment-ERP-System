@@ -92,7 +92,7 @@ const DEFAULT_FORM_STATE: InitialFormState = {
 };
 
 const getInputStyle = (error?: string) =>
-  `w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 transition shadow-sm ${error ? "border-red-500 focus:ring-red-500" : "border-neutral-300 dark:border-neutral-700 focus:ring-ring"
+  `w-full px-3 py-2 border rounded-lg bg-card text-gray-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 caret-black dark:caret-white focus:outline-none focus:ring-2 transition shadow-sm ${error ? "border-red-500 focus:ring-red-500" : "border-neutral-300 dark:border-border focus:ring-ring"
   }`;
 
 const inputStyle = getInputStyle();
@@ -237,7 +237,8 @@ function OrdersPageContent() {
         if (!/^[6-9]\d{9}$/.test(strVal)) return "Please enter a valid 10-digit mobile number.";
         break;
       case "contactEmail":
-        if (strVal.trim() && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(strVal.trim())) {
+        if (!strVal.trim()) return "Required";
+        if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(strVal.trim())) {
           return "Please enter a valid email address (e.g., corporate@domain.com)";
         }
         break;
@@ -710,7 +711,7 @@ function OrdersPageContent() {
         <div className="w-full space-y-6">
           {/* PURCHASE ORDER DETAILS */}
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-visible">
-            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50">
               <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 Purchase Order Information
@@ -857,7 +858,7 @@ function OrdersPageContent() {
 
               {/* LINK TO PARENT PO GRID */}
               {isLinkingParent && (
-                <div className="bg-neutral-50 dark:bg-neutral-800 border border-border rounded-xl p-5 overflow-hidden">
+                <div className="bg-neutral-50 dark:bg-card border border-border rounded-xl p-5 overflow-hidden">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h3 className="text-base font-semibold text-card-foreground">Select Parent PO</h3>
                     <input
@@ -886,7 +887,7 @@ function OrdersPageContent() {
                       <tbody>
                         {paginatedParentPOs.length > 0 ? (
                           paginatedParentPOs.map((po) => (
-                            <tr key={po.id} className="border-b dark:border-neutral-700 bg-card hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
+                            <tr key={po.id} className="border-b dark:border-border bg-card hover:bg-neutral-50 dark:hover:bg-slate-700 transition">
                               <td className="px-4 py-3 text-center">
                                 <input
                                   type="radio"
@@ -959,7 +960,7 @@ function OrdersPageContent() {
               )}
 
               {/* CUSTOMER CONTACT INFORMATION */}
-              <div className="bg-neutral-50 dark:bg-neutral-800 border border-border rounded-xl p-5">
+              <div className="bg-neutral-50 dark:bg-card border border-border rounded-xl p-5">
                 <h3 className="text-base font-semibold text-card-foreground mb-4">Customer Contact Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -977,8 +978,8 @@ function OrdersPageContent() {
                   </div>
                   <div>
                     <label htmlFor="contactPhone" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Phone Number <span className="text-red-500">*</span></label>
-                    <div className={`flex mt-2 shadow-sm rounded-lg overflow-hidden border transition ${errors.contactPhone ? 'border-red-500 focus-within:ring-2 focus-within:ring-red-500' : 'border-neutral-300 dark:border-neutral-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'}`}>
-                      <span className="inline-flex items-center px-3 bg-muted border-r border-neutral-300 dark:border-neutral-700 text-muted-foreground text-sm font-medium select-none">
+                    <div className={`flex mt-2 shadow-sm rounded-lg overflow-hidden border transition ${errors.contactPhone ? 'border-red-500 focus-within:ring-2 focus-within:ring-red-500' : 'border-neutral-300 dark:border-border focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'}`}>
+                      <span className="inline-flex items-center px-3 bg-muted border-r border-neutral-300 dark:border-border text-muted-foreground text-sm font-medium select-none">
                         +91
                       </span>
                       <input
@@ -994,7 +995,7 @@ function OrdersPageContent() {
                     {errors.contactPhone && <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>}
                   </div>
                   <div>
-                    <label htmlFor="contactEmail" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Email ID</label>
+                    <label htmlFor="contactEmail" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Email ID <span className="text-red-500">*</span></label>
                     <input
                       id="contactEmail"
                       type="email"
@@ -1010,7 +1011,7 @@ function OrdersPageContent() {
               </div>
 
               {/* DELIVERY CONFIGURATION OPTIONS TOGGLE */}
-              <div className="bg-neutral-50 dark:bg-neutral-800/60 border border-border/80 rounded-xl p-4">
+              <div className="bg-neutral-50 dark:bg-card/60 border border-border/80 rounded-xl p-4">
                 <div>
                   <label className="text-sm font-semibold text-card-foreground block mb-2">
                     Delivery Option Configurations <span className="text-red-500">*</span>
@@ -1071,7 +1072,7 @@ function OrdersPageContent() {
                       />
                       {showAddressDropdown && formState.customerName.trim() !== "" && (
                         <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                          <div className="px-3 py-2 bg-neutral-50 dark:bg-neutral-800 text-[11px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-neutral-700 uppercase tracking-wider">
+                          <div className="px-3 py-2 bg-neutral-50 dark:bg-card text-[11px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-border uppercase tracking-wider">
                             Saved Addresses for {formState.customerName}
                           </div>
                           {filteredAddresses.length === 0 ? (
@@ -1247,14 +1248,14 @@ function OrdersPageContent() {
               <div>
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">PO File <span className="text-red-500">*</span></span>
                 {!uploadedFile ? (
-                  <label className="mt-3 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl p-8 text-center bg-neutral-50 dark:bg-neutral-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-slate-800 transition block">
+                  <label className="mt-3 border-2 border-dashed border-neutral-300 dark:border-border rounded-xl p-8 text-center bg-neutral-50 dark:bg-card cursor-pointer hover:bg-neutral-100 dark:hover:bg-slate-800 transition block">
                     <Upload className="h-10 w-10 mx-auto text-neutral-400" />
                     <p className="mt-3 text-sm text-blue-600 font-medium">Upload PO File</p>
                     <p className="text-xs text-muted-foreground mt-1">PDF, DOC, XLS, PNG, JPG up to 10MB</p>
                     <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
                   </label>
                 ) : (
-                  <div className="mt-3 flex items-center justify-between border border-border rounded-xl p-4 bg-gray-50 dark:bg-neutral-800">
+                  <div className="mt-3 flex items-center justify-between border border-border rounded-xl p-4 bg-gray-50 dark:bg-card">
                     <p className="font-medium text-foreground text-sm truncate">{uploadedFile.name}</p>
                     <div className="flex items-center gap-2">
                       <button
@@ -1282,7 +1283,7 @@ function OrdersPageContent() {
 
           {/* PAYMENT DETAILS (GST REMOVED) */}
           <div className="bg-card rounded-xl shadow-sm border border-border">
-            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-neutral-800/50">
+            <div className="border-b border-border px-6 py-4 bg-neutral-50/50 dark:bg-card/50">
               <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
                 Payment Details
@@ -1359,7 +1360,7 @@ function OrdersPageContent() {
                   <span className="font-bold text-card-foreground">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-6 pt-5 mt-2 border-t border-neutral-100 dark:border-neutral-700">
+                <div className="flex flex-wrap items-center justify-end gap-6 pt-5 mt-2 border-t border-neutral-100 dark:border-border">
                   <div className="text-xl font-bold ml-2">
                     <span className="text-blue-600">₹{formatIndianNumber(totalAmountCalculations.totalAmount.toFixed(2))}</span>
                   </div>
@@ -1383,7 +1384,7 @@ function OrdersPageContent() {
               <button
                 type="button"
                 onClick={() => router.push("/drafts")}
-                className="px-5 py-2.5 border border-neutral-300 dark:border-neutral-700 bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:bg-neutral-800 transition shadow-sm"
+                className="px-5 py-2.5 border border-neutral-300 dark:border-border bg-card rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:bg-card transition shadow-sm"
               >
                 View Drafts
               </button>
@@ -1448,7 +1449,7 @@ function OrdersPageContent() {
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(false)}
-                className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-semibold transition"
+                className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-card dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 rounded-lg text-sm font-semibold transition"
               >
                 Close
               </button>
@@ -1461,7 +1462,7 @@ function OrdersPageContent() {
       {showSaveNewAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-all">
-            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-neutral-800/30">
+            <div className="flex justify-between items-center p-5 border-b border-border bg-neutral-50/50 dark:bg-card/30">
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-blue-500" />
                 Save New Address?
@@ -1480,7 +1481,7 @@ function OrdersPageContent() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 This is a new address. Would you like to save it to this customer's profile for future use?
               </p>
-              <div className="bg-neutral-50 dark:bg-neutral-800/40 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-700/60 text-left">
+              <div className="bg-neutral-50 dark:bg-card/40 p-3.5 rounded-xl border border-neutral-100 dark:border-border/60 text-left">
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Customer</p>
                 <p className="text-xs font-bold text-card-foreground mt-0.5 mb-2">{formState.customerName}</p>
                 <p className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Address</p>
@@ -1498,7 +1499,7 @@ function OrdersPageContent() {
                   onClick={() => {
                     setShowSaveNewAddressModal(false);
                   }}
-                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
+                  className="px-4.5 py-2.5 border border-neutral-300 dark:border-border rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-muted transition"
                 >
                   No
                 </button>
