@@ -368,7 +368,7 @@ function StockCalculationContent() {
     return { totalAvailableStock: avail, totalRequiredQty: req };
   }, [displayOrder]);
 
-  const handleCalculateBOM = async (routeTo: 'quality-packing' | 'bom-calculation' | 'calculate-bom' | 'split-quality-packing' | 'split-bom-calculation') => {
+  const handleCalculateBOM = async (routeTo: 'quality-packing' | 'bom-calculation' | 'calculate-bom' | 'split-quality-packing' | 'split-bom-calculation' | 'purchase-request') => {
     if (displayOrder) {
       localStorage.setItem('bomCalculationDraft', JSON.stringify({
         selectedCustomer,
@@ -559,7 +559,7 @@ function StockCalculationContent() {
                             
                             // Dynamic validation: 'Pending Selection' if not explicitly set/calculated yet
                             const hasMaterials = spec.articlesSelected || (spec.materials && spec.materials.length > 0) || spec.stockStatus;
-                            const status = hasMaterials 
+                            const status: string = hasMaterials 
                               ? (avail >= req ? 'In Stock' : (avail > 0 ? 'Low Stock' : 'Out of Stock')) 
                               : 'Pending Selection';
                               

@@ -125,8 +125,8 @@ const mockMaterials = [
   { id: 'denimFabric12oz', name: 'Denim Fabric (12oz)', category: 'Fabric', perPiece: 1.5, unit: 'meters', available: 800 },
   { id: 'cottonFabric', name: 'Cotton Fabric (Premium)', category: 'Fabric', perPiece: 1.2, unit: 'meters', available: 1500 },
   { id: 'silkFabric', name: 'Silk Fabric (Fine)', category: 'Fabric', perPiece: 2.0, unit: 'meters', available: 300 },
-  { id: 'heavyDutyThreadNavy', name: 'Heavy Duty Thread (Navy)', category: 'Thread', perPiece: 0.1, unit: 'spools', available: 120 },
-  { id: 'standardThreadWhite', name: 'Standard Thread (White)', category: 'Thread', perPiece: 0.1, unit: 'spools', available: 500 },
+  { id: 'heavyDutyThreadNavy', name: 'Heavy Duty Thread (Navy)', category: 'Thread', perPiece: 0.1, unit: 'meters', available: 120 },
+  { id: 'standardThreadWhite', name: 'Standard Thread (White)', category: 'Thread', perPiece: 0.1, unit: 'meters', available: 500 },
   { id: 'metalZippers15cm', name: 'Metal Zippers 15cm', category: 'Zippers', perPiece: 1, unit: 'units', available: 45 },
   { id: 'metalButtonsSilver', name: 'Metal Buttons (Silver)', category: 'Buttons', perPiece: 6, unit: 'units', available: 5000 },
   { id: 'brandTagsWoven', name: 'Brand Tags (Woven)', category: 'Collar/Cuff', perPiece: 1, unit: 'units', available: 5000 },
@@ -166,19 +166,19 @@ export default function BOMCalculationView() {
       })
         .then(res => res.json())
         .then(data => {
-           if(data.success !== false) {
-             setDetailedOrder({
-               ...data,
-               poNumber: data.po_number || selectedPONumber,
-               specs: data.specs?.map((s: any) => ({
-                 ...s,
-                 itemDescription: s.item_description,
-                 stockAvailable: s.stock_available,
-                 useExistingStock: s.use_existing_stock,
-                 stockStatus: s.stock_status
-               })) || []
-             });
-           }
+          if (data.success !== false) {
+            setDetailedOrder({
+              ...data,
+              poNumber: data.po_number || selectedPONumber,
+              specs: data.specs?.map((s: any) => ({
+                ...s,
+                itemDescription: s.item_description,
+                stockAvailable: s.stock_available,
+                useExistingStock: s.use_existing_stock,
+                stockStatus: s.stock_status
+              })) || []
+            });
+          }
         })
         .catch(console.error);
     } else {
@@ -286,20 +286,20 @@ export default function BOMCalculationView() {
   const totalProductionRequired = activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0);
 
   const garmentType = activeSpecs[0]?.itemDescription || 'Shirt';
-  
+
   const selectedSizes = activeSpecs.flatMap((spec: any) => {
     let specSizes: string[] = [];
     if (Array.isArray(spec.size)) {
-       specSizes = spec.size.map(String).map((x: string) => x.trim());
+      specSizes = spec.size.map(String).map((x: string) => x.trim());
     } else if (typeof spec.size === 'string') {
-       specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+      specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
     } else if (spec.size) {
-       specSizes = [String(spec.size).trim()];
+      specSizes = [String(spec.size).trim()];
     }
-    
+
     const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
     const qtyPerSize = specSizes.length > 0 ? Math.ceil(prodReq / specSizes.length) : 0;
-    
+
     return specSizes.map(s => ({ size: s, quantity: qtyPerSize }));
   });
 
@@ -317,7 +317,7 @@ export default function BOMCalculationView() {
         const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             category: garmentType,
             sleeveType,
             sizes: JSON.parse(sizesDependency),
@@ -325,33 +325,33 @@ export default function BOMCalculationView() {
             wastageMargin: wastage
           })
         });
-        
+
         const data = await res.json();
         if (data.success && data.materials) {
-           const mappedMats = data.materials.map((m: any, i: number) => {
-             const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
-             return {
-               id: `mat-${i}`,
-               name: displayName,
-               category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
-               unit: m.unit,
-               available: m.availableQty,
-               totalQty: m.totalRequired,
-               perUnitPrice: m.unitPrice,
-               missing: m.shortage,
-               status: m.shortage > 0 ? 'Procurement Required' : 'Available',
-               sizes: m.sizes
-             };
-           });
-           setEditableMaterials(mappedMats);
+          const mappedMats = data.materials.map((m: any, i: number) => {
+            const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
+            return {
+              id: `mat-${i}`,
+              name: displayName,
+              category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
+              unit: m.unit,
+              available: m.availableQty,
+              totalQty: m.totalRequired,
+              perUnitPrice: m.unitPrice,
+              missing: m.shortage,
+              status: m.shortage > 0 ? 'Procurement Required' : 'Available',
+              sizes: m.sizes
+            };
+          });
+          setEditableMaterials(mappedMats);
         }
       } catch (err) {
         console.error("Error fetching BOM:", err);
       }
     };
-    
+
     fetchBOM();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [garmentType, selectedPONumber, sizesDependency, sleeveType, totalProductionRequired, wastage]);
 
   const calculatedMaterials = editableMaterials;
@@ -399,14 +399,52 @@ export default function BOMCalculationView() {
     })
   )));
 
-  const totalFabric = editableMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + safeNumber(curr.totalQty), 0);
-  const totalAllied = editableMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + safeNumber(curr.totalQty), 0);
+  const summaryMetrics = React.useMemo(() => {
+    let totalFabric = 0;
+    let totalAllied = 0;
+    let estimatedCost = 0;
+
+    editableMaterials.forEach((item) => {
+      const sizeRows = item.sizes?.map((sr: any) => {
+        const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+        const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+        const baseReq = actualQty * currentPerPiece;
+        const wastageAmount = baseReq * (wastage / 100);
+        const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
+        const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
+        const sizeFinalPrice = sizeTotalQty * currentPerUnitPrice;
+
+        return { sizeTotalQty, sizeFinalPrice };
+      }) || [];
+
+      const hasSizeBreakdown = sizeRows.length > 0;
+
+      const rawCombinedTotalQty = hasSizeBreakdown
+        ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
+        : safeNumber(item.totalQty);
+
+      const combinedTotalQty = parseFloat(rawCombinedTotalQty.toFixed(2));
+
+      const combinedFinalPrice = hasSizeBreakdown
+        ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
+        : (combinedTotalQty * safeNumber(item.perUnitPrice));
+
+      if (item.category === 'Fabric' || item.name.toLowerCase() === 'fabric') {
+        totalFabric += combinedTotalQty;
+      } else {
+        totalAllied += combinedTotalQty;
+      }
+
+      // Optionally keeping laborCostPerUnit if it was expected, but aligning with the table's final price per the prompt:
+      // "Sum the finalPrice column across ALL material rows"
+      estimatedCost += combinedFinalPrice;
+    });
+
+    return { totalFabric, totalAllied, estimatedCost };
+  }, [editableMaterials, sizePerPieceOverrides, sizeUnitPriceOverrides, wastage]);
+
+  const { totalFabric, totalAllied, estimatedCost } = summaryMetrics;
   const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
-  
-  const estimatedCost = editableMaterials.reduce((acc, curr) => {
-    const finalPrice = (safeNumber(curr.totalQty) * safeNumber(curr.perUnitPrice)) + (safeNumber(curr.laborCostPerUnit) * totalProductionRequired);
-    return acc + finalPrice;
-  }, 0);
 
   useEffect(() => {
     if (totalProductionRequired > 0) {
@@ -645,224 +683,227 @@ export default function BOMCalculationView() {
                 {editableMaterials && editableMaterials.length > 0 ? (
                   editableMaterials.map((item, idx) => {
                     const isShortage = item.missing > 0;
-                  
-                  const sizeRows = item.sizes?.map((sr: any) => {
-                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
-                    const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
-                    const baseReq = actualQty * currentPerPiece;
-                    const wastageAmount = baseReq * (wastage / 100);
-                    const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
-                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
-                    const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
 
-                    return {
-                      size: sr.size,
-                      volume: actualQty,
-                      perPieceQty: currentPerPiece,
-                      sizeTotalQty,
-                      sizeFinalPrice
-                    };
-                  }) || [];
+                    const sizeRows = item.sizes?.map((sr: any) => {
+                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+                      const baseReq = actualQty * currentPerPiece;
+                      const wastageAmount = baseReq * (wastage / 100);
+                      const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
+                      const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
+                      const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
 
-                  const hasSizeBreakdown = sizeRows.length > 0;
-                  
-                  const combinedTotalQty = hasSizeBreakdown 
-                    ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
-                    : safeNumber(item.totalQty);
-                  
-                  const combinedFinalPrice = hasSizeBreakdown
-                    ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
-                    : (combinedTotalQty * safeNumber(item.perUnitPrice));
+                      return {
+                        size: sr.size,
+                        volume: actualQty,
+                        perPieceQty: currentPerPiece,
+                        sizeTotalQty,
+                        sizeFinalPrice
+                      };
+                    }) || [];
 
-                  return (
-                    <React.Fragment key={idx}>
-                      {!hasSizeBreakdown ? (
-                        <tr className={isShortage ? "bg-red-50/50 dark:bg-red-900/10" : "bg-neutral-50/30 dark:bg-slate-800/20"}>
-                          <td className="px-4 py-3 text-left align-top">
-                            <div className="flex flex-col">
-                              <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
-                                  {item.unit}
-                                </span>
+                    const hasSizeBreakdown = sizeRows.length > 0;
+
+                    const rawCombinedTotalQty = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
+                      : safeNumber(item.totalQty);
+
+                    const combinedTotalQty = parseFloat(rawCombinedTotalQty.toFixed(2));
+
+                    const combinedFinalPrice = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
+                      : (combinedTotalQty * safeNumber(item.perUnitPrice));
+
+                    return (
+                      <React.Fragment key={idx}>
+                        {!hasSizeBreakdown ? (
+                          <tr className={isShortage ? "bg-red-50/50 dark:bg-red-900/10" : "bg-neutral-50/30 dark:bg-slate-800/20"}>
+                            <td className="px-4 py-3 text-left align-top">
+                              <div className="flex flex-col">
+                                <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
+                                    {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-left align-top">
-                             <select
-                               value={item.brand || ""}
-                               onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                               className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
-                             >
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
-                             </select>
-                             <select
-                               value={item.sizeRange || ""}
-                               onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
-                               className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                             >
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
-                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
-                             </select>
-                          </td>
-                          <td className="px-4 py-3 text-left align-top pt-4">
-                            <span className="text-xs text-muted-foreground pl-2">-</span>
-                          </td>
-                          <td className="px-4 py-3 text-right align-top">
-                             <input 
-                               type="number"
-                               min="0"
-                               step="0.1"
-                               value={item.perPiece} 
-                               onChange={(e) => updateMaterial(item.id, 'perPiece', e.target.value)}
-                               className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                             />
-                          </td>
-                          <td className="px-4 py-3 text-right align-top pt-4">
-                               <input 
-                                 type="number" 
-                                 min="0"
-                                 value={item.totalQty} 
-                                 onChange={(e) => updateMaterial(item.id, 'totalQty', e.target.value)}
-                                 className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm font-semibold transition-colors"
-                               />
-                          </td>
-                          <td className="px-4 py-3 text-right align-top">
-                             <div className="relative flex items-center">
-                               <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                               <input 
-                                 type="number" 
-                                 min="0"
-                                 value={item.perUnitPrice} 
-                                 onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
-                                 className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                               />
-                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-right align-top pt-4">
+                            </td>
+                            <td className="px-4 py-3 text-left align-top">
+                              <select
+                                value={item.brand || ""}
+                                onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
+                              >
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                              </select>
+                              <select
+                                value={item.sizeRange || ""}
+                                onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                              >
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 text-left align-top pt-4">
+                              <span className="text-xs text-muted-foreground pl-2">-</span>
+                            </td>
+                            <td className="px-4 py-3 text-right align-top">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={item.perPiece}
+                                onChange={(e) => updateMaterial(item.id, 'perPiece', e.target.value)}
+                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-right align-top pt-4">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.totalQty}
+                                onChange={(e) => updateMaterial(item.id, 'totalQty', e.target.value)}
+                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm font-semibold transition-colors"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-right align-top">
+                              <div className="relative flex items-center">
+                                <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.perUnitPrice}
+                                  onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
+                                  className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                />
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right align-top pt-4">
                               <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                 ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
-                          </td>
-                        </tr>
-                      ) : (
-                        sizeRows.map((sr, sIdx) => (
-                          <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
-                            {sIdx === 0 && (
-                              <>
-                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
-                                  <div className="flex flex-col">
-                                    <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
-                                        {item.unit}
-                                      </span>
+                            </td>
+                          </tr>
+                        ) : (
+                          sizeRows.map((sr: any, sIdx: number) => (
+                            <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
+                              {sIdx === 0 && (
+                                <>
+                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
+                                    <div className="flex flex-col">
+                                      <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
+                                          {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
-                                <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
-                                   <select
-                                     value={item.brand || ""}
-                                     onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                                     className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
-                                   >
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
-                                   </select>
-                                   <select
-                                     value={item.sizeRange || ""}
-                                     onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
-                                     className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                   >
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
-                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
-                                   </select>
-                                </td>
-                              </>
-                            )}
-                            <td className="px-4 py-2 text-left pl-6">
-                              <div className="flex items-center gap-2">
-                                <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 text-[10px] font-bold px-2 py-1 rounded">
-                                  {sr.size}
+                                  </td>
+                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
+                                    <select
+                                      value={item.brand || ""}
+                                      onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                      className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
+                                    >
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                                    </select>
+                                    <select
+                                      value={item.sizeRange || ""}
+                                      onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
+                                    </select>
+                                  </td>
+                                </>
+                              )}
+                              <td className="px-4 py-2 text-left pl-6">
+                                <div className="flex items-center gap-2">
+                                  <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 text-[10px] font-bold px-2 py-1 rounded">
+                                    {sr.size}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground font-semibold">
+                                    ({sr.volume || 0} pcs)
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={sizePerPieceOverrides[item.id]?.[sr.size] ?? sr.perPieceQty ?? item.perPiece ?? '0.00'}
+                                  onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
+                                  className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-right pt-4">
+                                <span className="text-sm font-semibold text-foreground pr-3">{isNaN(sr.sizeTotalQty) ? '0.00' : Number(sr.sizeTotalQty).toFixed(2)}</span>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <div className="relative flex items-center">
+                                  <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice}
+                                    onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
+                                    className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right pt-4">
+                                <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                                  ₹{isNaN(sr.sizeFinalPrice) ? '0.00' : sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
-                                <span className="text-[11px] text-muted-foreground font-semibold">
-                                  ({sr.volume || 0} pcs)
-                                </span>
-                              </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+
+                        {hasSizeBreakdown && (
+                          <tr className="bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-900/50">
+                            <td colSpan={4} className="px-4 py-2.5 text-right">
+                              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider pr-3">
+                                Total Combined Amount
+                              </span>
                             </td>
-                            <td className="px-4 py-2 text-right">
-                               <input 
-                                 type="number"
-                                 min="0"
-                                 step="0.1"
-                                 value={sizePerPieceOverrides[item.id]?.[sr.size] ?? sr.perPieceQty ?? item.perPiece ?? '0.00'} 
-                                 onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
-                                 className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
-                               />
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
+                                {isNaN(combinedTotalQty) ? '0.00' : Number(combinedTotalQty).toFixed(2)}
+                              </span>
                             </td>
-                            <td className="px-4 py-2 text-right pt-4">
-                              <span className="text-sm font-semibold text-foreground pr-3">{isNaN(sr.sizeTotalQty) ? '0' : sr.sizeTotalQty}</span>
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                               <div className="relative flex items-center">
-                                 <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                                 <input 
-                                   type="number" 
-                                   min="0"
-                                   step="0.1"
-                                   value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice} 
-                                   onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
-                                   className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                                 />
-                               </div>
-                            </td>
-                            <td className="px-4 py-2 text-right pt-4">
-                              <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
-                                ₹{isNaN(sr.sizeFinalPrice) ? '0.00' : sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <td className="px-4 py-2.5"></td>
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
+                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </td>
                           </tr>
-                        ))
-                      )}
-
-                      {hasSizeBreakdown && (
-                        <tr className="bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-900/50">
-                          <td colSpan={4} className="px-4 py-2.5 text-right">
-                            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider pr-3">
-                              Total Combined Amount
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
-                              {isNaN(combinedTotalQty) ? '0' : combinedTotalQty}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5"></td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
-                              ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -898,36 +939,36 @@ export default function BOMCalculationView() {
               <button
                 onClick={async () => {
                   if (currentOrder) {
-                      try {
-                        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-                        
-                        const bomLines = editableMaterials.map(m => ({
-                          material_id: m.id,
-                          material_name: m.name,
-                          category: m.category,
-                          unit: m.unit,
-                          per_piece_qty: Number(m.perPiece || 0),
-                          final_qty: Number(m.totalQty || 0),
-                          brand: m.brand || '',
-                          unit_price: Number(m.perUnitPrice || 0),
-                          amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0))
-                        }));
+                    try {
+                      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-                        const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeaders(true)
-                          },
-                          body: JSON.stringify({
-                            poNumber: currentOrder.poNumber,
-                            bomLines: bomLines,
-                            wastagePct: wastage
-                          })
-                        });
+                      const bomLines = editableMaterials.map(m => ({
+                        material_id: m.id,
+                        material_name: m.name,
+                        category: m.category,
+                        unit: m.unit,
+                        per_piece_qty: Number(m.perPiece || 0),
+                        final_qty: Number(m.totalQty || 0),
+                        brand: m.brand || '',
+                        unit_price: Number(m.perUnitPrice || 0),
+                        amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0))
+                      }));
 
-                        const data = await res.json();
-                      
+                      const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...getAuthHeaders(true)
+                        },
+                        body: JSON.stringify({
+                          poNumber: currentOrder.poNumber,
+                          bomLines: bomLines,
+                          wastagePct: wastage
+                        })
+                      });
+
+                      const data = await res.json();
+
                       if (res.ok && data.success !== false) {
                         window.dispatchEvent(new Event("orders-updated"));
 
@@ -938,7 +979,7 @@ export default function BOMCalculationView() {
                         setSelectedPONumber('');
                         setWastage(5);
                         localStorage.removeItem('bomCalculationDraft');
-                        
+
                         window.history.replaceState(null, '', window.location.pathname);
                         router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
                       } else {
