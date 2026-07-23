@@ -133,6 +133,11 @@ const mockMaterials = [
   { id: 'collarHooks', name: 'Collar Hooks', category: 'Hooks', perPiece: 2, unit: 'units', available: 3000 },
 ];
 
+const safeNumber = (val: any) => {
+  const num = parseFloat(val);
+  return isNaN(num) ? 0 : num;
+};
+
 export default function BOMCalculationView() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -316,18 +321,21 @@ export default function BOMCalculationView() {
         
         const data = await res.json();
         if (data.success && data.materials) {
-           const mappedMats = data.materials.map((m: any, i: number) => ({
-             id: `mat-${i}`,
-             name: m.materialName,
-             category: m.materialName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
-             unit: m.unit,
-             available: m.availableQty,
-             totalQty: m.totalRequired,
-             perUnitPrice: m.unitPrice,
-             missing: m.shortage,
-             status: m.shortage > 0 ? 'Procurement Required' : 'Available',
-             sizes: m.sizes
-           }));
+           const mappedMats = data.materials.map((m: any, i: number) => {
+             const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
+             return {
+               id: `mat-${i}`,
+               name: displayName,
+               category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
+               unit: m.unit,
+               available: m.availableQty,
+               totalQty: m.totalRequired,
+               perUnitPrice: m.unitPrice,
+               missing: m.shortage,
+               status: m.shortage > 0 ? 'Procurement Required' : 'Available',
+               sizes: m.sizes
+             };
+           });
            setEditableMaterials(mappedMats);
         }
       } catch (err) {
@@ -384,12 +392,12 @@ export default function BOMCalculationView() {
     })
   )));
 
-  const totalFabric = editableMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
-  const totalAllied = editableMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + Number(curr.totalQty || 0), 0);
+  const totalFabric = editableMaterials.filter(m => m.category === 'Fabric').reduce((acc, curr) => acc + safeNumber(curr.totalQty), 0);
+  const totalAllied = editableMaterials.filter(m => m.category !== 'Fabric').reduce((acc, curr) => acc + safeNumber(curr.totalQty), 0);
   const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
   
   const estimatedCost = editableMaterials.reduce((acc, curr) => {
-    const finalPrice = (Number(curr.totalQty || 0) * Number(curr.perUnitPrice || 0)) + (Number(curr.laborCostPerUnit || 0) * totalProductionRequired);
+    const finalPrice = (safeNumber(curr.totalQty) * safeNumber(curr.perUnitPrice)) + (safeNumber(curr.laborCostPerUnit) * totalProductionRequired);
     return acc + finalPrice;
   }, 0);
 
@@ -618,11 +626,11 @@ export default function BOMCalculationView() {
                     const isShortage = item.missing > 0;
                   
                   const sizeRows = item.sizes?.map((sr: any) => {
-                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? Number(sr.perPiece || 0);
+                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPiece);
                     const baseReq = sr.garmentQty * currentPerPiece;
                     const wastageAmount = baseReq * (wastage / 100);
                     const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
-                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? Number(item.perUnitPrice || 0);
+                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
                     const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
 
                     return {
@@ -637,11 +645,11 @@ export default function BOMCalculationView() {
                   
                   const combinedTotalQty = hasSizeBreakdown 
                     ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
-                    : Number(item.totalQty || 0);
+                    : safeNumber(item.totalQty);
                   
                   const combinedFinalPrice = hasSizeBreakdown
                     ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
-                    : (combinedTotalQty * Number(item.perUnitPrice || 0));
+                    : (combinedTotalQty * safeNumber(item.perUnitPrice));
 
                   return (
                     <React.Fragment key={idx}>
