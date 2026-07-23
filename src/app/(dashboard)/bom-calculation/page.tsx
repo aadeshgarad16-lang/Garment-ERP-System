@@ -152,6 +152,7 @@ export default function BOMCalculationView() {
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
   const [wastage, setWastage] = useState(5);
+  const [sleeveType, setSleeveType] = useState('full_sleeve');
   const [editableMaterials, setEditableMaterials] = useState<any[]>([]);
   const [sizePerPieceOverrides, setSizePerPieceOverrides] = useState<Record<string, Record<string, number>>>({});
   const [sizeUnitPriceOverrides, setSizeUnitPriceOverrides] = useState<Record<string, Record<string, number>>>({});
@@ -316,7 +317,13 @@ export default function BOMCalculationView() {
         const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ garmentType, selectedSizes: JSON.parse(sizesDependency) })
+          body: JSON.stringify({ 
+            category: garmentType,
+            sleeveType,
+            sizes: JSON.parse(sizesDependency),
+            orderQty: totalProductionRequired,
+            wastageMargin: wastage
+          })
         });
         
         const data = await res.json();
@@ -345,7 +352,7 @@ export default function BOMCalculationView() {
     
     fetchBOM();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [garmentType, selectedPONumber, sizesDependency]);
+  }, [garmentType, selectedPONumber, sizesDependency, sleeveType, totalProductionRequired, wastage]);
 
   const calculatedMaterials = editableMaterials;
 
@@ -490,7 +497,7 @@ export default function BOMCalculationView() {
               {t('bom.config')}
             </h2>
           </div>
-          <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 items-end">
             <div className="w-full">
               <SearchableDropdown
                 label="Customer Name"
@@ -516,10 +523,24 @@ export default function BOMCalculationView() {
             </div>
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
-              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center">
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed">
                 {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
               </div>
             </div>
+            <div className="w-full flex flex-col gap-1.5">
+              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">CATEGORY</label>
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed select-none">
+                {garmentType || 'N/A'}
+              </div>
+            </div>
+            {garmentType.toLowerCase().includes('shirt') && (
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">SLEEVE TYPE</label>
+                <div className="h-[42px] flex items-center bg-slate-800/60 border border-slate-700 text-gray-300 rounded-md px-3 py-2 text-sm cursor-not-allowed select-none">
+                  {sleeveType || 'N/A'}
+                </div>
+              </div>
+            )}
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
                 {t('bom.wastage')}
@@ -626,8 +647,9 @@ export default function BOMCalculationView() {
                     const isShortage = item.missing > 0;
                   
                   const sizeRows = item.sizes?.map((sr: any) => {
-                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPiece);
-                    const baseReq = sr.garmentQty * currentPerPiece;
+                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+                    const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+                    const baseReq = actualQty * currentPerPiece;
                     const wastageAmount = baseReq * (wastage / 100);
                     const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
                     const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
@@ -635,7 +657,8 @@ export default function BOMCalculationView() {
 
                     return {
                       size: sr.size,
-                      volume: sr.garmentQty,
+                      volume: actualQty,
+                      perPieceQty: currentPerPiece,
                       sizeTotalQty,
                       sizeFinalPrice
                     };
@@ -726,7 +749,7 @@ export default function BOMCalculationView() {
                           </td>
                           <td className="px-4 py-3 text-right align-top pt-4">
                               <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                           </td>
                         </tr>
@@ -773,22 +796,27 @@ export default function BOMCalculationView() {
                               </>
                             )}
                             <td className="px-4 py-2 text-left pl-6">
-                              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold px-2 py-1 rounded">
-                                {sr.size}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 text-[10px] font-bold px-2 py-1 rounded">
+                                  {sr.size}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground font-semibold">
+                                  ({sr.volume || 0} pcs)
+                                </span>
+                              </div>
                             </td>
                             <td className="px-4 py-2 text-right">
                                <input 
                                  type="number"
                                  min="0"
                                  step="0.1"
-                                 value={sizePerPieceOverrides[item.id]?.[sr.size] ?? item.perPiece} 
+                                 value={sizePerPieceOverrides[item.id]?.[sr.size] ?? sr.perPieceQty ?? item.perPiece ?? '0.00'} 
                                  onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
                                  className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
                                />
                             </td>
                             <td className="px-4 py-2 text-right pt-4">
-                              <span className="text-sm font-semibold text-foreground pr-3">{sr.sizeTotalQty}</span>
+                              <span className="text-sm font-semibold text-foreground pr-3">{isNaN(sr.sizeTotalQty) ? '0' : sr.sizeTotalQty}</span>
                             </td>
                             <td className="px-4 py-2 text-right">
                                <div className="relative flex items-center">
@@ -805,7 +833,7 @@ export default function BOMCalculationView() {
                             </td>
                             <td className="px-4 py-2 text-right pt-4">
                               <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
-                                ₹{sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ₹{isNaN(sr.sizeFinalPrice) ? '0.00' : sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </td>
                           </tr>
@@ -821,13 +849,13 @@ export default function BOMCalculationView() {
                           </td>
                           <td className="px-4 py-2.5 text-right">
                             <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
-                              {combinedTotalQty}
+                              {isNaN(combinedTotalQty) ? '0' : combinedTotalQty}
                             </span>
                           </td>
                           <td className="px-4 py-2.5"></td>
                           <td className="px-4 py-2.5 text-right">
                             <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
-                              ₹{combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           </td>
                         </tr>

@@ -344,6 +344,25 @@ function GarmentSpecsContent() {
   // --- MASTER GARMENTS ---
   const [masterGarments, setMasterGarments] = useState<any[]>([]);
 
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [sleeveType, setSleeveType] = useState('');
+  const [categories, setCategories] = useState<string[]>(['Shirts', 'T-Shirts', 'Pants', 'Blazer']);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/bom/categories`);
+        const json = await res.json();
+        if (json.success && json.categories) {
+          setCategories(json.categories);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     const fetchGarments = async () => {
       try {
@@ -1058,17 +1077,43 @@ function GarmentSpecsContent() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div>
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
-                      <select
-                        value={spec.category || ""}
-                        onChange={(e) => updateRow(spec.id, "category", e.target.value)}
-                        className={`${INPUT_STYLE} h-[44px] shadow-sm`}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Shirts">Shirts</option>
-                        <option value="T-Shirts">T-Shirts</option>
-                        <option value="Pants">Pants</option>
-                        <option value="Blazer">Blazer</option>
-                      </select>
+                      <div className="relative">
+                        {spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt') ? (
+                          <div className="flex items-center gap-1.5 bg-neutral-50 dark:bg-card border border-indigo-500 rounded-lg p-1 shadow-sm h-[44px]">
+                            <div className="flex items-center px-3 text-sm font-bold text-slate-700 dark:text-slate-200">
+                              {spec.category}:
+                            </div>
+                            
+                            <select
+                              value={sleeveType}
+                              autoFocus
+                              onChange={(e) => {
+                                setSleeveType(e.target.value);
+                              }}
+                              className="bg-slate-900 text-white border border-indigo-500 rounded-md p-1.5 text-sm focus:outline-none flex-1"
+                            >
+                              <option value="" disabled hidden>Select Sleeve</option>
+                              <option value="full_sleeve" className="bg-slate-900 text-white">Full Sleeve</option>
+                              <option value="half_sleeve" className="bg-slate-900 text-white">Half Sleeve</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <select
+                            value={spec.category || ""}
+                            onChange={(e) => {
+                              updateRow(spec.id, "category", e.target.value);
+                              setSelectedCategory(e.target.value);
+                              setSleeveType("");
+                            }}
+                            className={`${INPUT_STYLE} h-[44px] shadow-sm`}
+                          >
+                            <option value="">Select...</option>
+                            {categories.map((cat, idx) => (
+                              <option key={idx} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </div>
 
                     <div>
