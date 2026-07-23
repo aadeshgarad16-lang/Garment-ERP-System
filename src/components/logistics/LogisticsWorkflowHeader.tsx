@@ -28,18 +28,18 @@ export default function LogisticsWorkflowHeader({ currentStep, completedSteps }:
     const isCompleted = completedSteps.includes(step.id);
     const isActive = currentStep === step.id;
 
-    let bgClass = 'bg-card dark:bg-[#131b2e] dark:border-[#26334d] border-dashed text-muted-foreground border-border';
-    if (isCompleted) bgClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    else if (isActive) bgClass = 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-500';
+    let bgClass = 'bg-card dark:bg-[#131b2e] dark:border-slate-800 border-dashed text-muted-foreground border-border hover:bg-neutral-50 dark:hover:bg-slate-800/50';
+    if (isCompleted) bgClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
+    else if (isActive) bgClass = 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20 dark:ring-blue-500/30';
 
     return (
-      <div key={step.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${bgClass} transition-colors ${isLocked ? 'opacity-60' : ''}`}>
+      <div key={step.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${bgClass} ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}`}>
         {isCompleted ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
         ) : isLocked ? (
-          <Lock className="h-4 w-4 text-neutral-400" />
+          <Lock className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
         ) : (
-          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? 'bg-blue-200 text-blue-800 dark:text-blue-200' : 'bg-neutral-200 text-muted-foreground'}`}>
+          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? 'bg-white text-blue-600' : 'bg-neutral-200 dark:bg-slate-700 text-neutral-600 dark:text-slate-300'}`}>
             {step.id}
           </div>
         )}

@@ -26,13 +26,13 @@ export default function DispatchSection({ onComplete }: DispatchSectionProps) {
 
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-border px-6 py-5 bg-neutral-50/50 flex items-center gap-3">
+      <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-slate-800/60 dark:border-slate-800 flex items-center gap-3">
         <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
           <Truck className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-card-foreground">{t('logistics.dispatchDetails') || 'Dispatch Details'}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{t('logistics.dispatchDetailsDesc') || 'Assign courier and initialize physical transit.'}</p>
+          <h2 className="text-lg font-semibold text-card-foreground dark:text-white">{t('logistics.dispatchDetails') || 'Dispatch Details'}</h2>
+          <p className="text-xs text-muted-foreground dark:text-slate-300 mt-0.5">{t('logistics.dispatchDetailsDesc') || 'Assign courier and initialize physical transit.'}</p>
         </div>
       </div>
       

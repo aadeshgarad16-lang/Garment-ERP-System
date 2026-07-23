@@ -233,20 +233,31 @@ export default function ProductionPage() {
         if (!nextStage.tasks) nextStage.tasks = [];
         
         allocatedMaterials.forEach(mat => {
-          if (mat.allocated_qty > 0 && mat.allocated_person) {
+          const sizeData = allocationMap[mat.id] || {};
+          const personAllocations: Record<string, number> = {};
+          
+          Object.values(sizeData).forEach((sd: any) => {
+            const qty = Number(sd.allocatedQty || 0);
+            if (qty > 0 && sd.personId) {
+              personAllocations[sd.personId] = (personAllocations[sd.personId] || 0) + qty;
+            }
+          });
+
+          Object.entries(personAllocations).forEach(([personId, qty]) => {
             nextStage.tasks!.push({
               id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              assignee: mat.allocated_person,
+              assignee: personId,
               materialAllocatedName: mat.materials_inventory || mat.name,
-              targetQty: Number(mat.allocated_qty),
+              targetQty: qty,
               startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               endTime: '',
               status: 'In Progress',
               handshakeStatus: 'ACCEPTED',
               unit: mat.unit,
-              per_piece_qty: mat.per_piece_qty
+              per_piece_qty: mat.per_piece_qty,
+              garmentType: materialGarmentTypes[mat.id] || "Shirt"
             });
-          }
+          });
         });
       }
 
@@ -439,8 +450,7 @@ export default function ProductionPage() {
       available_qty: 1000,
       shortage_qty: 0,
       unit: "Meters",
-      status: "Allocated",
-      allocated_person: "John Doe"
+      status: "Allocated"
     },
     {
       id: 2,
@@ -450,12 +460,14 @@ export default function ProductionPage() {
       available_qty: 5000,
       shortage_qty: 0,
       unit: "Pcs",
-      status: "Allocated",
-      allocated_person: "Jane Smith"
+      status: "Allocated"
     }
   ];
 
   const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>(mockMaterials);
+  const [expandedMaterialIds, setExpandedMaterialIds] = useState<Record<string, boolean>>({});
+  const [allocationMap, setAllocationMap] = useState<Record<string, Record<string, any>>>({});
+  const [materialGarmentTypes, setMaterialGarmentTypes] = useState<Record<string, string>>({});
   const [productionPersonnel, setProductionPersonnel] = useState<{name: string}[]>([
     { name: 'John Doe' },
     { name: 'Jane Smith' },
@@ -492,6 +504,77 @@ export default function ProductionPage() {
         .catch(err => console.error("Failed to fetch allocated materials:", err));
     }
   }, [poNumber]);
+
+  useEffect(() => {
+    if (allocatedMaterials.length > 0) {
+      const defaultGarment = currentPoGarments.length > 0 ? currentPoGarments[0].type : "Shirt";
+      
+      const newMap: Record<string, Record<string, any>> = {};
+      const newGarmentTypes = { ...materialGarmentTypes };
+      let hasChanges = false;
+      
+      allocatedMaterials.forEach(mat => {
+        if (!newGarmentTypes[mat.id]) {
+           let foundType = defaultGarment;
+           if (currentPoGarments.length > 0) {
+             const matNameLower = (mat.materials_inventory || mat.name || "").toLowerCase();
+             const match = currentPoGarments.find(g => 
+               g.materials && g.materials.some((mStr: string) => mStr.toLowerCase().includes(matNameLower.split(' ')[0]))
+             );
+             if (match) foundType = match.type;
+           }
+           newGarmentTypes[mat.id] = foundType;
+           hasChanges = true;
+        }
+
+        const selectedType = newGarmentTypes[mat.id];
+        const allSizes = new Set<string>();
+        const targetGarment = currentPoGarments.find(g => g.type === selectedType);
+        
+        if (targetGarment && targetGarment.sizeGrid) {
+          const parts = targetGarment.sizeGrid.split('|')[0].split(',');
+          parts.forEach((p: string) => {
+            const sizeLabel = p.split(':')[0].trim();
+            if (sizeLabel && sizeLabel.toLowerCase() !== 'total') allSizes.add(sizeLabel);
+          });
+        }
+        
+        if (allSizes.size === 0 && currentOrder?.specs) {
+          currentOrder.specs.forEach((s: any) => {
+            if (s.size) allSizes.add(String(s.size));
+          });
+        }
+
+        const sizesArray = Array.from(allSizes);
+        if (sizesArray.length === 0) {
+          ['32', '34', '36', '38', '40'].forEach(s => sizesArray.push(s));
+        }
+
+        if (!allocationMap[mat.id] || Object.keys(allocationMap[mat.id]).join(',') !== sizesArray.join(',')) {
+          hasChanges = true;
+          newMap[mat.id] = {};
+          const reqQty = mat.required_qty || mat.requiredQty || 0;
+          const perSizeQty = Math.floor(reqQty / sizesArray.length);
+          const remainder = reqQty % sizesArray.length;
+          
+          sizesArray.forEach((size, index) => {
+            newMap[mat.id][size] = {
+              requiredQty: perSizeQty + (index === 0 ? remainder : 0),
+              allocatedQty: 0,
+              personId: ""
+            };
+          });
+        } else {
+          newMap[mat.id] = allocationMap[mat.id];
+        }
+      });
+      
+      if (hasChanges) {
+        setMaterialGarmentTypes(newGarmentTypes);
+        setAllocationMap(newMap);
+      }
+    }
+  }, [allocatedMaterials, currentPoGarments, allocationMap, currentOrder, materialGarmentTypes]);
 
   const handleReturnSurplus = async (materialId: string, returnQuantity: number) => {
     if (typeof window === 'undefined') return;
@@ -865,85 +948,124 @@ export default function ProductionPage() {
                     <table className="w-full table-auto min-w-[800px] text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-neutral-50 dark:bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                          <th className="px-4 py-3 whitespace-nowrap">Materials Inventory</th>
-                          <th className="px-4 py-3 whitespace-nowrap">Category</th>
+                          <th className="px-4 py-3 whitespace-nowrap">Size</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Required Qty</th>
-                          <th className="px-4 py-3 whitespace-nowrap text-right">Available Qty</th>
+                          <th className="px-4 py-3 whitespace-nowrap text-right">Allocated Qty</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Shortage Qty</th>
-                          <th className="px-4 py-3 whitespace-nowrap text-center">Unit</th>
                           <th className="px-4 py-3 whitespace-nowrap text-center">Status</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Allocate to Person</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-neutral-200 dark:divide-slate-700/50">
                         {allocatedMaterials.length > 0 ? allocatedMaterials.map((mat) => {
-                          const reqQty = mat.required_qty || mat.requiredQty || 0;
-                          const availQtyOriginal = mat.available_qty || mat.availableQty || 0;
-                          const allocatedQty = Number(mat.allocated_qty || 0);
-                          const availQty = availQtyOriginal - allocatedQty;
-                          const shortage = reqQty > availQtyOriginal ? reqQty - availQtyOriginal : 0;
-                          const surplus = availQtyOriginal > reqQty ? availQtyOriginal - reqQty : 0;
-                          
-                          let statusBadge = 'PENDING ALLOCATION';
-                          let badgeClasses = 'bg-neutral-100 text-neutral-500';
-                          if (allocatedQty > 0) {
-                            if (allocatedQty >= reqQty) {
-                              statusBadge = 'FULLY ALLOCATED';
-                              badgeClasses = 'bg-emerald-100 text-emerald-700';
-                            } else {
-                              statusBadge = 'PARTIALLY ALLOCATED';
-                              badgeClasses = 'bg-amber-100 text-amber-700';
-                            }
-                          } else if (shortage > 0) {
-                            statusBadge = 'SHORTAGE';
-                            badgeClasses = 'bg-red-100 text-red-700';
-                          }
+                          const sizeData = allocationMap[mat.id] || {};
 
                           return (
-                            <tr key={mat.id} className={`transition-colors ${surplus > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-muted/30'}`}>
-                              <td className="px-3 py-2 text-left font-semibold text-foreground">{mat.materials_inventory || mat.name}</td>
-                              <td className="px-3 py-2 text-left text-muted-foreground">{mat.category || 'Article'}</td>
-                              <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{reqQty}</td>
-                              <td className="px-3 py-2 text-right font-medium text-neutral-700 dark:text-neutral-300">{availQty}</td>
-                              <td className="px-3 py-2 text-right text-neutral-400">{mat.shortage_qty || (shortage > 0 ? shortage : '-')}</td>
-                              <td className="px-3 py-2 text-center text-muted-foreground">{mat.unit}</td>
-                              <td className="px-3 py-2 text-center">
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClasses}`}>{statusBadge}</span>
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                  <div className="flex items-center gap-2 justify-end min-w-[180px]">
-                                    <select 
-                                      className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300"
-                                      value={mat.allocated_person || ""}
-                                      onChange={(e) => {
-                                        const next = [...allocatedMaterials];
-                                        next[next.indexOf(mat)] = { ...mat, allocated_person: e.target.value };
-                                        setAllocatedMaterials(next);
-                                      }}
-                                    >
-                                      <option value="">Select Worker</option>
-                                      {productionPersonnel.map(p => (
-                                        <option key={p.name} value={p.name}>{p.name}</option>
-                                      ))}
-                                    </select>
-                                    <input
-                                      type="number"
-                                      placeholder="Qty"
-                                      value={mat.allocated_qty || ""}
-                                      onChange={(e) => {
-                                        const next = [...allocatedMaterials];
-                                        next[next.indexOf(mat)] = { ...mat, allocated_qty: e.target.value };
-                                        setAllocatedMaterials(next);
-                                      }}
-                                      className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-20 text-neutral-700 dark:text-neutral-300"
-                                    />
+                            <React.Fragment key={mat.id}>
+                              {/* Material Header Row */}
+                              <tr className="bg-neutral-100/50 dark:bg-neutral-800/30">
+                                <td colSpan={6} className="px-4 py-2 font-bold text-foreground text-sm border-l-4 border-indigo-500">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      {mat.materials_inventory || mat.name} <span className="text-muted-foreground font-normal ml-2 text-xs">({mat.category || 'Article'} • {mat.unit})</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 pr-4">
+                                      <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Garment Type:</span>
+                                      <select
+                                        className="px-2 py-1 text-xs bg-white dark:bg-[#1e293b] border border-indigo-200 dark:border-indigo-800 rounded-md focus:ring-1 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300 shadow-sm"
+                                        value={materialGarmentTypes[mat.id] || "Shirt"}
+                                        onChange={(e) => {
+                                          setMaterialGarmentTypes(prev => ({ ...prev, [mat.id]: e.target.value }));
+                                          // Note: changing type triggers useEffect that recreates allocationMap[mat.id] for the new sizes
+                                        }}
+                                      >
+                                        {currentPoGarments.length > 0 ? currentPoGarments.map(g => (
+                                          <option key={g.type} value={g.type}>{g.type}</option>
+                                        )) : (
+                                          <>
+                                            <option value="Shirt">Shirt</option>
+                                            <option value="Pant">Pant</option>
+                                          </>
+                                        )}
+                                      </select>
+                                    </div>
                                   </div>
-                              </td>
-                            </tr>
+                                </td>
+                              </tr>
+                              
+                              {Object.entries(sizeData).map(([size, sd]: [string, any]) => {
+                                const sReq = sd.requiredQty || 0;
+                                const sAlloc = Number(sd.allocatedQty || 0);
+                                const sShortage = Math.max(0, sReq - sAlloc);
+                                
+                                let sBadge = 'PENDING';
+                                let sBadgeCls = 'bg-neutral-100 text-neutral-500';
+                                if (sAlloc >= sReq && sReq > 0) {
+                                  sBadge = 'ALLOCATED';
+                                  sBadgeCls = 'bg-emerald-100 text-emerald-700';
+                                } else if (sAlloc > 0) {
+                                  sBadge = 'PARTIAL';
+                                  sBadgeCls = 'bg-amber-100 text-amber-700';
+                                }
+
+                                return (
+                                  <tr key={`${mat.id}-${size}`} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center justify-center min-w-[32px] h-7 px-2 border-2 border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold">
+                                        {size}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{sReq}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">{sAlloc}</td>
+                                    <td className="px-4 py-3 text-right text-red-500">{sShortage > 0 ? sShortage : '-'}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sBadgeCls}`}>{sBadge}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                      <div className="flex items-center gap-2 justify-end min-w-[180px]">
+                                        <select 
+                                          className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300"
+                                          value={sd.personId || ""}
+                                          onChange={(e) => {
+                                            setAllocationMap(prev => ({
+                                              ...prev,
+                                              [mat.id]: {
+                                                ...prev[mat.id],
+                                                [size]: { ...prev[mat.id][size], personId: e.target.value }
+                                              }
+                                            }));
+                                          }}
+                                        >
+                                          <option value="">Select Worker</option>
+                                          {productionPersonnel.map(p => (
+                                            <option key={p.name} value={p.name}>{p.name}</option>
+                                          ))}
+                                        </select>
+                                        <input
+                                          type="number"
+                                          placeholder="Qty"
+                                          value={sd.allocatedQty || ""}
+                                          onChange={(e) => {
+                                            setAllocationMap(prev => ({
+                                              ...prev,
+                                              [mat.id]: {
+                                                ...prev[mat.id],
+                                                [size]: { ...prev[mat.id][size], allocatedQty: e.target.value }
+                                              }
+                                            }));
+                                          }}
+                                          className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-20 text-neutral-700 dark:text-neutral-300"
+                                        />
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </React.Fragment>
                           );
                         }) : (
                           <tr>
-                            <td colSpan={8} className="text-center py-12">
+                            <td colSpan={6} className="text-center py-12">
                               <div className="flex flex-col items-center justify-center text-neutral-400">
                                 <span className="text-4xl mb-2 font-light">⌕</span>
                                 <p>No materials allocated for this order batch yet.</p>

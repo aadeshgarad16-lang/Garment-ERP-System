@@ -133,7 +133,7 @@ const mockMaterials = [
   { id: 'collarHooks', name: 'Collar Hooks', category: 'Hooks', perPiece: 2, unit: 'units', available: 3000 },
 ];
 
-export default function BOMCalculationPage() {
+export default function BOMCalculationView() {
   const router = useRouter();
   const { t } = useTranslation();
   const { user, isAuthorized } = useAuth();
@@ -279,95 +279,67 @@ export default function BOMCalculationPage() {
 
   const totalProductionRequired = activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0);
 
-  // Calculate BOM data dynamically per order
-  const getCalculatedMaterials = () => {
-    if (!selectedPONumber || activeSpecs.length === 0) return [];
+  const garmentType = activeSpecs[0]?.itemDescription || 'Shirt';
+  
+  const selectedSizes = activeSpecs.flatMap((spec: any) => {
+    let specSizes: string[] = [];
+    if (Array.isArray(spec.size)) {
+       specSizes = spec.size.map(String).map((x: string) => x.trim());
+    } else if (typeof spec.size === 'string') {
+       specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+    } else if (spec.size) {
+       specSizes = [String(spec.size).trim()];
+    }
+    
+    const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
+    const qtyPerSize = specSizes.length > 0 ? Math.ceil(prodReq / specSizes.length) : 0;
+    
+    return specSizes.map(s => ({ size: s, quantity: qtyPerSize }));
+  });
 
-    const materialReqs: Record<string, number> = {};
-
-    activeSpecs.forEach((spec: any) => {
-      const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
-      if (prodReq <= 0) return;
-
-      const desc = (spec.itemDescription || '').toLowerCase();
-      const pattern = (spec.pattern || '').toLowerCase();
-
-      // Determine what materials this spec needs strictly based on description
-      const neededIds = ['brandTagsWoven']; // Universal
-
-      const isDenim = desc.includes('denim') || desc.includes('jeans') || pattern.includes('denim');
-      const isShirt = desc.includes('shirt') || desc.includes('polo') || desc.includes('top') || pattern.includes('shirt');
-      const isSilk = desc.includes('silk') || desc.includes('blouse') || desc.includes('dress') || pattern.includes('silk');
-      const isPant = desc.includes('pant') || desc.includes('trouser') || desc.includes('short');
-      const isCotton = desc.includes('cotton') || pattern.includes('cotton');
-
-      if (isDenim) {
-        neededIds.push('denimFabric12oz', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
-      } else if (isSilk) {
-        neededIds.push('silkFabric', 'standardThreadWhite', 'metalZippers15cm');
-      } else if (isShirt || isCotton) {
-        neededIds.push('cottonFabric', 'standardThreadWhite', 'collarHooks', 'metalButtonsSilver');
-      } else if (isPant) {
-        neededIds.push('cottonFabric', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
-      } else {
-        // Strict fallback: only provide cotton fabric and thread if no specific garment type is recognized.
-        // This ensures the material list looks realistic for a generic input.
-        neededIds.push('cottonFabric', 'standardThreadWhite');
-      }
-
-      neededIds.forEach(id => {
-        const mat = mockMaterials.find(m => m.id === id);
-        if (mat) {
-          materialReqs[id] = (materialReqs[id] || 0) + (mat.perPiece * prodReq);
-        }
-      });
-    });
-
-    return Object.keys(materialReqs).map(id => {
-      const mat = mockMaterials.find(m => m.id === id)!;
-      const baseRequired = materialReqs[id];
-      const wastageAmount = baseRequired * (wastage / 100);
-      const finalQuantity = Math.ceil(baseRequired + wastageAmount);
-
-      const missing = Math.max(0, finalQuantity - mat.available);
-
-      let status = 'Available';
-      if (missing > 0) status = 'Procurement Required';
-      else if (mat.available - finalQuantity < (finalQuantity * 0.2)) status = 'Low Stock'; // less than 20% buffer left
-
-      const stockRatio = finalQuantity > 0 ? Math.min(100, Math.round((mat.available / finalQuantity) * 100)) : 100;
-
-      return {
-        ...mat,
-        baseRequired,
-        wastageAmount,
-        finalQuantity,
-        missing,
-        status,
-        stockRatio
-      };
-    });
-  };
-
-  const calculatedMaterials = getCalculatedMaterials();
+  const sizesDependency = JSON.stringify(selectedSizes);
 
   useEffect(() => {
-    setEditableMaterials(prev => {
-      const newMats = getCalculatedMaterials();
-      return newMats.map(mat => {
-        const existing = prev.find(e => e.id === mat.id);
-        return {
-          ...mat,
-          brand: existing?.brand || '',
-          laborCostPerUnit: existing?.laborCostPerUnit || 0,
-          perUnitPrice: existing?.perUnitPrice !== undefined ? existing.perUnitPrice : (mat.category === 'Fabric' ? 5 : 0.5),
-          totalQty: existing?.totalQty !== undefined ? existing.totalQty : mat.finalQuantity,
-          perPiece: existing?.perPiece !== undefined ? existing.perPiece : mat.perPiece,
-        };
-      });
-    });
+    const fetchBOM = async () => {
+      if (!selectedPONumber || selectedSizes.length === 0) {
+        setEditableMaterials([]);
+        return;
+      }
+
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ garmentType, selectedSizes: JSON.parse(sizesDependency) })
+        });
+        
+        const data = await res.json();
+        if (data.success && data.materials) {
+           const mappedMats = data.materials.map((m: any, i: number) => ({
+             id: `mat-${i}`,
+             name: m.materialName,
+             category: m.materialName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
+             unit: m.unit,
+             available: m.availableQty,
+             totalQty: m.totalRequired,
+             perUnitPrice: m.unitPrice,
+             missing: m.shortage,
+             status: m.shortage > 0 ? 'Procurement Required' : 'Available',
+             sizes: m.sizes
+           }));
+           setEditableMaterials(mappedMats);
+        }
+      } catch (err) {
+        console.error("Error fetching BOM:", err);
+      }
+    };
+    
+    fetchBOM();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPONumber, totalProductionRequired, wastage]);
+  }, [garmentType, selectedPONumber, sizesDependency]);
+
+  const calculatedMaterials = editableMaterials;
 
   const updateMaterial = (id: string, field: string, value: any) => {
     setEditableMaterials(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
@@ -641,79 +613,34 @@ export default function BOMCalculationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                {editableMaterials.map((item, idx) => {
-                  const isShortage = item.missing > 0;
+                {editableMaterials && editableMaterials.length > 0 ? (
+                  editableMaterials.map((item, idx) => {
+                    const isShortage = item.missing > 0;
                   
-                  // Calculate size breakdown
-                  const sizeRows = uniqueSizes.map((size: any) => {
-                    let volume = 0;
-                    activeSpecs.forEach((spec: any) => {
-                      let specSizes: string[] = [];
-                      if (Array.isArray(spec.size)) {
-                         specSizes = spec.size.map(String).map((x: string) => x.trim());
-                      } else if (typeof spec.size === 'string') {
-                         specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
-                      } else if (spec.size) {
-                         specSizes = [String(spec.size).trim()];
-                      }
-
-                      if (!specSizes.includes(size)) return;
-                      
-                      const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
-                      if (prodReq <= 0) return;
-                      
-                      const sizeVolume = prodReq / specSizes.length;
-                      
-                      const desc = (spec.itemDescription || '').toLowerCase();
-                      const pattern = (spec.pattern || '').toLowerCase();
-                      const neededIds = ['brandTagsWoven'];
-                      
-                      const isDenim = desc.includes('denim') || desc.includes('jeans') || pattern.includes('denim');
-                      const isShirt = desc.includes('shirt') || desc.includes('polo') || desc.includes('top') || pattern.includes('shirt');
-                      const isSilk = desc.includes('silk') || desc.includes('blouse') || desc.includes('dress') || pattern.includes('silk');
-                      const isPant = desc.includes('pant') || desc.includes('trouser') || desc.includes('short');
-                      const isCotton = desc.includes('cotton') || pattern.includes('cotton');
-
-                      if (isDenim) {
-                        neededIds.push('denimFabric12oz', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
-                      } else if (isSilk) {
-                        neededIds.push('silkFabric', 'standardThreadWhite', 'metalZippers15cm');
-                      } else if (isShirt || isCotton) {
-                        neededIds.push('cottonFabric', 'standardThreadWhite', 'collarHooks', 'metalButtonsSilver');
-                      } else if (isPant) {
-                        neededIds.push('cottonFabric', 'heavyDutyThreadNavy', 'metalZippers15cm', 'metalButtonsSilver');
-                      } else {
-                        neededIds.push('cottonFabric', 'standardThreadWhite');
-                      }
-
-                      if (neededIds.includes(item.id)) {
-                        volume += sizeVolume;
-                      }
-                    });
-
-                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[size] ?? Number(item.perPiece || 0);
-                    const baseReq = volume * currentPerPiece;
+                  const sizeRows = item.sizes?.map((sr: any) => {
+                    const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? Number(sr.perPiece || 0);
+                    const baseReq = sr.garmentQty * currentPerPiece;
                     const wastageAmount = baseReq * (wastage / 100);
                     const sizeTotalQty = Math.ceil(baseReq + wastageAmount);
-                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[size] ?? Number(item.perUnitPrice || 0);
+                    const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? Number(item.perUnitPrice || 0);
                     const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
 
                     return {
-                      size,
-                      volume,
+                      size: sr.size,
+                      volume: sr.garmentQty,
                       sizeTotalQty,
                       sizeFinalPrice
                     };
-                  }).filter(sr => sr.volume > 0);
+                  }) || [];
 
                   const hasSizeBreakdown = sizeRows.length > 0;
                   
                   const combinedTotalQty = hasSizeBreakdown 
-                    ? sizeRows.reduce((sum, sr) => sum + sr.sizeTotalQty, 0)
+                    ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
                     : Number(item.totalQty || 0);
                   
                   const combinedFinalPrice = hasSizeBreakdown
-                    ? sizeRows.reduce((sum, sr) => sum + sr.sizeFinalPrice, 0)
+                    ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
                     : (combinedTotalQty * Number(item.perUnitPrice || 0));
 
                   return (
@@ -731,20 +658,28 @@ export default function BOMCalculationPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-left align-top">
-                             <input 
-                               type="text" 
-                               value={item.brand} 
-                               onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                               placeholder="Enter brand"
-                               className="w-full bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-2 py-1 text-sm transition-colors mb-2"
-                             />
                              <select
+                               value={item.brand || ""}
                                onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                               className="w-full bg-zinc-900 border border-zinc-700 text-white rounded px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                               className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
                              >
-                               <option value="">Standard Size</option>
-                               <option value="44-45">44-45</option>
-                               <option value="58-60">58-60</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                             </select>
+                             <select
+                               value={item.sizeRange || ""}
+                               onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                               className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                             >
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                               <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
                              </select>
                           </td>
                           <td className="px-4 py-3 text-left align-top pt-4">
@@ -803,20 +738,28 @@ export default function BOMCalculationPage() {
                                   </div>
                                 </td>
                                 <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
-                                   <input 
-                                     type="text" 
-                                     value={item.brand} 
-                                     onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                                     placeholder="Enter brand"
-                                     className="w-full bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-2 py-1 text-sm transition-colors mb-2"
-                                   />
                                    <select
+                                     value={item.brand || ""}
                                      onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                                     className="w-full bg-zinc-900 border border-zinc-700 text-white rounded px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                     className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
                                    >
-                                     <option value="">Standard Size</option>
-                                     <option value="44-45">44-45</option>
-                                     <option value="58-60">58-60</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                                   </select>
+                                   <select
+                                     value={item.sizeRange || ""}
+                                     onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                                     className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                   >
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                                     <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
                                    </select>
                                 </td>
                               </>
@@ -883,7 +826,14 @@ export default function BOMCalculationPage() {
                       )}
                     </React.Fragment>
                   );
-                })}
+                })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No materials found for this garment in DB.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

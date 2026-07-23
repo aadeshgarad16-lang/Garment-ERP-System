@@ -25,13 +25,13 @@ export default function FinancialClosure({ onComplete }: FinancialClosureProps) 
 
   return (
     <div className="bg-card rounded-xl shadow-sm border border-emerald-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="border-b border-emerald-100 px-6 py-5 bg-emerald-50/50 flex items-center gap-3">
+      <div className="border-b border-emerald-100 dark:border-emerald-900/50 px-6 py-5 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center gap-3">
         <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
           <DollarSign className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-emerald-800">{t('logistics.financialClosure') || 'Financial Closure'}</h2>
-          <p className="text-xs text-emerald-600 mt-0.5">{t('logistics.financialClosureDesc') || 'Log final shipping costs and archive the completed order.'}</p>
+          <h2 className="text-lg font-semibold text-emerald-800 dark:text-emerald-400">{t('logistics.financialClosure') || 'Financial Closure'}</h2>
+          <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">{t('logistics.financialClosureDesc') || 'Log final shipping costs and archive the completed order.'}</p>
         </div>
       </div>
       
