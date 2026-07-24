@@ -4,22 +4,7 @@ import React, { useState } from 'react';
 import { User, X, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-const initialPersonnel = [
-  {
-    name: 'Jamal',
-    activeStage: 'CUTTING',
-    poBatch: 'PO-2026-002',
-    contact: '+1 (555) 019-2000',
-    allocatedQty: 700
-  },
-  {
-    name: 'Christie',
-    activeStage: 'CUTTING',
-    poBatch: 'PO-2026-002',
-    contact: '+1 (555) 019-2001',
-    allocatedQty: 1500
-  }
-];
+const initialPersonnel: any[] = [];
 
 export default function PersonnelOverviewPage() {
   const router = useRouter();
@@ -55,7 +40,7 @@ export default function PersonnelOverviewPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <User className="h-7 w-7 text-indigo-500" />
-          Active Production Personnel Overview
+          Active Production Persons Overview
         </h2>
         
         <div className="flex items-center gap-3">

@@ -476,6 +476,52 @@ function GarmentSpecsContent() {
   // ─── Load PO data: localStorage first (instant), then backend (authoritative) ───
   useEffect(() => {
     // unconditional load effect
+
+    const parseGarmentSpecs = (rawSpecs: any[]) => {
+      if (!Array.isArray(rawSpecs)) return [];
+      return rawSpecs.map((s: any) => {
+        console.log("Hydrated Item State:", s);
+        
+        // Normalize Gender
+        let rawGender = (s.gender || "").trim();
+        if (rawGender.toLowerCase() === 'male' || rawGender.toLowerCase() === 'men') {
+          rawGender = 'Men';
+        } else if (rawGender.toLowerCase() === 'female' || rawGender.toLowerCase() === 'women') {
+          rawGender = 'Women';
+        }
+
+        // Normalize Category
+        let rawCategory = (s.category || s.category_name || s.category_id || s.garmentCategory || "").trim();
+        if (rawCategory.toLowerCase() === 'shirt' || rawCategory.toLowerCase() === 'shirts') rawCategory = 'Shirts';
+        else if (rawCategory.toLowerCase() === 't-shirt' || rawCategory.toLowerCase() === 't-shirts' || rawCategory.toLowerCase() === 'tshirt') rawCategory = 'T-Shirts';
+        else if (rawCategory.toLowerCase() === 'pant' || rawCategory.toLowerCase() === 'pants') rawCategory = 'Pants';
+        else if (rawCategory.toLowerCase() === 'blazer' || rawCategory.toLowerCase() === 'blazers') rawCategory = 'Blazer';
+
+        // Extract correct item description
+        const itemDesc = s.item_description || s.itemDescription || s.item_name || s.item || "";
+
+        return {
+          ...s,
+          id: s.id || generateId(),
+          category: rawCategory,
+          gender: rawGender,
+          itemDescription: itemDesc,
+          hsnCode: s.hsnCode || s.hsn_code || "",
+          size: s.size || "",
+          color: s.color || "",
+          pattern: (s.pattern && s.pattern !== itemDesc) ? s.pattern : "",
+          quantity: s.quantity || s.required_qty || 0,
+          stockAvailable: s.stock_available || s.stockAvailable || 0,
+          unitPrice: s.unit_price || s.unitPrice || 0,
+          productionType: s.production_type || s.productionType || "In House",
+          deliveryAddress: s.deliveryAddress || s.delivery_address || "",
+          deliveryPin: s.deliveryPin || s.delivery_pin || "",
+          photoName: s.photoName || s.photo_name || s.photo || null,
+          photoUrl: s.photoUrl || s.photo_url || s.photo || undefined,
+        };
+      });
+    };
+
     // ── Helper: apply a loaded order object to state ──
     const applyOrder = (order: any, source: 'local' | 'backend') => {
       setIsLiveOrder(true);
@@ -497,7 +543,7 @@ function GarmentSpecsContent() {
       setSinglePin(pin);
 
       if (order.specs && Array.isArray(order.specs) && order.specs.length > 0) {
-        setSpecs(order.specs);
+        setSpecs(parseGarmentSpecs(order.specs));
       } else {
         setSpecs([{ id: generateId(), category: "", gender: "", itemDescription: "", hsnCode: "", size: "", color: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null, productionType: "In House" }]);
       }
@@ -585,7 +631,7 @@ function GarmentSpecsContent() {
             : Array.isArray(data.delivery_addresses)
               ? data.delivery_addresses
               : [],
-          specs: data.specs || [],
+          specs: parseGarmentSpecs(data.specs || []),
           // Keep existing detailedAllocations from local state if already populated
           detailedAllocations: [],
         };
@@ -601,6 +647,10 @@ function GarmentSpecsContent() {
 
         if (backendOrder.deliveryAddresses.length > 0) {
           setDeliveryAddresses(backendOrder.deliveryAddresses);
+        }
+
+        if (backendOrder.specs.length > 0) {
+          setSpecs(backendOrder.specs);
         }
 
         // Pre-fill allocation rows with authoritative address from DB
@@ -862,11 +912,13 @@ function GarmentSpecsContent() {
     const payload = {
       po_number: currentPoNumber,
       poDate: new Date().toISOString(),
+      sleeve_type: sleeveType,
       specifications: specs.map(s => ({
         ...s,
         required_qty: s.quantity,
         available_qty: s.stockAvailable,
-        item_description: s.itemDescription
+        item_description: s.itemDescription,
+        sleeve_type: sleeveType
       })),
       deliveryAddresses,
       detailedAllocations,
@@ -1507,12 +1559,12 @@ function GarmentSpecsContent() {
               ) : (
                 (() => {
                   const sortedAllocations = [...detailedAllocations].sort((a, b) => {
-                    const itemA = specs.find(s => s.id === a.itemId)?.item || "";
-                    const itemB = specs.find(s => s.id === b.itemId)?.item || "";
+                    // 1. Primary Sort by Item name/type (which is 'category' in specs)
+                    const itemA = specs.find(s => s.id === a.itemId)?.category || "";
+                    const itemB = specs.find(s => s.id === b.itemId)?.category || "";
                     if (itemA !== itemB) return itemA.localeCompare(itemB);
 
-                    if (a.color !== b.color) return (a.color || "").localeCompare(b.color || "");
-
+                    // 2. Secondary Sort by Size (numeric or predefined string order)
                     const sizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL", "5XL"];
                     const isNumA = !isNaN(Number(a.size)) && a.size !== "";
                     const isNumB = !isNaN(Number(b.size)) && b.size !== "";

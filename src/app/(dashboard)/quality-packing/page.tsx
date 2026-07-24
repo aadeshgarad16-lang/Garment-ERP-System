@@ -10,7 +10,9 @@ import {
   AlertTriangle,
   ClipboardCheck,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  User,
+  Activity
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -19,6 +21,20 @@ import { updateOrderAndLog } from '@/lib/logger';
 
 type StageName = 'Quality Check' | 'Packing' | 'Packing & Verification' | 'Approval';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
+export type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
+
+export interface TaskAssignment {
+  id: string;
+  assignee: string;
+  taskName: string;
+  targetQty: number;
+  startTime: string;
+  endTime: string;
+  status: TaskStatus;
+  sizes?: Record<string, number>;
+  passedQty?: number;
+  failedQty?: number;
+}
 
 interface StageData {
   id: string;
@@ -38,6 +54,7 @@ interface StageData {
   verifiedQty?: number;
   approvedBy?: string;
   dispatchNotes?: string;
+  tasks?: TaskAssignment[];
 }
 
 export default function QualityPackingPage() {
@@ -49,10 +66,21 @@ export default function QualityPackingPage() {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const [stages, setStages] = useState<StageData[]>([
-    { id: 'qc', name: 'Quality Check', description: 'Inspect for defects & standards', icon: ClipboardCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', qcStatus: null, qcRemarks: '' },
-    { id: 'packing', name: 'Packing', description: 'Pack finished products', icon: Package, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', packedQty: 0 },
-    { id: 'verification', name: 'Packing & Verification', description: 'Verify packed items & quantities', icon: ListChecks, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', verifiedQty: 0 },
-    { id: 'approval', name: 'Approval', description: 'Final approval for dispatch', icon: CheckCircle2, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', approvedBy: '', dispatchNotes: '' },
+    { 
+      id: 'qc', name: 'Quality Check', description: 'Inspect for defects & standards', icon: ClipboardCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', qcStatus: null, qcRemarks: '',
+      tasks: [
+        { id: 't1', assignee: 'Jamal', taskName: 'Quality Inspection', targetQty: 500, startTime: '09:00', endTime: '', status: 'In Progress', sizes: { '34': 250, '36': 250 }, passedQty: 240, failedQty: 10 },
+        { id: 't2', assignee: 'Christie', taskName: 'Final Defect Check', targetQty: 200, startTime: '', endTime: '', status: 'Pending', sizes: { '38': 200 } }
+      ]
+    },
+    { 
+      id: 'packing', name: 'Packing', description: 'Pack finished products', icon: Package, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', packedQty: 0,
+      tasks: [
+        { id: 't3', assignee: 'Alex', taskName: 'Polybag Packing', targetQty: 1000, startTime: '08:00', endTime: '12:00', status: 'Completed', sizes: { '34': 300, '36': 300, '38': 400 }, passedQty: 1000, failedQty: 0 }
+      ] 
+    },
+    { id: 'verification', name: 'Packing & Verification', description: 'Verify packed items & quantities', icon: ListChecks, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', verifiedQty: 0, tasks: [] },
+    { id: 'approval', name: 'Approval', description: 'Final approval for dispatch', icon: CheckCircle2, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', approvedBy: '', dispatchNotes: '', tasks: [] },
   ]);
 
   useEffect(() => {
@@ -181,8 +209,16 @@ export default function QualityPackingPage() {
     }
   };
 
-  const getStageCardColor = (status: StageStatus, isActive: boolean) => {
-    if (isActive) return 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10 dark:bg-card/20';
+  const getStageCardColor = (status: StageStatus, isActive: boolean, stageId: string) => {
+    if (isActive) {
+      switch(stageId) {
+        case 'qc': return 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10 dark:bg-blue-900/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]';
+        case 'packing': return 'border-purple-500 ring-1 ring-purple-500 bg-purple-50/10 dark:bg-purple-900/10 shadow-[0_0_15px_rgba(168,85,247,0.15)]';
+        case 'verification': return 'border-amber-500 ring-1 ring-amber-500 bg-amber-50/10 dark:bg-amber-900/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]';
+        case 'approval': return 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/10 dark:bg-rose-900/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]';
+        default: return 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10 dark:bg-card/20';
+      }
+    }
     switch (status) {
       case 'Completed': return 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-900/20';
       case 'In Progress': return 'border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-card/20';
@@ -192,14 +228,21 @@ export default function QualityPackingPage() {
     }
   };
 
-  const getIconColor = (status: StageStatus, isActive: boolean) => {
-    if (isActive) return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-card/40';
-    switch (status) {
-      case 'Completed': return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40';
-      case 'In Progress': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-card/40';
-      case 'Rework Required':
-      case 'Failed': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40';
-      default: return 'text-muted-foreground bg-muted';
+  const getIconColor = (status: StageStatus, isActive: boolean, stageId: string) => {
+    if (isActive) {
+      switch(stageId) {
+         case 'qc': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40';
+         case 'packing': return 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40';
+         case 'verification': return 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40';
+         case 'approval': return 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/40';
+      }
+    }
+    switch(stageId) {
+       case 'qc': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20';
+       case 'packing': return 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/20';
+       case 'verification': return 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20';
+       case 'approval': return 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/20';
+       default: return 'text-muted-foreground bg-muted';
     }
   };
 
@@ -340,11 +383,11 @@ export default function QualityPackingPage() {
             <div
               key={stage.name}
               onClick={() => setActiveStageIdx(idx)}
-              className={`rounded-xl border p-4 transition-all cursor-pointer ${getStageCardColor(stage.status, isActive)}`}
+              className={`rounded-xl border p-4 transition-all cursor-pointer ${getStageCardColor(stage.status, isActive, stage.id)}`}
             >
               <div className="flex flex-col gap-3">
                 <div className="flex items-start justify-between">
-                  <div className={`p-2 rounded-lg ${getIconColor(stage.status, isActive)}`}>
+                  <div className={`p-2 rounded-lg ${getIconColor(stage.status, isActive, stage.id)}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   {getStatusBadge(stage.status)}
@@ -368,164 +411,154 @@ export default function QualityPackingPage() {
           <div className="border-b border-border px-4 py-3 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
               <ActiveIcon className="h-5 w-5 text-indigo-500" />
-              {t(`orderInitiation.tracker.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} {t('quality.dataEntry') || 'Data Entry'}
+              {t(`orderInitiation.tracker.${stages[activeStageIdx].id}`) || stages[activeStageIdx].name} Update
             </h2>
-            <button onClick={() => setActiveStageIdx(null)} className="text-sm font-medium text-muted-foreground hover:text-neutral-700">
-              {t('orderInitiation.buttons.back') || 'Close'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button className="text-xs font-semibold px-3 py-1.5 h-8 border border-border rounded-lg bg-card hover:bg-muted text-foreground transition-colors flex items-center gap-1.5">
+                + Add Person
+              </button>
+              <button onClick={() => setActiveStageIdx(null)} className="text-xs font-semibold px-3 py-1.5 h-8 border border-border rounded-lg bg-card hover:bg-muted text-foreground transition-colors flex items-center gap-1.5">
+                {t('orderInitiation.buttons.back') || 'Return'}
+              </button>
+            </div>
           </div>
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Supervisor Field (Shared except for Approval) */}
-              {stages[activeStageIdx].id !== 'approval' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                    {stages[activeStageIdx].id === 'verification' ? (t('quality.verificationSupervisor') || 'Verification Supervisor') : (t('production.supervisor') || 'Supervisor Name')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder={t('production.supervisorPlaceholder') || "Enter name"}
-                    value={stages[activeStageIdx].supervisor}
-                    onChange={(e) => handleStageUpdate(activeStageIdx, 'supervisor', e.target.value)}
-                    disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                  />
-                </div>
-              )}
-
-              {/* Quantity Fields */}
-              {stages[activeStageIdx].id === 'qc' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.itemsChecked') || 'Items Checked'}</label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                    value={stages[activeStageIdx].completedQty || ''}
-                    onChange={(e) => handleStageUpdate(activeStageIdx, 'completedQty', parseInt(e.target.value) || 0)}
-                    disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                  />
-                </div>
-              )}
-
-              {stages[activeStageIdx].id === 'packing' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.packedQty') || 'Packed Quantity'}</label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                    value={stages[activeStageIdx].packedQty || ''}
-                    onChange={(e) => handleStageUpdate(activeStageIdx, 'packedQty', parseInt(e.target.value) || 0)}
-                    disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                  />
-                </div>
-              )}
-
-              {stages[activeStageIdx].id === 'verification' && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.verifiedQty') || 'Verified Quantity'}</label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                    value={stages[activeStageIdx].verifiedQty || ''}
-                    onChange={(e) => handleStageUpdate(activeStageIdx, 'verifiedQty', parseInt(e.target.value) || 0)}
-                    disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                  />
-                </div>
-              )}
-
-              {/* Approval Fields */}
-              {stages[activeStageIdx].id === 'approval' && (
-                <>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.approvedBy') || 'Approved By'}</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder={t('production.supervisorPlaceholder') || "Authorized Person Name"}
-                      value={stages[activeStageIdx].approvedBy || ''}
-                      onChange={(e) => handleStageUpdate(activeStageIdx, 'approvedBy', e.target.value)}
-                      disabled={stages[activeStageIdx].status === 'Completed'}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.dispatchNotes') || 'Dispatch Notes'}</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder={t('quality.dispatchNotesPlaceholder') || "Final instructions for shipping"}
-                      value={stages[activeStageIdx].dispatchNotes || ''}
-                      onChange={(e) => handleStageUpdate(activeStageIdx, 'dispatchNotes', e.target.value)}
-                      disabled={stages[activeStageIdx].status === 'Completed'}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* QC Specific Block */}
-              {stages[activeStageIdx].id === 'qc' && (
-                <div className="md:col-span-2 bg-neutral-50 dark:bg-card p-4 rounded-lg border border-border mt-2">
-                  <div className="flex items-start gap-3 mb-4">
-                    <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-bold text-amber-800">{t('quality.qcRequired') || 'Quality Check Required'}</h4>
-                      <p className="text-sm text-amber-700 mt-1">{t('quality.qcDesc') || 'Please inspect garments against quality standards. Failed items will be flagged for rework.'}</p>
-                    </div>
-                  </div>
-                  <label className="text-sm font-bold text-card-foreground mb-3 block">{t('quality.qcStatus') || 'QC Status'}</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="qcStatus"
-                        value="Pass"
-                        checked={stages[activeStageIdx].qcStatus === 'Pass'}
-                        onChange={() => handleStageUpdate(activeStageIdx, 'qcStatus', 'Pass')}
-                        disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                        className="text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('quality.pass') || 'Pass (Meets standards)'}</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="qcStatus"
-                        value="Fail"
-                        checked={stages[activeStageIdx].qcStatus === 'Fail'}
-                        onChange={() => handleStageUpdate(activeStageIdx, 'qcStatus', 'Fail')}
-                        disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                        className="text-red-600 focus:ring-red-500"
-                      />
-                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('quality.fail') || 'Fail (Requires rework)'}</span>
-                    </label>
-                  </div>
-                  <div className="mt-4">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('quality.defectNotes') || 'Defect Notes'}</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder={t('quality.defectNotesPlaceholder') || "Specific defect details if any"}
-                      value={stages[activeStageIdx].qcRemarks || ''}
-                      onChange={(e) => handleStageUpdate(activeStageIdx, 'qcRemarks', e.target.value)}
-                      disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* General Remarks */}
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">{t('orderInitiation.orderForm.uploadPO') || 'Remarks'}</label>
-                <textarea
-                  className="w-full px-3 py-2 text-sm text-card-foreground placeholder:text-neutral-400 border rounded-lg border-border focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]"
-                  placeholder={t('production.remarksPlaceholder') || "Any additional notes"}
-                  value={stages[activeStageIdx].remarks}
-                  onChange={(e) => handleStageUpdate(activeStageIdx, 'remarks', e.target.value)}
-                  disabled={stages[activeStageIdx].status === 'Completed' || stages[activeStageIdx].status === 'Rework Required'}
-                />
+          <div className="p-0">
+            {/* Kanban Columns Header */}
+            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] border-b border-border bg-neutral-50/50 dark:bg-[#0f1523]">
+              <div className="p-4 hidden md:flex items-center gap-2 border-r border-border">
+                <User className="h-4 w-4 text-neutral-400" />
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Worker / Assigned</span>
+              </div>
+              <div className="p-4 flex items-center gap-2 border-r md:border-r border-border border-b md:border-b-0">
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">PENDING</span>
+              </div>
+              <div className="p-4 flex items-center gap-2 border-r md:border-r border-border border-b md:border-b-0">
+                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">IN PROGRESS</span>
+              </div>
+              <div className="p-4 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">COMPLETED</span>
               </div>
             </div>
+
+            {/* Tasks Grouped by Worker */}
+            <div className="divide-y divide-border">
+              {(!stages[activeStageIdx].tasks || stages[activeStageIdx].tasks!.length === 0) ? (
+                 <div className="p-8 text-center text-muted-foreground text-sm">No tasks assigned for this stage yet. Click "+ Add Person" to begin.</div>
+              ) : Object.entries(stages[activeStageIdx].tasks!.reduce((acc, task) => {
+                if (!acc[task.assignee]) acc[task.assignee] = [];
+                acc[task.assignee].push(task);
+                return acc;
+              }, {} as Record<string, TaskAssignment[]>)).map(([assignee, assigneeTasks]) => (
+                <div key={assignee} className="grid grid-cols-1 md:grid-cols-[300px_1fr_1fr_1fr] hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
+                  {/* Column 1: Row Indicator */}
+                  <div className="px-6 py-5 flex flex-col justify-start bg-neutral-50/30 dark:bg-[#151c2c]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <h3 className="font-bold text-sm text-foreground">{assignee}</h3>
+                    </div>
+                    <span className="text-[10px] font-bold bg-muted text-neutral-500 px-2 py-0.5 rounded-full self-start inline-flex">{assigneeTasks.length} Tasks</span>
+                  </div>
+
+                  {/* Column 2: Pending */}
+                  <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                    {assigneeTasks.filter(t => t.status === 'Pending').map(task => (
+                      <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border p-4 border-l-4 border-l-red-500 hover:border-red-500/50 hover:shadow-lg transition-all">
+                        <p className="text-xs font-bold text-card-foreground mb-2">{task.taskName}</p>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500 mb-2">
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">Target Qty</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} Pcs</span>
+                          </div>
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">Start Time</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                          <span className="font-bold text-neutral-600 dark:text-neutral-300">Sizes: <span className="text-indigo-600 dark:text-indigo-400">{task.sizes ? Object.keys(task.sizes).join(', ') : 'All'}</span></span>
+                          <span className="text-neutral-300 dark:text-slate-600">|</span>
+                          <span className="font-medium text-neutral-500">Pcs: {task.targetQty}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {assigneeTasks.filter(t => t.status === 'Pending').length === 0 && (
+                      <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
+                    )}
+                  </div>
+
+                  {/* Column 3: In Progress */}
+                  <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                    {assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
+                      <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border p-4 border-l-4 border-l-amber-400 hover:border-amber-400/50 hover:shadow-lg transition-all">
+                        <p className="text-xs font-bold text-card-foreground mb-2">{task.taskName}</p>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500 mb-2">
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">Target Qty</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} Pcs</span>
+                          </div>
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">Start Time</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                          <span className="font-bold text-neutral-600 dark:text-neutral-300">Sizes: <span className="text-indigo-600 dark:text-indigo-400">{task.sizes ? Object.keys(task.sizes).join(', ') : 'All'}</span></span>
+                          <span className="text-neutral-300 dark:text-slate-600">|</span>
+                          <span className="font-medium text-neutral-500">Pcs: {task.targetQty}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {assigneeTasks.filter(t => t.status === 'In Progress').length === 0 && (
+                      <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
+                    )}
+                  </div>
+
+                  {/* Column 4: Completed */}
+                  <div className="p-4 border-t md:border-t-0 md:border-l border-border flex flex-col gap-3">
+                    {assigneeTasks.filter(t => t.status === 'Completed').map(task => (
+                      <div key={task.id} className="relative bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border p-4 border-l-4 border-l-emerald-500 hover:border-emerald-500/50 hover:shadow-lg transition-all">
+                        <p className="text-xs font-bold text-card-foreground mb-2">{task.taskName}</p>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500 mb-2">
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">Target Qty</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} Pcs</span>
+                          </div>
+                          <div>
+                            <span className="block uppercase tracking-wider text-neutral-500">End Time</span>
+                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.endTime || '--:--'}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5 px-2 py-1.5 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-neutral-600 dark:text-neutral-300">Sizes: <span className="text-indigo-600 dark:text-indigo-400">{task.sizes ? Object.keys(task.sizes).join(', ') : 'All'}</span></span>
+                            <span className="text-neutral-300 dark:text-slate-600">|</span>
+                            <span className="font-medium text-neutral-500">Pcs: {task.targetQty}</span>
+                          </div>
+                          {stages[activeStageIdx].id === 'qc' && task.passedQty !== undefined && task.failedQty !== undefined && (
+                            <div className="flex items-center gap-3 pt-1 border-t border-border mt-0.5">
+                              <span className="text-emerald-600 font-bold">Passed: {task.passedQty}</span>
+                              <span className="text-red-600 font-bold">Failed: {task.failedQty}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {assigneeTasks.filter(t => t.status === 'Completed').length === 0 && (
+                      <div className="border border-neutral-200/50 dark:border-[#26334d] border-dashed rounded-xl h-[92px] w-full bg-neutral-50/30 dark:bg-[#131b2e]"></div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="p-6 bg-card">
 
             <div className="mt-6 flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-border">
               {stages[activeStageIdx].status === 'Pending' && (

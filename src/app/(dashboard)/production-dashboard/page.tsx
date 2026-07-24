@@ -125,10 +125,10 @@ export default function ProductionDashboardPage() {
     }, 0);
   }, [activeProductionOrders]);
 
-  const totalOrders = Math.max(orders.length, 10);
-  const totalTargetPieces = Math.max(orders.reduce((acc, order) => acc + (order.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 0), 0), 15000);
-  const scheduledStagesCount = Math.max(activeProductionOrders.length * 5, 100);
-  const recentAlertsTotal = Math.max(productionAlerts + 2, 5);
+  const totalOrders = orders.length;
+  const totalTargetPieces = orders.reduce((acc, order) => acc + (order.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 0), 0);
+  const scheduledStagesCount = activeProductionOrders.length * 5;
+  const recentAlertsTotal = productionAlerts;
 
   const metrics = [
     { 
@@ -241,13 +241,6 @@ export default function ProductionDashboardPage() {
 
       {/* Custom Production Navigation Tracker */}
       <div className="w-full">
-        <div className="flex justify-end mb-3">
-          <button 
-            onClick={() => setActiveFilterStage(null)}
-            className="px-4 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20 rounded text-sm font-medium transition-colors">
-            Reset Workflow Data
-          </button>
-        </div>
         {/* Evenly distributed full width flex row container */}
         <div className="flex items-center justify-between overflow-visible p-5 bg-card rounded-xl border border-gray-100 dark:border-border shadow-sm w-full">
           {productionSteps.map((step, idx) => {

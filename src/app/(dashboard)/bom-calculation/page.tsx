@@ -23,6 +23,7 @@ import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { getActiveBOMItems } from '@/utils/bomUtils';
 import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
 import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
@@ -152,11 +153,13 @@ export default function BOMCalculationView() {
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
   const [wastage, setWastage] = useState(5);
-  const [sleeveType, setSleeveType] = useState('full_sleeve');
   const [editableMaterials, setEditableMaterials] = useState<any[]>([]);
   const [sizePerPieceOverrides, setSizePerPieceOverrides] = useState<Record<string, Record<string, number>>>({});
   const [sizeUnitPriceOverrides, setSizeUnitPriceOverrides] = useState<Record<string, Record<string, number>>>({});
   const [sizeLaborCostOverrides, setSizeLaborCostOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sleeveType, setSleeveType] = useState<string>('');
+  const [selectedGarmentIndex, setSelectedGarmentIndex] = useState<number>(0);
+  const [isTotalBomMode, setIsTotalBomMode] = useState<boolean>(false);
 
   useEffect(() => {
     if (selectedPONumber) {
@@ -167,6 +170,7 @@ export default function BOMCalculationView() {
         .then(res => res.json())
         .then(data => {
           if (data.success !== false) {
+            console.log("Selected PO Full Payload:", data);
             setDetailedOrder({
               ...data,
               poNumber: data.po_number || selectedPONumber,
@@ -283,68 +287,222 @@ export default function BOMCalculationView() {
     }
   };
 
-  const totalProductionRequired = activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0);
+  const activeGarment = activeSpecs[selectedGarmentIndex] || activeSpecs[0];
 
-  const garmentType = activeSpecs[0]?.itemDescription || 'Shirt';
+  const totalProductionRequired = activeGarment
+    ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
+    : 0;
 
-  const selectedSizes = activeSpecs.flatMap((spec: any) => {
+  const garmentType = activeGarment?.itemDescription || 'Shirt';
+
+  useEffect(() => {
+    if (currentOrder && activeGarment) {
+      console.log('--- PO OR GARMENT CHANGED ---');
+      console.log('Current Order Object:', currentOrder);
+      console.log('Active Garment:', activeGarment);
+      
+      const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+      const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > selectedGarmentIndex ? garmentDetailsArray[selectedGarmentIndex] : garmentDetailsArray[0];
+      
+      const sleeveValue = 
+        activeGarment?.sleeveType || 
+        activeGarment?.sleeve_type || 
+        activeGarment?.sleeve ||
+        matchingGarmentDetail?.sleeveType ||
+        matchingGarmentDetail?.sleeve_type ||
+        matchingGarmentDetail?.sleeve ||
+        currentOrder?.garmentSpec?.sleeveType ||
+        currentOrder?.garmentSpec?.sleeve_type ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeve_type ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeveType ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeve ||
+        currentOrder?.sleeveType || 
+        currentOrder?.sleeve_type || 
+        '';
+                        
+      console.log('Extracted Sleeve Value for selected garment:', sleeveValue);
+      
+      if (sleeveValue.toLowerCase().includes('half')) {
+        setSleeveType('half_sleeve');
+      } else if (sleeveValue.toLowerCase().includes('full')) {
+        setSleeveType('full_sleeve');
+      } else {
+        setSleeveType('');
+      }
+    } else {
+      setSleeveType('');
+    }
+  }, [currentOrder, activeGarment, selectedGarmentIndex]);
+
+  const formatSleeveType = (s: string) => {
+    if (!s) return 'N/A';
+    return s.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+  const displaySleeveType = formatSleeveType(sleeveType);
+
+  const selectedSizes = React.useMemo(() => {
+    if (!activeGarment) return [];
     let specSizes: string[] = [];
-    if (Array.isArray(spec.size)) {
-      specSizes = spec.size.map(String).map((x: string) => x.trim());
-    } else if (typeof spec.size === 'string') {
-      specSizes = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
-    } else if (spec.size) {
-      specSizes = [String(spec.size).trim()];
+    if (Array.isArray(activeGarment.size)) {
+      specSizes = activeGarment.size.map(String).map((x: string) => x.trim());
+    } else if (typeof activeGarment.size === 'string') {
+      specSizes = activeGarment.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+    } else if (activeGarment.size) {
+      specSizes = [String(activeGarment.size).trim()];
     }
 
-    const prodReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
+    const prodReq = Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0));
     const qtyPerSize = specSizes.length > 0 ? Math.ceil(prodReq / specSizes.length) : 0;
 
-    return specSizes.map(s => ({ size: s, quantity: qtyPerSize }));
-  });
+    return specSizes.map((s: string) => ({ size: s, quantity: qtyPerSize }));
+  }, [activeGarment]);
 
   const sizesDependency = JSON.stringify(selectedSizes);
 
   useEffect(() => {
+    const fetchForSpec = async (spec: any, index: number, BACKEND_URL: string) => {
+      const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+      const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > index ? garmentDetailsArray[index] : garmentDetailsArray[0];
+      
+      const sValue = 
+        spec?.sleeveType || spec?.sleeve_type || spec?.sleeve ||
+        matchingGarmentDetail?.sleeveType || matchingGarmentDetail?.sleeve_type || matchingGarmentDetail?.sleeve ||
+        currentOrder?.garmentSpec?.sleeveType || currentOrder?.garmentSpec?.sleeve_type ||
+        currentOrder?.items?.[index]?.sleeve_type || currentOrder?.items?.[index]?.sleeveType || currentOrder?.items?.[index]?.sleeve ||
+        currentOrder?.sleeveType || currentOrder?.sleeve_type || '';
+      let sType = '';
+      if (sValue.toLowerCase().includes('half')) sType = 'half_sleeve';
+      else if (sValue.toLowerCase().includes('full')) sType = 'full_sleeve';
+
+      const specProdReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
+      
+      let specSizesArr: string[] = [];
+      if (Array.isArray(spec.size)) {
+        specSizesArr = spec.size.map(String).map((x: string) => x.trim());
+      } else if (typeof spec.size === 'string') {
+        specSizesArr = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+      } else if (spec.size) {
+        specSizesArr = [String(spec.size).trim()];
+      }
+      const qtyPerSize = specSizesArr.length > 0 ? Math.ceil(specProdReq / specSizesArr.length) : 0;
+      const parsedSizes = specSizesArr.map((s: string) => ({ size: s, quantity: qtyPerSize }));
+
+      const gType = spec?.itemDescription || 'Shirt';
+
+      const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: gType,
+          sleeveType: sType.includes('half') ? 'half_sleeve' : 'full_sleeve',
+          sizes: parsedSizes,
+          orderQty: specProdReq,
+          wastageMargin: wastage
+        })
+      });
+      const data = await res.json();
+      return { data, sType };
+    };
+
     const fetchBOM = async () => {
-      if (!selectedPONumber || selectedSizes.length === 0) {
+      if (!selectedPONumber || (!isTotalBomMode && selectedSizes.length === 0)) {
         setEditableMaterials([]);
         return;
       }
 
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
       try {
-        const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            category: garmentType,
-            sleeveType,
-            sizes: JSON.parse(sizesDependency),
-            orderQty: totalProductionRequired,
-            wastageMargin: wastage
-          })
+        let results = [];
+        if (isTotalBomMode) {
+          const promises = activeSpecs.map((spec: any, index: number) => fetchForSpec(spec, index, BACKEND_URL));
+          results = await Promise.all(promises);
+        } else {
+          const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category: garmentType,
+              sleeveType: sleeveType.includes('half') ? 'half_sleeve' : 'full_sleeve',
+              sizes: JSON.parse(sizesDependency),
+              orderQty: totalProductionRequired,
+              wastageMargin: wastage
+            })
+          });
+          const data = await res.json();
+          results = [{ data, sType: sleeveType }];
+        }
+
+        const mergedMap = new Map();
+
+        results.forEach((result) => {
+          if (result.data.success && result.data.materials) {
+            result.data.materials.forEach((m: any) => {
+              const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
+              
+              if (result.sType.toLowerCase().includes('half') && displayName.toLowerCase().includes('cuff')) {
+                return;
+              }
+
+              let modifiedSizes = m.sizes || [];
+              let modifiedTotalQty = m.totalRequired;
+
+              if (modifiedSizes && modifiedSizes.length > 0) {
+                modifiedSizes = modifiedSizes.map((s: any) => {
+                  const rawVal = s.perPieceQty || s.perPiece || m.perPiece || 0;
+                  const strVal = String(rawVal).replace(/[^\d.]/g, '');
+                  let parsedVal = parseFloat(strVal);
+                  if (isNaN(parsedVal)) parsedVal = 0;
+                  return {
+                    ...s,
+                    perPieceQty: parsedVal
+                  };
+                });
+              } else if (modifiedTotalQty) {
+                const strVal = String(modifiedTotalQty).replace(/[^\d.]/g, '');
+                let parsedVal = parseFloat(strVal);
+                if (isNaN(parsedVal)) parsedVal = 0;
+                modifiedTotalQty = parsedVal;
+              }
+
+              if (!mergedMap.has(displayName)) {
+                mergedMap.set(displayName, {
+                  name: displayName,
+                  category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
+                  unit: m.unit,
+                  available: m.availableQty || 0,
+                  totalQty: modifiedTotalQty || 0,
+                  perUnitPrice: m.unitPrice || 0,
+                  missing: m.shortage || 0,
+                  sizes: [...modifiedSizes]
+                });
+              } else {
+                const existing = mergedMap.get(displayName);
+                existing.totalQty += (modifiedTotalQty || 0);
+                existing.missing += (m.shortage || 0);
+                
+                // Merge sizes
+                modifiedSizes.forEach((s: any) => {
+                   const exSize = existing.sizes.find((ex: any) => ex.size === s.size);
+                   if (exSize) {
+                      const actualQtyEx = exSize.orderQty ?? exSize.quantity ?? exSize.garmentQty ?? 0;
+                      const actualQtyS = s.orderQty ?? s.quantity ?? s.garmentQty ?? 0;
+                      exSize.orderQty = actualQtyEx + actualQtyS;
+                   } else {
+                      existing.sizes.push(s);
+                   }
+                });
+              }
+            });
+          }
         });
 
-        const data = await res.json();
-        if (data.success && data.materials) {
-          const mappedMats = data.materials.map((m: any, i: number) => {
-            const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
-            return {
-              id: `mat-${i}`,
-              name: displayName,
-              category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
-              unit: m.unit,
-              available: m.availableQty,
-              totalQty: m.totalRequired,
-              perUnitPrice: m.unitPrice,
-              missing: m.shortage,
-              status: m.shortage > 0 ? 'Procurement Required' : 'Available',
-              sizes: m.sizes
-            };
-          });
-          setEditableMaterials(mappedMats);
-        }
+        let finalMats = Array.from(mergedMap.values()).map((m: any, i: number) => ({
+          ...m,
+          id: `mat-${i}`,
+          status: m.missing > 0 ? 'Procurement Required' : 'Available',
+        }));
+
+        setEditableMaterials(getActiveBOMItems(finalMats));
       } catch (err) {
         console.error("Error fetching BOM:", err);
       }
@@ -352,7 +510,7 @@ export default function BOMCalculationView() {
 
     fetchBOM();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [garmentType, selectedPONumber, sizesDependency, sleeveType, totalProductionRequired, wastage]);
+  }, [garmentType, selectedPONumber, sizesDependency, sleeveType, totalProductionRequired, wastage, isTotalBomMode]);
 
   const calculatedMaterials = editableMaterials;
 
@@ -535,7 +693,7 @@ export default function BOMCalculationView() {
               {t('bom.config')}
             </h2>
           </div>
-          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 items-end">
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 items-end">
             <div className="w-full">
               <SearchableDropdown
                 label="Customer Name"
@@ -546,6 +704,7 @@ export default function BOMCalculationView() {
                   setSelectedCustomer(val);
                   setSelectedPODate('');
                   setSelectedPONumber('');
+                  setWastage(5);
                 }}
               />
             </div>
@@ -556,7 +715,13 @@ export default function BOMCalculationView() {
                 value={selectedPONumber}
                 placeholder="Select a PO Number..."
                 disabled={!selectedCustomer}
-                onChange={(val) => setSelectedPONumber(val)}
+                onChange={(val) => {
+                  const newOrder = filteredOrders.find(o => o.poNumber === val) || detailedOrder;
+                  console.log("Selected PO Object:", newOrder);
+                  setSelectedPONumber(val);
+                  setSelectedGarmentIndex(0);
+                  setWastage(5);
+                }}
               />
             </div>
             <div className="w-full">
@@ -571,14 +736,6 @@ export default function BOMCalculationView() {
                 {garmentType || 'N/A'}
               </div>
             </div>
-            {garmentType.toLowerCase().includes('shirt') && (
-              <div className="flex flex-col gap-1.5 w-full">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">SLEEVE TYPE</label>
-                <div className="h-[42px] flex items-center bg-slate-800/60 border border-slate-700 text-gray-300 rounded-md px-3 py-2 text-sm cursor-not-allowed select-none">
-                  {sleeveType || 'N/A'}
-                </div>
-              </div>
-            )}
             <div className="w-full">
               <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
                 {t('bom.wastage')}
@@ -611,9 +768,21 @@ export default function BOMCalculationView() {
               <Layers className="h-4 w-4 text-muted-foreground" />
               {t('bom.details')}
             </h2>
-            <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-100">
-              {t('bom.totalProd')}: {totalProductionRequired} pcs
-            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsTotalBomMode(!isTotalBomMode)}
+                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-colors ${
+                  isTotalBomMode
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white dark:bg-card text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                }`}
+              >
+                {isTotalBomMode ? 'View Individual BOM' : 'Total BOM Cal.'}
+              </button>
+              <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-100">
+                {t('bom.totalProd')}: {totalProductionRequired} pcs
+              </span>
+            </div>
           </div>
           <div className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -622,18 +791,59 @@ export default function BOMCalculationView() {
               ) : activeSpecs.length === 0 ? (
                 <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
               ) : (
-                activeSpecs.map((spec: any, idx: number) => (
-                  <div key={idx} className="bg-neutral-50 dark:bg-card/50 p-3 rounded-lg border border-neutral-100 dark:border-border flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{spec.itemDescription || '-'} - {spec.pattern || '-'}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Size: {typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}</p>
-                    </div>
-                    <div className="text-right pl-3 border-l border-neutral-200 dark:border-neutral-600">
-                      <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
-                      <p className="text-sm font-bold text-indigo-700">{Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0))}</p>
-                    </div>
-                  </div>
-                ))
+                activeSpecs.map((spec: any, idx: number) => {
+                  const isSelected = selectedGarmentIndex === idx;
+                  
+                  const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+                  const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > idx ? garmentDetailsArray[idx] : garmentDetailsArray[0];
+                  
+                  const sValue = 
+                    spec?.sleeveType || 
+                    spec?.sleeve_type || 
+                    spec?.sleeve ||
+                    matchingGarmentDetail?.sleeveType ||
+                    matchingGarmentDetail?.sleeve_type ||
+                    matchingGarmentDetail?.sleeve ||
+                    currentOrder?.garmentSpec?.sleeveType ||
+                    currentOrder?.garmentSpec?.sleeve_type ||
+                    currentOrder?.items?.[idx]?.sleeve_type ||
+                    currentOrder?.items?.[idx]?.sleeveType ||
+                    currentOrder?.items?.[idx]?.sleeve ||
+                    currentOrder?.sleeveType || 
+                    currentOrder?.sleeve_type || 
+                    '';
+                  const formattedSleeve = sValue ? sValue.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'N/A';
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedGarmentIndex(idx)}
+                      className={`text-left transition-all p-3 rounded-lg border flex justify-between items-start ${
+                        isSelected 
+                          ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-sm ring-1 ring-indigo-500' 
+                          : 'bg-neutral-50 dark:bg-card/50 border-neutral-100 dark:border-border hover:border-indigo-300 dark:hover:border-indigo-700/50 hover:bg-neutral-100 dark:hover:bg-card/80'
+                      }`}
+                    >
+                      <div>
+                        <p className={`text-sm font-medium ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-foreground'}`}>
+                          {spec.itemDescription || '-'} - {spec.pattern || '-'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Size: {typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}
+                        </p>
+                        <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded border font-medium ${isSelected ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                          Sleeve: {formattedSleeve}
+                        </span>
+                      </div>
+                      <div className={`text-right pl-3 border-l ${isSelected ? 'border-indigo-200 dark:border-indigo-800' : 'border-neutral-200 dark:border-neutral-600'}`}>
+                        <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
+                        <p className={`text-sm font-bold ${isSelected ? 'text-indigo-700 dark:text-indigo-400' : 'text-foreground'}`}>
+                          {Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0))}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -782,7 +992,8 @@ export default function BOMCalculationView() {
                                 <input
                                   type="number"
                                   min="0"
-                                  value={item.perUnitPrice}
+                                  step="0.01"
+                                  value={item.perUnitPrice ?? ''}
                                   onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
                                   className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
                                 />
@@ -865,8 +1076,8 @@ export default function BOMCalculationView() {
                                   <input
                                     type="number"
                                     min="0"
-                                    step="0.1"
-                                    value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice}
+                                    step="0.01"
+                                    value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice ?? ''}
                                     onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
                                     className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
                                   />

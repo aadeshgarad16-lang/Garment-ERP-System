@@ -46,6 +46,7 @@ export interface TaskAssignment {
   targetWorkerId?: string;
   transferQuantity?: number;
   originalTaskId?: string;
+  sizes?: Record<string, number>;
 }
 
 interface StageData {
@@ -113,28 +114,35 @@ export default function ProductionPage() {
 
   // Handover Engine State
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [handoverSplits, setHandoverSplits] = useState<{ id?: string; worker: string; quantity: number; handshakeStatus?: string }[]>([{ id: crypto.randomUUID(), worker: '', quantity: 0, handshakeStatus: 'PENDING' }]);
+  const [handoverSplits, setHandoverSplits] = useState<{ id?: string; worker: string; quantity: number; sizes?: Record<string, number>; handshakeStatus?: string }[]>([{ id: crypto.randomUUID(), worker: '', quantity: 0, sizes: {}, handshakeStatus: 'PENDING' }]);
   const [pendingHandoverTask, setPendingHandoverTask] = useState<TaskAssignment | null>(null);
 
   const [expandedGarmentIdx, setExpandedGarmentIdx] = useState<number | null>(null);
   const [expandedSwimlanes, setExpandedSwimlanes] = useState<Record<string, boolean>>({});
+  const [trimInjections, setTrimInjections] = useState<Record<string, {operator: string, qty: string}>>({});
   const toggleSwimlane = (assignee: string) => {
     setExpandedSwimlanes(prev => ({ ...prev, [assignee]: !prev[assignee] }));
   };
 
   const handleInitiateHandover = (task: TaskAssignment) => {
     setPendingHandoverTask(task);
-    setHandoverSplits([{ id: crypto.randomUUID(), worker: '', quantity: 0, handshakeStatus: 'PENDING' }]); // Start with 0 allocated as requested
+    setHandoverSplits([{ id: crypto.randomUUID(), worker: '', quantity: 0, sizes: {}, handshakeStatus: 'PENDING' }]); // Start with 0 allocated as requested
     setIsHandoverModalOpen(true);
   };
 
   const addHandoverSplitRow = () => {
-    setHandoverSplits([...handoverSplits, { id: crypto.randomUUID(), worker: '', quantity: 0, handshakeStatus: 'PENDING' }]);
+    setHandoverSplits([...handoverSplits, { id: crypto.randomUUID(), worker: '', quantity: 0, sizes: {}, handshakeStatus: 'PENDING' }]);
   };
 
-  const updateHandoverSplit = (index: number, field: 'worker' | 'quantity', value: any) => {
+  const updateHandoverSplit = (index: number, field: 'worker' | 'quantity', value: any, sizeKey?: string) => {
     const newSplits = [...handoverSplits];
-    newSplits[index] = { ...newSplits[index], [field]: field === 'quantity' ? Number(value) : value };
+    if (sizeKey) {
+      if (!newSplits[index].sizes) newSplits[index].sizes = {};
+      newSplits[index].sizes![sizeKey] = Number(value);
+      newSplits[index].quantity = Object.values(newSplits[index].sizes!).reduce((sum, val) => sum + (val || 0), 0);
+    } else {
+      newSplits[index] = { ...newSplits[index], [field]: field === 'quantity' ? Number(value) : value };
+    }
     setHandoverSplits(newSplits);
   };
 
@@ -172,14 +180,15 @@ export default function ProductionPage() {
         transitingWorkerId: pendingHandoverTask.assignee,
         targetWorkerId: split.worker,
         transferQuantity: split.quantity,
-        originalTaskId: pendingHandoverTask.id
+        originalTaskId: pendingHandoverTask.id,
+        sizes: split.sizes
       });
     });
 
     setStages(newStages);
     setIsHandoverModalOpen(false);
     setPendingHandoverTask(null);
-    setHandoverSplits([{ worker: '', quantity: 0 }]);
+    setHandoverSplits([{ worker: '', quantity: 0, sizes: {} }]);
   };
 
   const acceptHandover = (stageIdx: number, taskId: string) => {
@@ -217,6 +226,30 @@ export default function ProductionPage() {
       nextStage.tasks = nextStage.tasks.filter(t => t.id !== taskId);
     }
     setStages(newStages);
+  };
+
+  const injectTrimToStage = (stageIdx: number, mat: any) => {
+    const injection = trimInjections[mat.id];
+    if (!injection || !injection.operator || !injection.qty || Number(injection.qty) <= 0) return;
+    
+    const newStages = [...stages];
+    const stage = newStages[stageIdx];
+    if (!stage.tasks) stage.tasks = [];
+    
+    stage.tasks.push({
+      id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      assignee: injection.operator,
+      materialAllocatedName: mat.materials_inventory || mat.name,
+      targetQty: Number(injection.qty),
+      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      endTime: '',
+      status: 'In Progress',
+      handshakeStatus: 'ACCEPTED', // Pre-accepted since it's a direct injection
+      unit: mat.unit
+    });
+    setStages(newStages);
+    // Reset the input for this material
+    setTrimInjections(prev => ({ ...prev, [mat.id]: { operator: '', qty: '' } }));
   };
 
   const handleAdvanceToNextStage = async (currentStageId: string) => {
@@ -691,9 +724,17 @@ export default function ProductionPage() {
 
 
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <button
+            onClick={() => router.push('/production-dashboard')}
+            className="mt-0.5 p-2 bg-card border border-border hover:bg-neutral-100 dark:hover:bg-slate-800 text-neutral-600 dark:text-neutral-300 rounded-lg transition-colors shadow-sm shrink-0"
+            aria-label="Back to Dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Activity className="h-6 w-6 text-indigo-600" />
             {t('production.title')}
           </h1>
@@ -711,6 +752,7 @@ export default function ProductionPage() {
                 - {currentOrder.customerName || currentOrder.clientName}
               </span>
             )}
+          </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -948,6 +990,7 @@ export default function ProductionPage() {
                     <table className="w-full table-auto min-w-[800px] text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-neutral-50 dark:bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                          <th className="px-4 py-3 whitespace-nowrap">Article / Material</th>
                           <th className="px-4 py-3 whitespace-nowrap">Size</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Required Qty</th>
                           <th className="px-4 py-3 whitespace-nowrap text-right">Allocated Qty</th>
@@ -958,49 +1001,24 @@ export default function ProductionPage() {
                       </thead>
                       <tbody className="divide-y divide-neutral-200 dark:divide-slate-700/50">
                         {allocatedMaterials.length > 0 ? allocatedMaterials.map((mat) => {
+                          const isFabric = (mat.category || '').toLowerCase() === 'fabric' || (mat.materials_inventory || mat.name || '').toLowerCase().includes('fabric');
                           const sizeData = allocationMap[mat.id] || {};
+                          const sizes = Object.entries(sizeData);
+                          const rowCount = sizes.length > 0 ? sizes.length : 1;
 
                           return (
                             <React.Fragment key={mat.id}>
-                              {/* Material Header Row */}
-                              <tr className="bg-neutral-100/50 dark:bg-neutral-800/30">
-                                <td colSpan={6} className="px-4 py-2 font-bold text-foreground text-sm border-l-4 border-indigo-500">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      {mat.materials_inventory || mat.name} <span className="text-muted-foreground font-normal ml-2 text-xs">({mat.category || 'Article'} • {mat.unit})</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 pr-4">
-                                      <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Garment Type:</span>
-                                      <select
-                                        className="px-2 py-1 text-xs bg-white dark:bg-[#1e293b] border border-indigo-200 dark:border-indigo-800 rounded-md focus:ring-1 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300 shadow-sm"
-                                        value={materialGarmentTypes[mat.id] || "Shirt"}
-                                        onChange={(e) => {
-                                          setMaterialGarmentTypes(prev => ({ ...prev, [mat.id]: e.target.value }));
-                                          // Note: changing type triggers useEffect that recreates allocationMap[mat.id] for the new sizes
-                                        }}
-                                      >
-                                        {currentPoGarments.length > 0 ? currentPoGarments.map(g => (
-                                          <option key={g.type} value={g.type}>{g.type}</option>
-                                        )) : (
-                                          <>
-                                            <option value="Shirt">Shirt</option>
-                                            <option value="Pant">Pant</option>
-                                          </>
-                                        )}
-                                      </select>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                              
-                              {Object.entries(sizeData).map(([size, sd]: [string, any]) => {
+                              {sizes.length > 0 ? sizes.map(([size, sd]: [string, any], idx: number) => {
                                 const sReq = sd.requiredQty || 0;
                                 const sAlloc = Number(sd.allocatedQty || 0);
                                 const sShortage = Math.max(0, sReq - sAlloc);
                                 
                                 let sBadge = 'PENDING';
                                 let sBadgeCls = 'bg-neutral-100 text-neutral-500';
-                                if (sAlloc >= sReq && sReq > 0) {
+                                if (!isFabric) {
+                                  sBadge = 'LOCKED';
+                                  sBadgeCls = 'bg-neutral-100 text-neutral-400';
+                                } else if (sAlloc >= sReq && sReq > 0) {
                                   sBadge = 'ALLOCATED';
                                   sBadgeCls = 'bg-emerald-100 text-emerald-700';
                                 } else if (sAlloc > 0) {
@@ -1009,22 +1027,68 @@ export default function ProductionPage() {
                                 }
 
                                 return (
-                                  <tr key={`${mat.id}-${size}`} className="hover:bg-muted/30 transition-colors">
+                                  <tr key={`${mat.id}-${size}`} className={`transition-colors border-b border-neutral-100 dark:border-slate-800/60 ${isFabric ? 'hover:bg-muted/30' : 'opacity-70 bg-neutral-50/30 dark:bg-neutral-900/20'}`}>
+                                    {idx === 0 && (
+                                      <td rowSpan={rowCount} className={`px-4 py-3 border-r border-neutral-100 dark:border-slate-800/60 align-top ${isFabric ? 'border-l-4 border-l-indigo-500' : 'border-l-4 border-l-neutral-400 dark:border-l-neutral-600'}`}>
+                                        <div className="flex flex-col gap-2 max-w-[220px]">
+                                          <div>
+                                            <span className={`font-bold text-sm block ${isFabric ? 'text-foreground' : 'text-neutral-500 dark:text-neutral-400'}`}>{mat.materials_inventory || mat.name}</span>
+                                            <span className="text-muted-foreground font-normal text-xs">({mat.category || 'Article'} • {mat.unit})</span>
+                                          </div>
+                                          
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {isFabric ? (
+                                              <>
+                                                <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-blue-200 dark:border-blue-800">Raw Fabric</span>
+                                                <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-emerald-200 dark:border-emerald-800">Ready</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span className="px-1.5 py-0.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-neutral-300 dark:border-neutral-700">Locked</span>
+                                                <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-amber-200 dark:border-amber-800">Awaiting Fabric</span>
+                                              </>
+                                            )}
+                                          </div>
+
+                                          <div className="mt-3">
+                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Garment Type:</span>
+                                            <select
+                                              className={`w-full px-2 py-1 text-xs border rounded-md focus:ring-1 shadow-sm font-bold ${isFabric ? 'bg-white dark:bg-[#1e293b] border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 focus:ring-indigo-500' : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-70 cursor-not-allowed'}`}
+                                              value={materialGarmentTypes[mat.id] || "Shirt"}
+                                              disabled={!isFabric}
+                                              onChange={(e) => {
+                                                setMaterialGarmentTypes(prev => ({ ...prev, [mat.id]: e.target.value }));
+                                              }}
+                                            >
+                                              {currentPoGarments.length > 0 ? currentPoGarments.map(g => (
+                                                <option key={g.type} value={g.type}>{g.type}</option>
+                                              )) : (
+                                                <>
+                                                  <option value="Shirt">Shirt</option>
+                                                  <option value="Pant">Pant</option>
+                                                </>
+                                              )}
+                                            </select>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    )}
                                     <td className="px-4 py-3">
-                                      <span className="inline-flex items-center justify-center min-w-[32px] h-7 px-2 border-2 border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold">
+                                      <span className={`inline-flex items-center justify-center min-w-[32px] h-7 px-2 border-2 rounded-lg text-xs font-bold ${isFabric ? 'border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'}`}>
                                         {size}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{sReq}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-blue-600 dark:text-blue-400">{sAlloc}</td>
-                                    <td className="px-4 py-3 text-right text-red-500">{sShortage > 0 ? sShortage : '-'}</td>
+                                    <td className={`px-4 py-3 text-right font-medium ${isFabric ? 'text-neutral-700 dark:text-neutral-300' : 'text-neutral-400'}`}>{sReq}</td>
+                                    <td className={`px-4 py-3 text-right font-medium ${isFabric ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}`}>{sAlloc}</td>
+                                    <td className={`px-4 py-3 text-right ${isFabric ? 'text-red-500' : 'text-neutral-400'}`}>{sShortage > 0 ? sShortage : '-'}</td>
                                     <td className="px-4 py-3 text-center">
                                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sBadgeCls}`}>{sBadge}</span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                       <div className="flex items-center gap-2 justify-end min-w-[180px]">
                                         <select 
-                                          className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-32 text-neutral-700 dark:text-neutral-300"
+                                          disabled={!isFabric}
+                                          className={`px-2 py-1.5 text-xs border rounded-md w-32 ${isFabric ? 'bg-card border-border focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-neutral-700 dark:text-neutral-300' : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-400 cursor-not-allowed'}`}
                                           value={sd.personId || ""}
                                           onChange={(e) => {
                                             setAllocationMap(prev => ({
@@ -1043,6 +1107,7 @@ export default function ProductionPage() {
                                         </select>
                                         <input
                                           type="number"
+                                          disabled={!isFabric}
                                           placeholder="Qty"
                                           value={sd.allocatedQty || ""}
                                           onChange={(e) => {
@@ -1054,18 +1119,44 @@ export default function ProductionPage() {
                                               }
                                             }));
                                           }}
-                                          className="px-2 py-1.5 text-xs bg-card border border-border rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-20 text-neutral-700 dark:text-neutral-300"
+                                          className={`px-2 py-1.5 text-xs border rounded-md w-20 ${isFabric ? 'bg-card border-border focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-neutral-700 dark:text-neutral-300' : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-400 cursor-not-allowed'}`}
                                         />
                                       </div>
                                     </td>
                                   </tr>
                                 );
-                              })}
+                              }) : (
+                                <tr className={`transition-colors border-b border-neutral-100 dark:border-slate-800/60 ${isFabric ? 'hover:bg-muted/30' : 'opacity-70 bg-neutral-50/30 dark:bg-neutral-900/20'}`}>
+                                  <td className={`px-4 py-3 border-r border-neutral-100 dark:border-slate-800/60 align-top ${isFabric ? 'border-l-4 border-l-indigo-500' : 'border-l-4 border-l-neutral-400 dark:border-l-neutral-600'}`}>
+                                    <div className="flex flex-col gap-2 max-w-[220px]">
+                                      <div>
+                                        <span className={`font-bold text-sm block ${isFabric ? 'text-foreground' : 'text-neutral-500 dark:text-neutral-400'}`}>{mat.materials_inventory || mat.name}</span>
+                                        <span className="text-muted-foreground font-normal text-xs">({mat.category || 'Article'} • {mat.unit})</span>
+                                      </div>
+                                      
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {isFabric ? (
+                                          <>
+                                            <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-blue-200 dark:border-blue-800">Raw Fabric</span>
+                                            <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-emerald-200 dark:border-emerald-800">Ready</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="px-1.5 py-0.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-neutral-300 dark:border-neutral-700">Locked</span>
+                                            <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-wider rounded shadow-sm border border-amber-200 dark:border-amber-800">Awaiting Fabric</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td colSpan={6} className="px-4 py-3 text-center text-muted-foreground italic text-xs">No sizes defined</td>
+                                </tr>
+                              )}
                             </React.Fragment>
                           );
                         }) : (
                           <tr>
-                            <td colSpan={6} className="text-center py-12">
+                            <td colSpan={7} className="text-center py-12">
                               <div className="flex flex-col items-center justify-center text-neutral-400">
                                 <span className="text-4xl mb-2 font-light">⌕</span>
                                 <p>No materials allocated for this order batch yet.</p>
@@ -1090,12 +1181,71 @@ export default function ProductionPage() {
             ) : (
               <>
                 {(() => {
+                  const stageMaterials = allocatedMaterials.filter(mat => {
+                    const cat = (mat.category || '').toLowerCase();
+                    const name = (mat.materials_inventory || mat.name || '').toLowerCase();
+                    if (stages[activeStageIdx].id === 'kaj-button') return name.includes('button') || cat === 'button';
+                    if (stages[activeStageIdx].id === 'fusing') return name.includes('interlining') || name.includes('fusing') || cat.includes('interlining');
+                    if (stages[activeStageIdx].id === 'stitching') return name.includes('thread') || name.includes('zipper') || cat.includes('thread');
+                    if (stages[activeStageIdx].id === 'finishing') return name.includes('label') || name.includes('packaging') || cat.includes('packaging');
+                    return false;
+                  });
+
+                  return stageMaterials.length > 0 ? (
+                    <div className="m-6 mb-4 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-neutral-50 dark:bg-card/30 px-4 py-3 border-b border-border flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PackageSearch className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          <h3 className="text-sm font-bold text-foreground">Stage-Specific Materials (Trims)</h3>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Allocate trims directly to active tasks in this stage</span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {stageMaterials.map(mat => (
+                          <div key={mat.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/20">
+                            <div>
+                              <p className="text-sm font-bold text-foreground">{mat.materials_inventory || mat.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Available: {mat.available_qty} {mat.unit}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <select 
+                                value={trimInjections[mat.id]?.operator || ''}
+                                onChange={(e) => setTrimInjections(prev => ({ ...prev, [mat.id]: { ...prev[mat.id], operator: e.target.value } }))}
+                                className="text-xs border border-border rounded-lg px-2 py-1.5 bg-card"
+                              >
+                                <option value="">Select Operator...</option>
+                                <option value="Jamal">Jamal</option>
+                                <option value="Christie">Christie</option>
+                                <option value="Alex">Alex</option>
+                                <option value="Maria">Maria</option>
+                              </select>
+                              <input 
+                                type="number" 
+                                placeholder="Qty" 
+                                value={trimInjections[mat.id]?.qty || ''}
+                                onChange={(e) => setTrimInjections(prev => ({ ...prev, [mat.id]: { ...prev[mat.id], qty: e.target.value } }))}
+                                className="w-20 text-xs border border-border rounded-lg px-2 py-1.5 bg-card" 
+                              />
+                              <button 
+                                onClick={() => injectTrimToStage(activeStageIdx, mat)}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                Inject Trim
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
                   const tasks = stages[activeStageIdx].tasks || [];
                   const incomingTransits = tasks.filter(t => t.handshakeStatus === 'PENDING');
                   const activeTasks = tasks.filter(t => t.handshakeStatus !== 'PENDING');
 
                   // Seed default swimlanes to enforce UI structure even when empty
-                  const defaultPersonnel = ['Jamal', 'Christie', 'Alex', 'Maria'];
+                  const defaultPersonnel: string[] = [];
                   const initialGrouped = defaultPersonnel.reduce((acc, person) => {
                     acc[person] = [];
                     return acc;
@@ -1106,6 +1256,50 @@ export default function ProductionPage() {
                     acc[task.assignee].push(task);
                     return acc;
                   }, initialGrouped);
+
+                  const getDynamicMaterialName = (taskName: string, stageId: string) => {
+                    if (taskName && !taskName.toLowerCase().includes('fabric')) return taskName;
+                    switch(stageId) {
+                      case 'cutting': return taskName || 'Raw Fabric';
+                      case 'stitching': return 'Cut Panels / Sewing Thread';
+                      case 'fusing': return 'Fusible Interlining';
+                      case 'kaj-button': return 'Buttons & Trim';
+                      case 'finishing': return 'Labels & Packaging';
+                      default: return taskName;
+                    }
+                  };
+
+                  const getTargetQtyPieces = (t: any) => {
+                    if (t.sizes && Object.keys(t.sizes).length > 0) {
+                      return Object.values(t.sizes).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0) + ' Pcs';
+                    }
+                    if (stages[activeStageIdx].id === 'stitching' && t.per_piece_qty) {
+                      return Math.floor(t.targetQty / t.per_piece_qty) + ' Pcs';
+                    }
+                    return t.targetQty + (t.unit ? ` ${t.unit}` : ' Pcs');
+                  };
+
+                  const getMaterialMetricLabel = (stageId: string) => {
+                    switch (stageId) {
+                      case 'cutting': return 'Fabric';
+                      case 'stitching': return 'Thread';
+                      case 'fusing': return 'Interlining';
+                      case 'kaj-button': return 'Buttons';
+                      case 'finishing': return 'Labels';
+                      default: return 'Material';
+                    }
+                  };
+
+                  const getMaterialMetricSampleQty = (stageId: string) => {
+                    switch (stageId) {
+                      case 'cutting': return '100M';
+                      case 'stitching': return '2 Cones';
+                      case 'fusing': return '50M';
+                      case 'kaj-button': return '200 pcs';
+                      case 'finishing': return '50 pcs';
+                      default: return '100 units';
+                    }
+                  };
 
                   return (
                     <>
@@ -1177,19 +1371,42 @@ export default function ProductionPage() {
                                 {assigneeTasks.filter(t => t.status === 'Pending').length > 0 ? (
                                   assigneeTasks.filter(t => t.status === 'Pending').map(task => (
                                     <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-red-500/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-red-500">
-                                      <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
+                                      <p className="text-xs font-bold text-card-foreground mb-2">{getDynamicMaterialName(task.materialAllocatedName, stages[activeStageIdx].id)}</p>
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
-                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
-                                          ) : (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
-                                          )}
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{getTargetQtyPieces(task)}</span>
                                         </div>
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Start Time</span>
                                           <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-slate-800/60">
+                                        <div className="flex flex-wrap items-center gap-1.5 w-full">
+                                          {task.sizes && Object.keys(task.sizes).length > 0 ? (
+                                            Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
+                                              <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
+                                                <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
+                                                {task.per_piece_qty && (
+                                                  <>
+                                                    <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
+                                                    <span className="text-[8px] text-neutral-500 font-medium">
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                                              <span className="font-bold text-neutral-600 dark:text-neutral-300">Size: <span className="text-indigo-600 dark:text-indigo-400">34</span></span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">{getMaterialMetricLabel(stages[activeStageIdx].id)}: {getMaterialMetricSampleQty(stages[activeStageIdx].id)}</span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">Shirts: 50 pcs</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -1204,19 +1421,42 @@ export default function ProductionPage() {
                                 {assigneeTasks.filter(t => t.status === 'In Progress').length > 0 ? (
                                   assigneeTasks.filter(t => t.status === 'In Progress').map(task => (
                                     <div key={task.id} className="bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-amber-400/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-amber-400">
-                                      <p className="text-xs font-bold text-card-foreground mb-2">{task.materialAllocatedName}</p>
+                                      <p className="text-xs font-bold text-card-foreground mb-2">{getDynamicMaterialName(task.materialAllocatedName, stages[activeStageIdx].id)}</p>
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
-                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
-                                          ) : (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
-                                          )}
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{getTargetQtyPieces(task)}</span>
                                         </div>
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Start Time</span>
                                           <span className="font-bold text-neutral-700 dark:text-slate-200">{task.startTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-slate-800/60">
+                                        <div className="flex flex-wrap items-center gap-1.5 w-full">
+                                          {task.sizes && Object.keys(task.sizes).length > 0 ? (
+                                            Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
+                                              <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
+                                                <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
+                                                {task.per_piece_qty && (
+                                                  <>
+                                                    <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
+                                                    <span className="text-[8px] text-neutral-500 font-medium">
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                                              <span className="font-bold text-neutral-600 dark:text-neutral-300">Size: <span className="text-indigo-600 dark:text-indigo-400">34</span></span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">{getMaterialMetricLabel(stages[activeStageIdx].id)}: {getMaterialMetricSampleQty(stages[activeStageIdx].id)}</span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">Shirts: 50 pcs</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -1232,7 +1472,7 @@ export default function ProductionPage() {
                                   assigneeTasks.filter(t => t.status === 'Completed').map(task => (
                                     <div key={task.id} className="relative bg-card dark:bg-[#1e293b] rounded-xl shadow-md border border-border hover:border-emerald-500/50 hover:shadow-lg transition-all p-4 border-l-4 border-l-emerald-500">
                                       <div className="flex justify-between items-start mb-2">
-                                        <p className="text-xs font-bold text-card-foreground pr-6">{task.materialAllocatedName}</p>
+                                        <p className="text-xs font-bold text-card-foreground pr-6">{getDynamicMaterialName(task.materialAllocatedName, stages[activeStageIdx].id)}</p>
                                         {!task.handshakeStatus && (
                                           <button
                                             onClick={(e) => {
@@ -1249,15 +1489,38 @@ export default function ProductionPage() {
                                       <div className="grid grid-cols-2 gap-2 text-[10px] text-neutral-500">
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">Target Qty</span>
-                                          {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{Math.floor(task.targetQty / task.per_piece_qty)} Pcs</span>
-                                          ) : (
-                                            <span className="font-bold text-neutral-700 dark:text-slate-200">{task.targetQty} {task.unit || 'units'}</span>
-                                          )}
+                                          <span className="font-bold text-neutral-700 dark:text-slate-200">{getTargetQtyPieces(task)}</span>
                                         </div>
                                         <div>
                                           <span className="block uppercase tracking-wider text-neutral-500 dark:text-slate-400 font-medium">End Time</span>
                                           <span className="font-bold text-neutral-700 dark:text-slate-200">{task.endTime || '--:--'}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-slate-800/60">
+                                        <div className="flex flex-wrap items-center gap-1.5 w-full">
+                                          {task.sizes && Object.keys(task.sizes).length > 0 ? (
+                                            Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
+                                              <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
+                                                <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
+                                                {task.per_piece_qty && (
+                                                  <>
+                                                    <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
+                                                    <span className="text-[8px] text-neutral-500 font-medium">
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-slate-800/60 rounded-md border border-neutral-200/60 dark:border-slate-700/50 text-[9px]">
+                                              <span className="font-bold text-neutral-600 dark:text-neutral-300">Size: <span className="text-indigo-600 dark:text-indigo-400">34</span></span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">{getMaterialMetricLabel(stages[activeStageIdx].id)}: {getMaterialMetricSampleQty(stages[activeStageIdx].id)}</span>
+                                              <span className="text-neutral-300 dark:text-slate-600">|</span>
+                                              <span className="font-medium text-neutral-500">Shirts: 50 pcs</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                       {task.handshakeStatus === 'PENDING' && (
@@ -1327,6 +1590,22 @@ export default function ProductionPage() {
                   </div>
                 </div>
 
+                {stages[activeStageIdx ?? 0]?.id === 'material' && (
+                  <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 p-3 rounded-lg flex justify-between items-center mt-3">
+                    <div className="text-amber-800 dark:text-amber-400 text-xs font-semibold">
+                      <span>Unit Conversion: Raw Material </span>
+                      <span className="mx-2">→</span>
+                      <span>Garment Pieces</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase text-amber-600 dark:text-amber-500 font-bold mb-0.5">Meters Used vs Pieces Output</p>
+                      <p className="text-sm font-bold text-amber-900 dark:text-amber-300">
+                        {(totalAssignedInRows * (pendingHandoverTask?.per_piece_qty || 1.5)).toFixed(1)} {pendingHandoverTask?.unit || 'Meters'} <span className="mx-1 text-amber-500 font-normal">for</span> {totalAssignedInRows} Pcs
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">Target Operators & Split Quantities</label>
                   {handoverSplits.map((split, idx) => {
@@ -1344,14 +1623,27 @@ export default function ProductionPage() {
                           <option value="Maria">Maria</option>
                           <option value="Jamal">Jamal</option>
                         </select>
-                        <input
-                          type="number"
-                          min="1"
-                          value={split.quantity || ''}
-                          onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value)}
-                          placeholder="Qty"
-                          className="w-24 px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-card text-neutral-700 dark:text-neutral-200 text-sm text-center"
-                        />
+                        <div className="flex gap-2 bg-neutral-50 dark:bg-card/40 p-2 rounded-lg border border-neutral-200 dark:border-border overflow-x-auto custom-scrollbar flex-1">
+                          {['32', '34', '36', '38', '40', '42'].map(sz => (
+                            <div key={sz} className="flex flex-col items-center min-w-[36px]">
+                              <span className="text-[9px] font-bold text-neutral-500 mb-1">{sz}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={split.sizes?.[sz] || ''}
+                                onChange={(e) => updateHandoverSplit(idx, 'quantity', e.target.value, sz)}
+                                className="w-10 px-1 py-1 text-center border border-neutral-300 dark:border-border rounded bg-white dark:bg-[#131b2e] focus:ring-1 focus:ring-indigo-500 outline-none text-xs text-neutral-700 dark:text-neutral-200"
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                          <div className="flex flex-col items-center min-w-[48px] ml-2 border-l border-neutral-200 dark:border-border pl-2">
+                            <span className="text-[9px] font-bold text-neutral-500 mb-1">TOTAL</span>
+                            <div className="w-12 h-6 flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-bold rounded text-xs shadow-sm">
+                              {split.quantity || 0}
+                            </div>
+                          </div>
+                        </div>
                         <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded uppercase whitespace-nowrap">
                           {currentStatus}
                         </span>
@@ -1411,7 +1703,14 @@ export default function ProductionPage() {
                           return renderList.map(task => (
                             <tr key={task.id} className="hover:bg-muted/30">
                               <td className="px-3 py-2 font-medium text-card-foreground">{task.assignee}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{task.targetQty}</td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                <span className="font-bold text-foreground">Total: {task.targetQty} pcs</span>
+                                {task.sizes && Object.keys(task.sizes).length > 0 && (
+                                  <span className="block text-[10px] mt-0.5 text-neutral-500 font-medium tracking-wide">
+                                    [{Object.entries(task.sizes).filter(([_,v]) => v > 0).map(([k,v]) => `${k}: ${v}`).join(', ')}]
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-3 py-2">
                                 {task.handshakeStatus === 'PENDING' ? (
                                   <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md text-xs font-semibold">Pending</span>
