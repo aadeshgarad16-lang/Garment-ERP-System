@@ -31,7 +31,8 @@ interface GarmentSpec {
   unitPrice: number;
   photoName: string | null;
   photoUrl?: string | null;
-  productionType: "In House" | "Outsource" | "Both";
+  serviceType: "In House" | "Outsource" | "Both";
+  outsourceType?: "Complete Outsource" | "Service Outsource";
   deliveryAddress?: string;
   deliveryPin?: string;
 }
@@ -306,7 +307,7 @@ function GarmentSpecsContent() {
       stockAvailable: 0,
       unitPrice: 0,
       photoName: null,
-      productionType: "In House",
+      serviceType: "In House",
     },
   ]);
 
@@ -513,7 +514,8 @@ function GarmentSpecsContent() {
           quantity: s.quantity || s.required_qty || 0,
           stockAvailable: s.stock_available || s.stockAvailable || 0,
           unitPrice: s.unit_price || s.unitPrice || 0,
-          productionType: s.production_type || s.productionType || "In House",
+          serviceType: s.serviceType || s.production_type || s.productionType || "In House",
+          outsourceType: s.outsourceType || s.outsource_type,
           deliveryAddress: s.deliveryAddress || s.delivery_address || "",
           deliveryPin: s.deliveryPin || s.delivery_pin || "",
           photoName: s.photoName || s.photo_name || s.photo || null,
@@ -545,7 +547,7 @@ function GarmentSpecsContent() {
       if (order.specs && Array.isArray(order.specs) && order.specs.length > 0) {
         setSpecs(parseGarmentSpecs(order.specs));
       } else {
-        setSpecs([{ id: generateId(), category: "", gender: "", itemDescription: "", hsnCode: "", size: "", color: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null, productionType: "In House" }]);
+        setSpecs([{ id: generateId(), category: "", gender: "", itemDescription: "", hsnCode: "", size: "", color: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null, serviceType: "In House" }]);
       }
 
       if (order.deliveryAddresses && order.deliveryAddresses.length > 0) {
@@ -753,7 +755,7 @@ function GarmentSpecsContent() {
         stockAvailable: 0,
         unitPrice: 0,
         photoName: null,
-        productionType: "In House",
+        serviceType: "In House",
       },
     ]);
   };
@@ -964,13 +966,24 @@ function GarmentSpecsContent() {
           stockAvailable: 0,
           unitPrice: 0,
           photoName: null,
-          productionType: "In House",
+          serviceType: "In House",
         }]);
         setDeliveryAddresses([{ id: "1", address: "", pinCode: "" }]);
         setDetailedAllocations([{ id: "1", deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
 
         setShowConfirmModal(false);
-        router.push(`/stock-calculation?poNumber=${currentPoNumber}`);
+        
+        const allSpecsCompleteOutsource = specs.length > 0 && specs.every(s => s.serviceType === "Outsource" && s.outsourceType === "Complete Outsource");
+        const anySpecBoth = specs.some(s => s.serviceType === "Both");
+
+        if (anySpecBoth) {
+          // Leave execution logic blank / unassigned for future scope
+          console.log("Future scope for 'Both' execution logic");
+        } else if (allSpecsCompleteOutsource) {
+          router.push(`/procurement?poNumber=${currentPoNumber}`);
+        } else {
+          router.push(`/stock-calculation?poNumber=${currentPoNumber}`);
+        }
       } else {
         alert("Failed to save specifications: " + (data.error || "Unknown error"));
       }
@@ -1033,7 +1046,7 @@ function GarmentSpecsContent() {
       stockAvailable: 0,
       unitPrice: 0,
       photoName: null,
-      productionType: "In House",
+      serviceType: "In House",
     }]);
     setDeliveryAddresses([{ id: generateId(), address: "", pinCode: "" }]);
     setDetailedAllocations([{ id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
@@ -1130,40 +1143,37 @@ function GarmentSpecsContent() {
                     <div>
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        {spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt') ? (
-                          <div className="flex items-center gap-1.5 bg-neutral-50 dark:bg-card border border-indigo-500 rounded-lg p-1 shadow-sm h-[44px]">
-                            <div className="flex items-center px-3 text-sm font-bold text-slate-700 dark:text-slate-200">
-                              {spec.category}:
-                            </div>
-                            
+                        <select
+                          value={spec.category || ""}
+                          onChange={(e) => {
+                            updateRow(spec.id, "category", e.target.value);
+                            setSelectedCategory(e.target.value);
+                            if (!e.target.value?.toLowerCase().includes('shirt') || e.target.value?.toLowerCase().includes('t-shirt')) {
+                              setSleeveType("");
+                            }
+                          }}
+                          className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm ${(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'pr-[135px]' : ''}`}
+                        >
+                          <option value="">Select...</option>
+                          {categories.map((cat, idx) => (
+                            <option key={idx} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                        {(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) && (
+                          <div className="absolute inset-y-0 right-8 flex items-center">
                             <select
-                              value={sleeveType}
-                              autoFocus
-                              onChange={(e) => {
-                                setSleeveType(e.target.value);
-                              }}
-                              className="bg-slate-900 text-white border border-indigo-500 rounded-md p-1.5 text-sm focus:outline-none flex-1"
+                               value={sleeveType || ""}
+                               autoFocus
+                               onChange={(e) => {
+                                 setSleeveType(e.target.value);
+                               }}
+                               className="h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[120px] text-ellipsis overflow-hidden"
                             >
-                              <option value="" disabled hidden>Select Sleeve</option>
-                              <option value="full_sleeve" className="bg-slate-900 text-white">Full Sleeve</option>
-                              <option value="half_sleeve" className="bg-slate-900 text-white">Half Sleeve</option>
+                               <option value="" disabled hidden>Select Sleeve</option>
+                               <option value="full_sleeve">Full Sleeve</option>
+                               <option value="half_sleeve">Half Sleeve</option>
                             </select>
                           </div>
-                        ) : (
-                          <select
-                            value={spec.category || ""}
-                            onChange={(e) => {
-                              updateRow(spec.id, "category", e.target.value);
-                              setSelectedCategory(e.target.value);
-                              setSleeveType("");
-                            }}
-                            className={`${INPUT_STYLE} h-[44px] shadow-sm`}
-                          >
-                            <option value="">Select...</option>
-                            {categories.map((cat, idx) => (
-                              <option key={idx} value={cat}>{cat}</option>
-                            ))}
-                          </select>
                         )}
                       </div>
                     </div>
@@ -1243,16 +1253,37 @@ function GarmentSpecsContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Action <span className="text-red-500">*</span></label>
-                      <select
-                        value={spec.productionType || "In House"}
-                        onChange={(e) => updateRow(spec.id, "productionType", e.target.value as any)}
-                        className={`w-full ${INPUT_STYLE} h-[44px] text-sm shadow-sm`}
-                      >
-                        <option value="In House">In House</option>
-                        <option value="Outsource">Outsource</option>
-                        <option value="Both">Both</option>
-                      </select>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Service <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <select
+                          value={spec.serviceType || "In House"}
+                          onChange={(e) => {
+                             updateRow(spec.id, "serviceType", e.target.value);
+                             if (e.target.value === "Outsource") {
+                               updateRow(spec.id, "outsourceType", "Complete Outsource");
+                             } else {
+                               updateRow(spec.id, "outsourceType", undefined);
+                             }
+                          }}
+                          className={`w-full ${INPUT_STYLE} h-[44px] text-sm shadow-sm ${spec.serviceType === 'Outsource' ? 'pr-[135px]' : ''}`}
+                        >
+                          <option value="In House">In House</option>
+                          <option value="Outsource">Outsource</option>
+                          <option value="Both">Both</option>
+                        </select>
+                        {spec.serviceType === "Outsource" && (
+                          <div className="absolute inset-y-0 right-8 flex items-center">
+                            <select
+                               value={spec.outsourceType || "Complete Outsource"}
+                               onChange={(e) => updateRow(spec.id, "outsourceType", e.target.value)}
+                               className="h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[120px] text-ellipsis overflow-hidden"
+                            >
+                               <option value="Complete Outsource">Complete Outsource</option>
+                               <option value="Service Outsource">Service Outsource</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1450,7 +1481,8 @@ function GarmentSpecsContent() {
                         <span className="text-xs text-neutral-400">{spec.pattern}</span>
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                        {spec.productionType}
+                        {spec.serviceType}
+                        {spec.serviceType === 'Outsource' && spec.outsourceType && <div className="text-[10px] text-blue-500">{spec.outsourceType}</div>}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300 text-center">
                         <div>Sz: {spec.size ? sortSizesAscending(spec.size.split(',').map(s => s.trim())).join(', ') : "-"}</div>

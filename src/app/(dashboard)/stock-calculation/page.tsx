@@ -368,7 +368,7 @@ function StockCalculationContent() {
     return { totalAvailableStock: avail, totalRequiredQty: req };
   }, [displayOrder]);
 
-  const handleCalculateBOM = async (routeTo: 'quality-packing' | 'bom-calculation' | 'calculate-bom' | 'split-quality-packing' | 'split-bom-calculation' | 'purchase-request') => {
+  const handleCalculateBOM = async (routeTo: 'quality-packing' | 'bom-calculation' | 'calculate-bom' | 'split-quality-packing' | 'split-bom-calculation' | 'purchase-request' | 'service-outsource') => {
     if (displayOrder) {
       localStorage.setItem('bomCalculationDraft', JSON.stringify({
         selectedCustomer,
@@ -429,6 +429,8 @@ function StockCalculationContent() {
           let nextRoute = 'bom-calculation';
           if (routeTo === 'quality-packing') {
             nextRoute = 'quality-packing';
+          } else if (routeTo === 'service-outsource') {
+            nextRoute = 'out-source';
           }
           router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
         } else {
@@ -452,6 +454,8 @@ function StockCalculationContent() {
         let nextRoute = 'bom-calculation';
         if (routeTo === 'quality-packing') {
           nextRoute = 'quality-packing';
+        } else if (routeTo === 'service-outsource') {
+          nextRoute = 'out-source';
         }
         router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
       }
@@ -631,6 +635,8 @@ function StockCalculationContent() {
                 
                 return s.is_uniform === true || s.isUniform === true || isUniformApparel;
               });
+              
+              const isServiceOutsource = displayOrder?.specs?.some((s: any) => s.serviceType === "Outsource" && (s.outsourceType === "Service Outsource" || !s.outsourceType));
 
               return (
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -659,54 +665,34 @@ function StockCalculationContent() {
                     )
                   ) : (
                     <>
+                      {/* Scenario 1A and 2B-1: Stock Available */}
                       {(isFullyAvailable || isPartiallyAvailable) && (
-                        canAdvanceQuality ? (
-                          <button
-                            onClick={() => handleCalculateBOM('quality-packing')}
-                            disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                                ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:transform active:scale-[0.99]'
-                              }`}
-                          >
-                            Go to Quality & Packing
-                            <Package className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled
-                            title="You do not have permission to access Quality & Packing."
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none"
-                          >
-                            Max Stage Reached
-                          </button>
-                        )
+                        <button
+                          onClick={() => handleCalculateBOM(isServiceOutsource ? 'service-outsource' : 'quality-packing')}
+                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                              ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
+                              : 'bg-[#2563EB] text-white hover:bg-blue-700 active:transform active:scale-[0.99]'
+                            }`}
+                        >
+                          {isServiceOutsource ? 'Go to Service Outsource' : 'Go to Quality & Packing'}
+                          <span>-&gt;</span>
+                        </button>
                       )}
 
+                      {/* Scenario 1B and 2B-2: Stock Out of Stock / Deficit */}
                       {(isNotAvailableAtAll || isPartiallyAvailable) && (
-                        canAdvanceProcurement ? (
-                          <button
-                            onClick={() => handleCalculateBOM('purchase-request')}
-                            disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
-                                ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
-                                : 'bg-white text-red-600 border border-red-200 hover:bg-red-50 active:transform active:scale-[0.99]'
-                              }`}
-                          >
-                            Create Purchase Request
-                            <AlertCircle className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled
-                            title="You do not have permission to access Procurement."
-                            className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none"
-                          >
-                            Max Stage Reached
-                          </button>
-                        )
+                        <button
+                          onClick={() => handleCalculateBOM('bom-calculation')}
+                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                              ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
+                              : 'bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]'
+                            }`}
+                        >
+                          Go to BOM Calculation
+                          <span>-&gt;</span>
+                        </button>
                       )}
                     </>
                   )}

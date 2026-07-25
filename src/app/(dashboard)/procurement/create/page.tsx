@@ -1,967 +1,825 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  ArrowLeft,
-  Plus,
-  Building2,
-  Calendar,
-  FileText,
-  User,
-  ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  FileCheck2,
-  Layers,
-  ArrowRight,
-  TrendingDown,
-  DollarSign,
-  Package,
-  Archive,
-  RefreshCw,
-  Trash2,
-  Star,
-  Mail,
-  Phone
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, ArrowLeft, FileText, CheckCircle2, Trash2, Download, X, ChevronDown, Building2, Calculator, Info, Package, List } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useAuth } from '@/context/AuthContext';
-import { updateOrderAndLog } from '@/lib/logger';
-import { formatDateDisplay } from '@/utils/dateUtils';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-// Shared Mock Data representing Shortages from Inventory
-const mockShortages: any[] = [];
-// Removed static mockSuppliers to draw entirely from dynamic backend state
-
-const getPerformanceBarColor = (performance: number) => {
-  if (performance >= 90) return 'bg-emerald-500';
-  if (performance >= 70) return 'bg-amber-500';
-  return 'bg-red-500';
-};
+// Mock Data
+const MOCK_EXISTING_POS = ['PO-2023-001', 'PO-2023-002', 'PO-2023-003', 'PO-2023-004'];
+const MOCK_VENDORS = ['Acme Corp', 'Global Textiles', 'Fast Delivery Logistics', 'Premium Threads Co.', 'Apex Manufacturers'];
 
 export default function CreateProcurementPage() {
   const router = useRouter();
-  const { user } = useAuth();
-
-  const advanceStage = (nextPath: string, nextStage: string) => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const po = params.get('poNumber');
-    if (po) {
-      updateOrderAndLog(po, user?.name || 'System User', 'Updated', null, (orders) => {
-        return orders.map((o: any) => o.poNumber === po ? { ...o, stage: nextStage } : o);
-      });
-      router.push(`${nextPath}?poNumber=${encodeURIComponent(po)}`);
-    } else {
-      router.push(nextPath);
-    }
-  };
-
-  const searchParams = useSearchParams();
   const { t } = useTranslation();
+  
+  // Tabs state
+  const [activeTab, setActiveTab] = useState<'PO' | 'STORE'>('PO');
 
-  const [requestedMaterials, setRequestedMaterials] = useState<{
-    key: string;
-    materialId: string;
-    customName?: string;
-    quantity: number;
-    supplier: string;
-  }[]>([]);
+  // --- Form State ---
+  const [existingPoNumber, setExistingPoNumber] = useState('');
+  const [procurementPoNumber, setProcurementPoNumber] = useState(`PR-${Date.now().toString().slice(-6)}`);
+  
+  // Vendor State
+  const [vendors, setVendors] = useState<string[]>([]);
+  const [vendorInput, setVendorInput] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  
+  // Metadata State
+  const [branch, setBranch] = useState('Main Plant');
+  const [transportMode, setTransportMode] = useState('Road Transport');
+  
+  // Specifications State (Dynamic Rows)
+  const [specifications, setSpecifications] = useState([
+    { id: '1', articleId: '', totalQty: 0, vendor: '', orderQty: 0 }
+  ]);
 
-  const [formData, setFormData] = useState({
-    poNumber: '',
-    requestDate: new Date().toISOString().split('T')[0],
-    requestedBy: '',
-    department: 'Production',
-    requiredDate: '',
-    notes: ''
-  });
+  // Table State
+  const [materials, setMaterials] = useState([
+    { id: '1', name: 'Cotton Fabric 180 GSM', qty: 500, vendor: '', vendorQty: 500, unit: 'Meters', unitCost: 45 },
+    { id: '2', name: 'Polyester Thread (White)', qty: 100, vendor: '', vendorQty: 100, unit: 'Cones', unitCost: 120 }
+  ]);
+  
+  // Financial State
+  const [paymentTerms, setPaymentTerms] = useState('Within 30 Days');
+  const [gst, setGst] = useState<number>(18);
+  const [igst, setIgst] = useState<number>(0);
 
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [archivedItems, setArchivedItems] = useState<any[]>([]);
-  const [availableOrders, setAvailableOrders] = useState<any[]>([]);
-  const [showArchive, setShowArchive] = useState(false);
+  // Workflow State
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  // Real Database Suppliers State
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Real Database Materials State
-  const [inventoryMaterials, setInventoryMaterials] = useState<any[]>([]);
-
-  // Fetch real supplier directory profiles on component load
   useEffect(() => {
-    async function fetchSuppliers() {
-      try {
-        const response = await fetch('/api/suppliers');
-        if (!response.ok) {
-          console.warn(`Network response exception: ${response.status}`);
-          setSuppliers([]);
-          return;
-        }
-        const data = await response.json();
-        setSuppliers(data);
-      } catch (error) {
-        console.warn("Error connecting to supplier directory service:", error);
-        setSuppliers([]);
-      } finally {
-        setIsLoadingSuppliers(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+        setShowVendorDropdown(false);
       }
-    }
-    async function fetchMaterials() {
-      try {
-        const response = await fetch('/api/store-materials');
-        if (!response.ok) return;
-        const data = await response.json();
-        setInventoryMaterials(data);
-      } catch (error) {
-        console.error("Error connecting to store materials API:", error);
-      }
-    }
-    fetchSuppliers();
-    fetchMaterials();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const ordersStr = localStorage.getItem('savedOrders');
-        if (ordersStr) {
-          const orders = JSON.parse(ordersStr);
-          if (Array.isArray(orders)) {
-            const autoGen = localStorage.getItem('autoGeneratedProcurementRequests');
-            let reqs = autoGen ? JSON.parse(autoGen) : [];
-            if (!Array.isArray(reqs)) reqs = [];
-            let updated = false;
-
-            orders.forEach((order: any) => {
-              if (order.specs && Array.isArray(order.specs)) {
-                order.specs.forEach((spec: any) => {
-                  const available = spec.stockAvailable ?? 0;
-                  if (available === 0 && spec.quantity > 0) {
-                    const reqId = `PR-${order.poNumber}-${spec.id || 'SPEC'}`;
-                    const exists = reqs.some((r: any) => r.id === reqId || (r.linkedPO === order.poNumber && r.material.includes(spec.itemDescription)));
-                    if (!exists) {
-                      const hsnCodes: Record<string, string> = {
-                        "School Shirt": "620520",
-                        "Corporate Shirt": "620530",
-                        "School Pant": "620342",
-                        "Denim Fabric": "520942",
-                        "Cotton Fabric": "520811",
-                        "Buttons": "960621",
-                        "Thread": "520411",
-                        "Hooks": "830810",
-                        "Zippers": "960711",
-                        "Labels": "580710"
-                      };
-                      let hsnCode = "620500";
-                      for (const key in hsnCodes) {
-                        if (spec.itemDescription.toLowerCase().includes(key.toLowerCase())) {
-                          hsnCode = hsnCodes[key];
-                          break;
-                        }
-                      }
-                      reqs.push({
-                        id: reqId,
-                        material: `${spec.itemDescription} (HSN: ${hsnCode}) - ${spec.pattern}`,
-                        category: 'Fabric',
-                        required: spec.quantity,
-                        available: 0,
-                        shortage: spec.quantity,
-                        unit: 'units',
-                        supplier: 'Pending Assignment',
-                        cost: spec.quantity * (spec.unitPrice || 350),
-                        priority: 'Critical',
-                        status: 'Pending Procurement',
-                        linkedPO: order.poNumber,
-                        hsnCode,
-                        description: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`
-                      });
-                      updated = true;
-                    }
-                  }
-                });
-              }
+    try {
+      const payloadStr = localStorage.getItem('pending_po_payload');
+      if (payloadStr) {
+        const payload = JSON.parse(payloadStr);
+        if (payload.isBulkOrder) {
+          const uniqueVendors = Array.from(new Set<string>(payload.items.map((i: any) => i.selectedVendorName)));
+          setVendors(prev => {
+            const newVendors = [...prev];
+            uniqueVendors.forEach(uv => {
+              if (uv && !newVendors.includes(uv)) newVendors.push(uv);
             });
-
-            if (updated) {
-              localStorage.setItem('autoGeneratedProcurementRequests', JSON.stringify(reqs));
-            }
+            return newVendors;
+          });
+          
+          if (payload.items && Array.isArray(payload.items) && payload.items.length > 0) {
+            setMaterials(payload.items.map((item: any, index: number) => ({
+              id: item.articleId || `bulk-${Date.now()}-${index}`,
+              name: item.articleName || '',
+              qty: item.requiredQty || 1,
+              vendor: item.selectedVendorName || '',
+              vendorQty: item.requiredQty || 1,
+              unit: 'Pieces',
+              unitCost: item.unitPrice || 0
+            })));
+          }
+        } else {
+          if (payload.vendorName) {
+            setVendors(prev => prev.includes(payload.vendorName) ? prev : [...prev, payload.vendorName]);
+          }
+          if (payload.items && Array.isArray(payload.items) && payload.items.length > 0) {
+            setMaterials(payload.items.map((item: any, index: number) => ({
+              id: item.articleId || `${Date.now()}-${index}`,
+              name: item.articleName || '',
+              qty: item.requiredQty || 1,
+              vendor: payload.vendorName || '',
+              vendorQty: item.requiredQty || 1,
+              unit: 'Pieces',
+              unitCost: item.unitPrice || 0
+            })));
           }
         }
-      } catch (e) {
-        console.error("Error in automated out-of-stock routing:", e);
+        localStorage.removeItem('pending_po_payload');
       }
+    } catch (err) {
+      console.error("Failed to parse pending PO payload:", err);
     }
+  }, []);
 
-    let orders: any[] = [];
-    const ordersStr = localStorage.getItem('savedOrders');
-    if (ordersStr) {
-      try { orders = JSON.parse(ordersStr); setAvailableOrders(orders); } catch (e) { }
+  // Computed Financials
+  const subtotal = materials.reduce((acc, item) => acc + ((Number(item.vendorQty) || 0) * (Number(item.unitCost) || 0)), 0);
+  const gstAmount = (subtotal * (Number(gst) || 0)) / 100;
+  const igstAmount = (subtotal * (Number(igst) || 0)) / 100;
+  const grandTotal = subtotal + gstAmount + igstAmount;
+
+  // Handlers
+  const handleAddVendor = (name: string) => {
+    if (name.trim() && !vendors.includes(name.trim())) {
+      setVendors([...vendors, name.trim()]);
     }
-
-    const archivedStr = localStorage.getItem('archivedProcurementRequests');
-    let currentArchived: any[] = [];
-    if (archivedStr) {
-      try { currentArchived = JSON.parse(archivedStr); } catch (e) { }
-    }
-    setArchivedItems(currentArchived);
-
-    const po = searchParams.get('poNumber') || '';
-    if (po) {
-      setFormData(prev => ({ ...prev, poNumber: po }));
-
-      const matchedOrder = orders.find(o => o.poNumber === po);
-      if (matchedOrder) {
-        setFormData(prev => ({
-          ...prev,
-          poNumber: po,
-          requestedBy: matchedOrder.customerName || prev.requestedBy,
-          requiredDate: matchedOrder.deliveryDate || prev.requiredDate
-        }));
-
-        const autoReqStr = localStorage.getItem('autoGeneratedProcurementRequests');
-        let autoReqs = [];
-        if (autoReqStr) {
-          try { autoReqs = JSON.parse(autoReqStr); } catch (e) { }
-        }
-        const matchedAutoReqs = autoReqs.filter((r: any) => r.id.includes(`PR-${po}`));
-
-        if (matchedAutoReqs.length > 0) {
-          const mappedItems = matchedAutoReqs.map((req: any, idx: number) => {
-            const match = inventoryMaterials.find((m: any) => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || ({} as any);
-            return {
-              key: `bom-${idx}-${Date.now()}`,
-              materialId: match.id,
-              customName: req.material,
-              quantity: req.shortage,
-              supplier: match.supplier || (suppliers[0]?.name || '')
-            };
-          });
-          setRequestedMaterials(mappedItems);
-        } else if (matchedOrder.specs && matchedOrder.specs.length > 0) {
-          const mappedItems = matchedOrder.specs.map((spec: any, idx: number) => {
-            const required = spec.quantity || 0;
-            const available = spec.stockAvailable || 0;
-            const shortage = Math.max(0, required - available);
-            if (shortage > 0) {
-              const match = inventoryMaterials.find((m: any) => m.name.includes(spec.itemDescription || '')) || ({} as any);
-              return {
-                key: `init-${idx}-${Date.now()}`,
-                materialId: match.id,
-                customName: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
-                quantity: shortage,
-                supplier: match.supplier || (suppliers[0]?.name || '')
-              };
-            }
-            return null;
-          }).filter(Boolean);
-          setRequestedMaterials(mappedItems as any);
-        }
-      }
-    }
-  }, [searchParams, suppliers]);
-
-  const getMaterialDetails = (id: string) => {
-    return inventoryMaterials.find((m: any) => m.id === id) || ({} as any);
+    setVendorInput('');
+    setShowVendorDropdown(false);
   };
 
-  const handleAddMaterialRow = () => {
-    setRequestedMaterials(prev => [
-      ...prev,
+  const handleRemoveVendor = (name: string) => {
+    setVendors(vendors.filter(v => v !== name));
+  };
+
+  const handleMaterialChange = (id: string, field: string, value: string) => {
+    let finalValue: string | number = value;
+    if (['qty', 'vendorQty', 'unitCost'].includes(field)) {
+      finalValue = value === '' ? 0 : Number(value);
+    }
+    setMaterials(materials.map(m => m.id === id ? { ...m, [field]: finalValue } : m));
+  };
+
+  const handleAddArticle = () => {
+    setMaterials([
+      ...materials,
       {
-        key: `new-${Date.now()}-${Math.random()}`,
-        materialId: 'MAT-001',
-        quantity: 100,
-        supplier: suppliers[0]?.name || 'Pending Assignment'
+        id: Date.now().toString(),
+        name: '',
+        qty: 1,
+        vendor: '',
+        vendorQty: 1,
+        unit: 'Pieces',
+        unitCost: 0
       }
     ]);
   };
 
-  const handleRemoveMaterialRow = (index: number) => {
-    const itemToArchive = requestedMaterials[index];
-    setArchivedItems(prev => [...prev, itemToArchive]);
-    setRequestedMaterials(prev => prev.filter((_, idx) => idx !== index));
+  const handleRemoveArticle = (id: string) => {
+    setMaterials(materials.filter(m => m.id !== id));
   };
 
-  const handleRestoreItem = (index: number) => {
-    const itemToRestore = archivedItems[index];
-    setRequestedMaterials(prev => [...prev, itemToRestore]);
-    setArchivedItems(prev => prev.filter((_, idx) => idx !== index));
+  const handleAddSpecification = () => {
+    setSpecifications([
+      ...specifications,
+      { id: Date.now().toString(), articleId: '', totalQty: 0, vendor: '', orderQty: 0 }
+    ]);
   };
 
-  const handlePermanentlyDelete = (index: number) => {
-    if (window.confirm("Are you sure you want to permanently delete this material?")) {
-      setArchivedItems(prev => prev.filter((_, idx) => idx !== index));
+  const handleRemoveSpecification = (id: string) => {
+    setSpecifications(specifications.filter(s => s.id !== id));
+  };
+
+  const handleSpecChange = (id: string, field: string, value: string) => {
+    let finalValue: string | number = value;
+    if (['totalQty', 'orderQty'].includes(field)) {
+      finalValue = value === '' ? 0 : Number(value);
     }
+    setSpecifications(specifications.map(s => s.id === id ? { ...s, [field]: finalValue } : s));
   };
 
-  const handleMaterialUpdate = (index: number, field: string, value: any) => {
-    setRequestedMaterials(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      if (field === 'materialId') {
-        const details = inventoryMaterials.find((m: any) => m.id === value);
-        if (details && details.supplier) {
-          next[index].supplier = details.supplier;
-        }
-      }
-      return next;
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(79, 70, 229); // Indigo 600
+    doc.text('PURCHASE ORDER', 14, 22);
+    
+    // Metadata Left
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
+    doc.text(`Procurement PO: ${procurementPoNumber}`, 14, 32);
+    doc.text(`Linked Sales PO: ${existingPoNumber || 'N/A'}`, 14, 38);
+    doc.text(`Branch: ${branch}`, 14, 44);
+    doc.text(`Transport: ${transportMode}`, 14, 50);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 56);
+    
+    // Metadata Right
+    doc.text(`Vendors:`, 120, 32);
+    doc.setFont(undefined, 'normal');
+    const vendorText = vendors.length > 0 ? vendors.join(', ') : 'None specified';
+    const splitVendors = doc.splitTextToSize(vendorText, 70);
+    doc.text(splitVendors, 120, 38);
+    
+    doc.text(`Payment Terms: ${paymentTerms}`, 120, 38 + (splitVendors.length * 5) + 5);
+
+    // Table
+    const tableData = materials.map((m, i) => [
+      i + 1,
+      m.name,
+      m.qty.toString(),
+      m.vendor || 'N/A',
+      m.vendorQty.toString(),
+      `${m.unitCost.toFixed(2)}`,
+      `${(m.vendorQty * m.unitCost).toFixed(2)}`
+    ]);
+
+    const startY = 70 + (splitVendors.length > 2 ? (splitVendors.length - 2) * 5 : 0);
+
+    (doc as any).autoTable({
+      startY: startY,
+      head: [['#', 'Article / Material', 'Req Qty', 'Vendor', 'Order Qty', 'Cost / Unit (Rs.)', 'Total (Rs.)']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
+      styles: { fontSize: 8 },
     });
-  };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-
-    if (name === 'poNumber') {
-      setFormData(prev => {
-        const currentPo = prev.poNumber;
-
-        if (currentPo && currentPo !== value && requestedMaterials.length > 0) {
-          setArchivedItems(oldArchived => {
-            const newArchived = [
-              ...oldArchived,
-              ...requestedMaterials.map(m => ({ ...m, archiveReason: 'Not Related To Current Order', archivedDate: new Date().toISOString(), linkedPO: currentPo, material: m.customName || m.materialId }))
-            ];
-            localStorage.setItem('archivedProcurementRequests', JSON.stringify(newArchived));
-            return newArchived;
-          });
-          setRequestedMaterials([]);
-        }
-        return { ...prev, [name]: value };
-      });
-
-      const matchedOrder = availableOrders.find(o => o.poNumber === value);
-      if (matchedOrder) {
-        setFormData(prev => ({
-          ...prev,
-          poNumber: value,
-          requestedBy: matchedOrder.customerName || prev.requestedBy,
-          requiredDate: matchedOrder.deliveryDate || prev.requiredDate
-        }));
-
-        const autoReqStr = localStorage.getItem('autoGeneratedProcurementRequests');
-        let autoReqs = [];
-        if (autoReqStr) {
-          try { autoReqs = JSON.parse(autoReqStr); } catch (e) { }
-        }
-        const matchedAutoReqs = autoReqs.filter((r: any) => r.id.includes(`PR-${value}`));
-
-        if (matchedAutoReqs.length > 0) {
-          const mappedItems = matchedAutoReqs.map((req: any, idx: number) => {
-            const match = inventoryMaterials.find((m: any) => m.name.toLowerCase().includes(req.material.split(' ')[0].toLowerCase())) || ({} as any);
-            return {
-              key: `bom-${idx}-${Date.now()}`,
-              materialId: match.id,
-              customName: req.material,
-              quantity: req.shortage,
-              supplier: match.supplier || (suppliers[0]?.name || '')
-            };
-          });
-          setRequestedMaterials(mappedItems);
-        } else if (matchedOrder.specs && matchedOrder.specs.length > 0) {
-          const mappedItems = matchedOrder.specs.map((spec: any, idx: number) => {
-            const required = spec.quantity || 0;
-            const available = spec.stockAvailable || 0;
-            const shortage = Math.max(0, required - available);
-            if (shortage > 0) {
-              const match = inventoryMaterials.find((m: any) => m.name.includes(spec.itemDescription || '')) || ({} as any);
-              return {
-                key: `dyn-${idx}-${Date.now()}`,
-                materialId: match.id,
-                customName: `${spec.itemDescription} (${spec.size}) - ${spec.pattern}`,
-                quantity: shortage,
-                supplier: match.supplier || (suppliers[0]?.name || '')
-              };
-            }
-            return null;
-          }).filter(Boolean);
-          setRequestedMaterials(mappedItems as any);
-        } else {
-          setRequestedMaterials([]);
-        }
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+    const finalY = (doc as any).lastAutoTable.finalY || startY;
+    
+    // Financials
+    doc.setFontSize(10);
+    doc.text(`Subtotal:`, 140, finalY + 10);
+    doc.text(`Rs. ${subtotal.toFixed(2)}`, 185, finalY + 10, { align: 'right' });
+    
+    doc.text(`GST (${gst}%):`, 140, finalY + 16);
+    doc.text(`Rs. ${gstAmount.toFixed(2)}`, 185, finalY + 16, { align: 'right' });
+    
+    let currentY = finalY + 22;
+    if (igst > 0) {
+      doc.text(`IGST (${igst}%):`, 140, currentY);
+      doc.text(`Rs. ${igstAmount.toFixed(2)}`, 185, currentY, { align: 'right' });
+      currentY += 6;
     }
+    
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Grand Total:`, 140, currentY + 2);
+    doc.text(`Rs. ${grandTotal.toFixed(2)}`, 185, currentY + 2, { align: 'right' });
+
+    // Specs
+    if (specifications.length > 0 && specifications.some(s => s.articleId)) {
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(100, 100, 100);
+      let specY = currentY + 15;
+      doc.text('Specifications Allocations:', 14, specY);
+      specY += 6;
+      
+      specifications.forEach(s => {
+        if (!s.articleId) return;
+        const articleName = materials.find(m => m.id === s.articleId)?.name || 'Unknown Article';
+        doc.text(`- ${articleName}: Total ${s.totalQty} -> Order ${s.orderQty} from ${s.vendor || 'N/A'}`, 14, specY);
+        specY += 6;
+      });
+    }
+
+    doc.save(`PO_${procurementPoNumber}.pdf`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitted(true);
+  const handleConfirmSubmit = () => {
+    setShowConfirmModal(false);
+    setIsSuccess(true);
+    // In a real app, send data to backend here.
   };
-
-  const estimatedCost = requestedMaterials.reduce((acc, item) => {
-    const details = getMaterialDetails(item.materialId);
-    return acc + (item.quantity * details.costPerUnit);
-  }, 0);
-
-  const totalItemsCount = requestedMaterials.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
+    <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
       <WorkflowIndicator currentStep="Procurement" />
 
       {/* Header Section */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => advanceStage('/procurement', 'Procurement')}
-          className="p-2 bg-card border border-border text-muted-foreground hover:text-neutral-900 rounded-lg hover:bg-muted shadow-sm transition-colors"
+          onClick={() => router.push('/procurement')}
+          className="p-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted shadow-sm transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Plus className="h-6 w-6 text-indigo-600" />
-            {t('procurement.createRequest') || 'Create Purchase Request'}
+            Create Purchase Order
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {t('procurement.createRequestDesc') || 'Submit a formal procurement proposal to resolve outstanding material shortages'}
+            Generate and manage formal purchase orders for production and store inventory
           </p>
         </div>
       </div>
 
-      {isSubmitted ? (
-        <div className="bg-card rounded-xl border border-emerald-200 overflow-hidden shadow-sm max-w-3xl mx-auto mt-6">
-          <div className="border-b border-emerald-100 px-6 py-8 bg-emerald-50/50 flex flex-col items-center text-center">
-            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-bold text-emerald-800">
-              {t('procurement.submittedSuccess') || 'Purchase Request Submitted Successfully'}
-            </h2>
-            <p className="text-emerald-600 text-sm mt-1">
-              {t('procurement.submittedDesc') || `PO Number ${formData.poNumber} has been sent for approval.`}
-            </p>
-          </div>
+      {/* Tabs Section */}
+      <div className="flex p-1 bg-muted/50 rounded-lg w-fit border border-border shadow-sm">
+        <button
+          onClick={() => { setActiveTab('PO'); setIsSuccess(false); }}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
+            activeTab === 'PO'
+              ? 'bg-background text-foreground shadow shadow-black/5 dark:shadow-white/5'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <span>📦 PO Order</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('STORE'); setIsSuccess(false); }}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-md transition-all ${
+            activeTab === 'STORE'
+              ? 'bg-background text-foreground shadow shadow-black/5 dark:shadow-white/5'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <span>🏬 Store PO</span>
+        </button>
+      </div>
 
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
-                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</p>
-                <p className="font-semibold text-foreground">{formData.poNumber}</p>
+      {/* Main Content Area */}
+      {isSuccess ? (
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in zoom-in duration-300">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-2">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-800 dark:text-emerald-300">Purchase Order Created!</h2>
+          <p className="text-emerald-600/80 dark:text-emerald-400/80 max-w-md">
+            Purchase Order <span className="font-bold">{procurementPoNumber}</span> has been successfully generated and recorded in the system.
+          </p>
+          <div className="flex items-center gap-4 mt-6 pt-4 border-t border-emerald-200/50 dark:border-emerald-800/50 w-full justify-center">
+            <button
+              onClick={generatePDF}
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download Invoice PDF
+            </button>
+            <button
+              onClick={() => {
+                setIsSuccess(false);
+                setProcurementPoNumber(`PR-${Date.now().toString().slice(-6)}`);
+              }}
+              className="flex items-center gap-2 px-6 py-2.5 bg-card border border-border text-foreground font-medium rounded-lg hover:bg-muted transition-colors"
+            >
+              Create Another PO
+            </button>
+          </div>
+        </div>
+      ) : activeTab === 'PO' ? (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          
+          {/* PO IDENTIFICATION & METADATA CARD */}
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
+            <h3 className="text-lg font-bold flex items-center gap-2 border-b border-border pb-4">
+              <FileText className="w-5 h-5 text-indigo-500" />
+              Order Configuration
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Existing PO Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Existing PO Number</label>
+                <div className="relative">
+                  <select 
+                    value={existingPoNumber} 
+                    onChange={e => setExistingPoNumber(e.target.value)}
+                    className="w-full pl-3 pr-10 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+                  >
+                    <option value="">Select a PO...</option>
+                    {MOCK_EXISTING_POS.map(po => (
+                      <option key={po} value={po}>{po}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
-                <p className="text-xs text-muted-foreground mb-1">{t('dashboard.recentOrders.headers.customer') || 'Requested By'}</p>
-                <p className="font-semibold text-foreground">{formData.requestedBy} ({formData.department})</p>
+
+              {/* Procurement PO Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Procurement PO Number</label>
+                <input 
+                  type="text" 
+                  value={procurementPoNumber}
+                  onChange={e => setProcurementPoNumber(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="e.g. PR-123456"
+                />
               </div>
-              <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border md:col-span-2">
-                <p className="text-xs text-muted-foreground mb-2">{t('inventoryVal.materialsHeader') || 'Materials Requested'}</p>
-                <div className="divide-y divide-neutral-200 dark:divide-slate-700 border border-border rounded-lg overflow-hidden bg-card">
-                  {requestedMaterials.map((item, idx) => {
-                    const details = getMaterialDetails(item.materialId);
-                    return (
-                      <div key={idx} className="flex justify-between items-center px-4 py-2.5 text-sm">
-                        <span className="font-medium text-foreground">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
-                        <span className="text-muted-foreground font-semibold">{item.quantity} {details.unit}</span>
-                      </div>
-                    );
-                  })}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Multi-Select Vendor */}
+              <div className="space-y-2 md:col-span-1" ref={vendorDropdownRef}>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Vendors</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={vendorInput}
+                    onChange={(e) => {
+                      setVendorInput(e.target.value);
+                      setShowVendorDropdown(true);
+                    }}
+                    onFocus={() => setShowVendorDropdown(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && vendorInput.trim()) {
+                        e.preventDefault();
+                        handleAddVendor(vendorInput);
+                      }
+                    }}
+                    placeholder="Search or add vendor..."
+                    className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  {showVendorDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                      {MOCK_VENDORS.filter(v => v.toLowerCase().includes(vendorInput.toLowerCase()) && !vendors.includes(v)).map(vendor => (
+                        <button
+                          key={vendor}
+                          type="button"
+                          onClick={() => handleAddVendor(vendor)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted text-foreground transition-colors"
+                        >
+                          {vendor}
+                        </button>
+                      ))}
+                      {vendorInput.trim() && !MOCK_VENDORS.some(v => v.toLowerCase() === vendorInput.toLowerCase()) && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddVendor(vendorInput)}
+                          className="w-full text-left px-3 py-2 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors border-t border-border"
+                        >
+                          Add "{vendorInput}" as new vendor
+                        </button>
+                      )}
+                      {MOCK_VENDORS.filter(v => v.toLowerCase().includes(vendorInput.toLowerCase()) && !vendors.includes(v)).length === 0 && !vendorInput.trim() && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground italic">No more vendors found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Selected Vendor Pills */}
+                {vendors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {vendors.map(v => (
+                      <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs font-medium rounded-full">
+                        <Building2 className="w-3 h-3" />
+                        {v}
+                        <button onClick={() => handleRemoveVendor(v)} className="hover:text-indigo-950 dark:hover:text-indigo-100 ml-0.5">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Branch */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Branch</label>
+                <div className="relative">
+                  <select 
+                    value={branch} 
+                    onChange={e => setBranch(e.target.value)}
+                    className="w-full pl-3 pr-10 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+                  >
+                    <option value="Main Plant">Main Plant</option>
+                    <option value="Unit 1">Unit 1</option>
+                    <option value="Unit 2">Unit 2</option>
+                    <option value="Central Warehouse">Central Warehouse</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Transport Mode */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Mode of Transport</label>
+                <div className="relative">
+                  <select 
+                    value={transportMode} 
+                    onChange={e => setTransportMode(e.target.value)}
+                    className="w-full pl-3 pr-10 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+                  >
+                    <option value="Road Transport">Road Transport</option>
+                    <option value="Air Freight">Air Freight</option>
+                    <option value="Sea Freight">Sea Freight</option>
+                    <option value="Rail Transport">Rail Transport</option>
+                    <option value="Self Pickup">Self Pickup</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4 pt-4">
-              <button
-                onClick={() => advanceStage('/procurement', 'Procurement')}
-                className="px-5 py-2.5 bg-muted text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 rounded-lg font-medium text-sm transition-colors"
-              >
-                {t('procurement.backToSummary') || 'Back to Procurement'}
-              </button>
-              <button
-                onClick={() => advanceStage('/procurement', 'Procurement')}
-                className="px-5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg shadow-sm font-medium text-sm flex items-center gap-2 group transition-colors"
-              >
-                {t('procurement.continueAllocation')}
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+          </div>
+
+          {/* DYNAMIC SPECIFICATIONS CARD */}
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-border pb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <List className="w-5 h-5 text-indigo-500" />
+                Specifications / Allocations
+              </h3>
+            </div>
+            
+            <div className="space-y-3">
+              {specifications.map((spec, index) => (
+                <div key={spec.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-muted/20 p-3 rounded-xl border border-border/50">
+                  <div className="md:col-span-3 space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Select Article</label>
+                    <select
+                      value={spec.articleId}
+                      onChange={e => handleSpecChange(spec.id, 'articleId', e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Choose Article --</option>
+                      {materials.map(m => (
+                        <option key={m.id} value={m.id}>{m.name || `Article #${m.id}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Total Quantity</label>
+                    <input 
+                      type="number"
+                      value={spec.totalQty}
+                      onChange={e => handleSpecChange(spec.id, 'totalQty', e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="md:col-span-3 space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Select Vendor</label>
+                    <select
+                      value={spec.vendor}
+                      onChange={e => handleSpecChange(spec.id, 'vendor', e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Choose Vendor --</option>
+                      {vendors.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-3 space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Qty to Order</label>
+                    <input 
+                      type="number"
+                      value={spec.orderQty}
+                      onChange={e => handleSpecChange(spec.id, 'orderQty', e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="md:col-span-1 flex justify-end">
+                    <button 
+                      onClick={() => handleRemoveSpecification(spec.id)}
+                      className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                      title="Remove Row"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleAddSpecification}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Specification Row
+            </button>
+          </div>
+
+          {/* MAIN TWO-COLUMN LAYOUT */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            
+            {/* Left Col: Table */}
+            <div className="xl:col-span-3 space-y-6">
+              <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-4 bg-muted/30 border-b border-border flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <Package className="w-4 h-4 text-indigo-500" />
+                    Article Procurement Table
+                  </h3>
+                  <button
+                    onClick={handleAddArticle}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg shadow-sm transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Article
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-muted/10 border-b border-border">
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[25%]">Article Name</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[12%]">Required Qty</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[20%]">Selected Vendor</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[12%]">Order Qty (Vendor)</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[13%]">Cost / Unit (₹)</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[13%] text-right">Total Price (₹)</th>
+                        <th className="px-2 py-3 w-[5%]"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {materials.map((item) => (
+                        <tr key={item.id} className="hover:bg-muted/5 transition-colors">
+                          <td className="px-4 py-3">
+                            <input 
+                              type="text" 
+                              value={item.name}
+                              onChange={(e) => handleMaterialChange(item.id, 'name', e.target.value)}
+                              placeholder="Article Name..."
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input 
+                              type="number" 
+                              min={0}
+                              value={item.qty}
+                              onChange={(e) => handleMaterialChange(item.id, 'qty', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <select 
+                              value={item.vendor}
+                              onChange={(e) => handleMaterialChange(item.id, 'vendor', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                            >
+                              <option value="">Select...</option>
+                              {vendors.map(v => (
+                                <option key={v} value={v}>{v}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <input 
+                              type="number" 
+                              min={0}
+                              value={item.vendorQty}
+                              onChange={(e) => handleMaterialChange(item.id, 'vendorQty', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground font-medium">₹</span>
+                              <input 
+                                type="number" 
+                                min={0}
+                                step="0.01"
+                                value={item.unitCost}
+                                onChange={(e) => handleMaterialChange(item.id, 'unitCost', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-foreground whitespace-nowrap">
+                            ₹{(item.vendorQty * item.unitCost).toFixed(2)}
+                          </td>
+                          <td className="px-2 py-3 text-center">
+                            <button 
+                              onClick={() => handleRemoveArticle(item.id)}
+                              className="p-1.5 text-muted-foreground hover:text-red-500 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {materials.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground italic text-sm">
+                            No articles added. Click "+ Add Article" to begin.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Col: Financials & Submit */}
+            <div className="xl:col-span-1 space-y-6">
+              
+              {/* Financials & Terms Card */}
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-5 sticky top-6">
+                <h3 className="font-bold flex items-center gap-2 border-b border-border pb-3">
+                  <Calculator className="w-4 h-4 text-indigo-500" />
+                  Financial Summary
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Payment Terms */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Payment Terms</label>
+                    <div className="relative">
+                      <select 
+                        value={paymentTerms} 
+                        onChange={e => setPaymentTerms(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 appearance-none"
+                      >
+                        <option value="Within 30 Days">Within 30 Days</option>
+                        <option value="Within 45 Days">Within 45 Days</option>
+                        <option value="Within 60 Days">Within 60 Days</option>
+                        <option value="Within 90 Days">Within 90 Days</option>
+                        <option value="50% Advance / 50% Delivery">50% Advance / 50% Delivery</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* GST */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">GST (%)</label>
+                      <input 
+                        type="number" 
+                        min={0}
+                        value={gst}
+                        onChange={e => setGst(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    {/* IGST */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">IGST (%)</label>
+                      <input 
+                        type="number" 
+                        min={0}
+                        value={igst}
+                        onChange={e => setIgst(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted/40 rounded-xl p-4 space-y-3 mt-4 border border-border">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  {gst > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">GST ({gst}%)</span>
+                      <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {igst > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">IGST ({igst}%)</span>
+                      <span className="font-medium">₹{igstAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="pt-3 border-t border-border flex justify-between items-center">
+                    <span className="font-bold">Grand Total</span>
+                    <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                      ₹{grandTotal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowConfirmModal(true)}
+                  disabled={materials.length === 0}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-900 disabled:cursor-not-allowed text-white rounded-lg font-semibold shadow-sm transition-colors mt-2"
+                >
+                  Create Purchase Order
+                </button>
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            {showArchive ? (
-              <div className="flex flex-col h-full">
-                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
-                    <Archive className="h-5 w-5 text-indigo-600" />
-                    {t('procurement.archiveDashboard') || 'Archived Items Dashboard'}
-                  </h2>
-                  <button
-                    onClick={() => setShowArchive(false)}
-                    className="px-4 py-2 bg-card border border-border text-neutral-700 dark:text-neutral-300 hover:bg-muted rounded-lg text-sm font-medium shadow-sm transition-colors"
-                  >
-                    {t('procurement.backToProcurement') || 'Back to Procurement'}
-                  </button>
-                </div>
-                <div className="p-6">
-                  {archivedItems.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-neutral-50 dark:bg-card/50">
-                      <Archive className="h-10 w-10 text-neutral-300 dark:text-slate-600 mx-auto mb-3" />
-                      <p className="text-muted-foreground font-medium">{t('procurement.noArchivedItems') || 'No archived materials found.'}</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border border-border rounded-xl">
-                      <table className="w-full text-left border-collapse whitespace-nowrap">
-                        <thead>
-                          <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                            <th className="px-4 py-3">{t('inventoryVal.materialsHeader') || 'Material Name'}</th>
-                            <th className="px-4 py-3">{t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}</th>
-                            <th className="px-4 py-3">{t('procurement.archivedDate') || 'Archived Date'}</th>
-                            <th className="px-4 py-3">{t('procurement.archiveReason') || 'Reason'}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                          {archivedItems.map((item, idx) => {
-                            return (
-                              <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-4 py-3 text-sm font-medium text-foreground">
-                                  {item.material}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-muted-foreground">
-                                  {item.linkedPO}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-muted-foreground">
-                                  {item.archivedDate ? formatDateDisplay(item.archivedDate) : 'N/A'}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-neutral-500 italic">
-                                  {item.archiveReason || 'Not Related To Current Order'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+        <div className="p-12 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-center bg-card/30 animate-in fade-in zoom-in duration-300">
+          <p className="text-muted-foreground font-medium">Store PO Configuration (Under Construction)</p>
+          <p className="text-xs text-muted-foreground mt-2">The layout for direct store inventory purchasing will be built here.</p>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-full">
+                <Info className="w-6 h-6" />
               </div>
-            ) : (
-              <>
-                <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
-                  <h2 className="text-lg font-semibold text-card-foreground">
-                    {t('procurement.requestFormTitle') || 'Purchase Request Configuration'}
-                  </h2>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        {t('dashboard.recentOrders.headers.poNumber') || 'PO Number'}
-                      </label>
-                      <input
-                        type="text"
-                        name="poNumber"
-                        list="poList"
-                        placeholder="Search or enter PO"
-                        value={formData.poNumber}
-                        onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 bg-card border border-border text-foreground rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                      />
-                      <datalist id="poList">
-                        {availableOrders.map((order, idx) => (
-                          <option key={idx} value={order.poNumber} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        {t('dashboard.recentOrders.headers.deliveryDate') || 'Request Date'}
-                      </label>
-                      <input
-                        type="date"
-                        lang="en-GB"
-                        value={formData.requestDate}
-                        disabled
-                        className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-card border border-border text-muted-foreground rounded-lg text-sm font-medium focus:outline-none cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        {t('dashboard.recentOrders.headers.customer') || 'Requested By'} <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="requestedBy"
-                        required
-                        value={formData.requestedBy}
-                        onChange={handleInputChange}
-                        placeholder={t('procurement.enterYourName') || "Enter full name"}
-                        className="w-full px-3.5 py-2.5 border border-border text-foreground placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Department
-                      </label>
-                      <select
-                        name="department"
-                        value={formData.department}
-                        onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 border border-border text-foreground rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-card"
-                      >
-                        <option value="Production">{t('orderInitiation.tracker.production') || 'Production'}</option>
-                        <option value="Inventory">{t('orderInitiation.tracker.inventory') || 'Inventory'}</option>
-                        <option value="Quality Control">{t('orderInitiation.tracker.quality') || 'Quality Control'}</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Materials List Component */}
-                  <div className="border-t border-neutral-100 dark:border-border pt-6 space-y-4">
-                    <div className="flex justify-between items-center bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
-                      <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 text-xs font-semibold uppercase tracking-wider">
-                        <FileCheck2 className="h-4 w-4" />
-                        Material Procurement Form
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowArchive(true)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border hover:bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg text-xs font-bold shadow-sm transition-colors"
-                        >
-                          <Archive className="h-3.5 w-3.5" />
-                          Archive Box ({archivedItems.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddMaterialRow}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Add Material
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border border-border rounded-xl overflow-hidden bg-card">
-                      <div className="w-full">
-                        {/* Header Row */}
-                        <div className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center bg-neutral-50 dark:bg-card border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider whitespace-nowrap px-6 py-3">
-                          <div>{t('inventoryVal.materialsHeader') || 'Material'}</div>
-                          <div>QUANTITY</div>
-                          <div>UNIT</div>
-                          <div>{t('bom.customer') || 'Supplier'}</div>
-                          <div className="text-right">{t('procurement.estCost') || 'Est. Cost'}</div>
-                          <div className="text-center">{t('procurement.actions') || 'Actions'}</div>
-                        </div>
-
-                        {/* Body Rows */}
-                        <div className="divide-y divide-neutral-100 dark:divide-slate-800">
-                          {requestedMaterials.map((item, index) => {
-                            const details = getMaterialDetails(item.materialId);
-                            const unitTrans = details.unit === 'meters'
-                              ? (t('inventory.units.meters') || 'meters')
-                              : details.unit === 'spools'
-                                ? (t('inventory.units.spools') || 'spools')
-                                : details.unit === 'pieces'
-                                  ? (t('inventory.units.pieces') || 'pieces')
-                                  : (t('inventory.units.units') || 'units');
-                            return (
-                              <div key={item.key} className="grid grid-cols-[3fr_1fr_0.8fr_2.5fr_1.5fr_1.2fr] gap-6 items-center hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors px-6 pt-3.5 pb-5">
-                                {/* Column 1: Material */}
-                                <div className="min-w-0">
-                                  <div className="relative w-full h-9 flex items-center">
-                                    <select
-                                      value={item.materialId}
-                                      onChange={(e) => handleMaterialUpdate(index, 'materialId', e.target.value)}
-                                      className={`w-full h-9 px-3 py-1.5 border rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-card transition-colors shadow-sm ${details.available < details.required
-                                        ? 'border-red-300 text-red-600 focus:ring-red-500'
-                                        : 'border-border/80 text-card-foreground focus:ring-indigo-500'
-                                        }`}
-                                    >
-                                      {inventoryMaterials.map((m: any) => {
-                                        const optionShort = m.available < m.required;
-                                        return (
-                                          <option
-                                            key={m.id}
-                                            value={m.id}
-                                            className={optionShort ? 'text-red-600 font-semibold' : 'text-card-foreground'}
-                                          >
-                                            {item.customName && m.id === item.materialId ? item.customName : (t(`inventory.materials.items.${m.id}`) || m.name)}
-                                          </option>
-                                        );
-                                      })}
-                                    </select>
-                                    <span className={`absolute top-9.5 left-1 text-[10px] font-bold transition-colors leading-none ${details.available < details.required ? 'text-red-500' : 'text-muted-foreground'
-                                      }`}>
-                                      {details.id}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Column 2: Quantity */}
-                                <div className="min-w-0">
-                                  <div className="h-9 flex items-center">
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={item.quantity}
-                                      onChange={(e) => handleMaterialUpdate(index, 'quantity', parseInt(e.target.value) || 0)}
-                                      className="w-full h-9 px-3 py-1.5 border border-border/80 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 outline-none font-semibold text-card-foreground bg-card shadow-sm"
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Column 3: Unit */}
-                                <div className="min-w-0">
-                                  <div className="h-9 flex items-center text-xs text-slate-500 dark:text-neutral-400 font-semibold whitespace-nowrap">
-                                    {unitTrans}
-                                  </div>
-                                </div>
-
-                                {/* Column 4: Supplier */}
-                                <div className="min-w-0">
-                                  <div className="h-9 flex items-center">
-                                    <select
-                                      value={item.supplier}
-                                      onChange={(e) => handleMaterialUpdate(index, 'supplier', e.target.value)}
-                                      className="w-full h-9 px-3 py-1.5 border border-border/80 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-indigo-500 outline-none bg-card text-card-foreground shadow-sm"
-                                    >
-                                      {isLoadingSuppliers ? (
-                                        <option>{t('procurement.loading') || 'Loading...'}</option>
-                                      ) : (
-                                        suppliers.map((sup, idx) => (
-                                          <option key={idx} value={sup.name}>{sup.name}</option>
-                                        ))
-                                      )}
-                                    </select>
-                                  </div>
-                                </div>
-
-                                {/* Column 5: Est. Cost */}
-                                <div className="min-w-0 text-right">
-                                  <div className="h-9 flex items-center justify-end text-xs font-bold text-foreground">
-                                    ₹{(item.quantity * details.costPerUnit).toLocaleString()}
-                                  </div>
-                                </div>
-
-                                {/* Column 6: Actions */}
-                                <div className="min-w-0 text-center">
-                                  <div className="h-9 flex items-center justify-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveMaterialRow(index)}
-                                      disabled={requestedMaterials.length <= 1}
-                                      className="p-1.5 text-neutral-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        {t('dashboard.recentOrders.headers.deliveryDate') || 'Required By Date'} <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        name="requiredDate"
-                        required
-                        value={formData.requiredDate}
-                        onChange={handleInputChange}
-                        className="w-full px-3.5 py-2.5 border border-border text-foreground rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      Procurement Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      rows={4}
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      className="w-full px-3.5 py-2.5 border border-border text-foreground placeholder:text-neutral-400 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
-                      placeholder="Enter any additional procurement notes here..."
-                    ></textarea>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 dark:border-border">
-                    <button
-                      type="button"
-                      onClick={() => advanceStage('/procurement', 'Procurement')}
-                      className="px-5 py-2.5 text-muted-foreground bg-card border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-md transition-colors"
-                    >
-                      {t('procurement.createRequest') || 'Submit Purchase Request'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-
-          {/* Sidebar Context Card */}
-          <div className="space-y-6">
-            {/* Consolidated Purchase Request Summary Card */}
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30">
-                <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-muted-foreground" />
-                  {t('procurement.shortageProfile') || 'Purchase Proposal Summary'}
-                </h3>
-              </div>
-              <div className="p-5 space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                    Total Unique Items
-                  </span>
-                  <p className="text-2xl font-extrabold text-indigo-900">
-                    {requestedMaterials.length}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 py-3 border-y border-neutral-100 dark:border-border">
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                      TOTAL VOLUME
-                    </span>
-                    <p className="text-md font-semibold text-neutral-700 dark:text-neutral-300">
-                      {totalItemsCount.toLocaleString()} units
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-0.5">
-                      {t('procurement.estCost') || 'Est. Cost'}
-                    </span>
-                    <p className="text-md font-bold text-red-600">
-                      ₹{estimatedCost.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {requestedMaterials.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                      {t('procurement.shortageBreakdown') || 'Shortage Breakdown'}
-                    </span>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                      {requestedMaterials.map((item, idx) => {
-                        const details = getMaterialDetails(item.materialId);
-                        return (
-                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground bg-neutral-50 dark:bg-card p-2 rounded border border-neutral-100 dark:border-border">
-                            <span className="font-medium truncate max-w-[120px]">{t(`inventory.materials.items.${details.id}`) || details.name}</span>
-                            <span className="font-bold text-foreground">{item.quantity} {details.unit}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-foreground">Confirm Purchase Order</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Are you sure you want to create this Purchase Order (<span className="font-semibold text-foreground">{procurementPoNumber}</span>) for <strong>₹{grandTotal.toFixed(2)}</strong>? This action cannot be undone.
+                </p>
               </div>
             </div>
-
-            {/* Supplier Information Summary Card */}
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30">
-                <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  {t('procurement.supplierProfile') || 'Active Suppliers'}
-                </h3>
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-border bg-neutral-50/50 dark:bg-card/50">
-                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Supplier Name</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material Specialities</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Leadtime</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Performance</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                      {/* Left completely blank intentionally to await dynamic backend data */}
-                      {!isLoadingSuppliers && suppliers.map((sup, idx) => (
-                        <tr key={sup.id || idx} className="hover:bg-neutral-50/30 dark:hover:bg-slate-800/20 transition-colors">
-                          {/* Column 1: Customer Name */}
-                          <td className="px-6 py-4 text-sm font-bold text-card-foreground">
-                            <div className="flex items-center gap-1.5">
-                              {sup.name}
-                              {sup.isFavorite !== false && (
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                              )}
-                            </div>
-                          </td>
-                          {/* Column 2: Material Specialities */}
-                          <td className="px-6 py-4 text-sm text-muted-foreground font-medium">
-                            {sup.materials}
-                          </td>
-                          {/* Column 3: Leadtime */}
-                          <td className="px-6 py-4 text-sm text-muted-foreground font-medium">
-                            {sup.leadTime}
-                          </td>
-                          {/* Column 4: Performance */}
-                          <td className="px-6 py-4 text-sm">
-                            <div className="flex flex-col gap-1 w-24">
-                              <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full ${getPerformanceBarColor(sup.performance || 90)}`}
-                                  style={{ width: `${sup.performance || 90}%` }}
-                                />
-                              </div>
-                              <span className="text-[11px] font-bold text-muted-foreground">
-                                {sup.performance}%
-                              </span>
-                            </div>
-                          </td>
-                          {/* Column 5: Status Badge & Actions */}
-                          <td className="px-6 py-4 text-sm">
-                            <div className="flex flex-col items-start gap-1.5">
-                              <span className="text-[10px] font-extrabold tracking-wide px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 uppercase">
-                                {sup.status}
-                              </span>
-                              <div className="flex items-center gap-2 text-neutral-400">
-                                <button type="button" className="hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
-                                  <Mail className="h-3.5 w-3.5" />
-                                </button>
-                                <button type="button" className="hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
-                                  <Phone className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {isLoadingSuppliers && (
-                    <p className="p-4 text-xs text-muted-foreground">{t('procurement.loadingSuppliers') || 'Loading active suppliers...'}</p>
-                  )}
-                </div>
-              </div>
+            
+            <div className="flex items-center justify-end gap-3 mt-8">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors"
+              >
+                Confirm & Create
+              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

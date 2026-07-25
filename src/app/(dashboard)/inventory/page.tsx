@@ -21,6 +21,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { MetricCard } from '@/components/MetricCard';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
+import { useOrders } from '@/contexts/order-context';
 
 interface InventoryItem {
   id: string;
@@ -57,74 +58,88 @@ export default function InventoryPage() {
   const [poInventoryData, setPoInventoryData] = useState<any[]>([]);
   const [apiAvailableMaterials, setApiAvailableMaterials] = useState<any[]>([]);
 
+  const { orders } = useOrders();
+  const [selectedPO, setSelectedPO] = useState<string>('');
+  
   React.useEffect(() => {
-    const fetchPOInventory = async (poNumber: string) => {
-      try {
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-        const res = await fetch(`${BACKEND_URL}/api/check-inventory`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ poNumber })
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-           const formatted = data.data.map((item: any) => ({
-             id: item.id || item.material_id || `MAT-${Math.floor(Math.random()*1000)}`,
-             name: item.name || item.material_name || `Unknown Material`,
-             category: item.category || 'Fabric',
-             available: item.available_qty || 0,
-             required: item.required_qty || 0,
-             unit: item.unit || 'units',
-             min_required: item.min_required || 0,
-             original_status: item.original_status || 'Available'
-           }));
-           setPoInventoryData(formatted);
-        }
-      } catch (err) {
-        console.error('Failed to fetch PO inventory:', err);
-      }
-    };
-
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
       if (po) {
-        const ordersStr = localStorage.getItem('savedOrders');
-        if (ordersStr) {
-          const orders = JSON.parse(ordersStr);
-          const found = orders.find((o: any) => o.poNumber === po);
-          if (found) setCurrentOrder(found);
-        }
-        fetchPOInventory(po);
+        setSelectedPO(po);
       }
     }
-    
-    const fetchAvailableMaterials = async (poNumber: string | null) => {
-      try {
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-        const url = poNumber 
-          ? `${BACKEND_URL}/api/inventory/available-materials?poNumber=${poNumber}`
-          : `${BACKEND_URL}/api/inventory/available-materials`;
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-          setApiAvailableMaterials(data.data);
-        } else {
-          setApiAvailableMaterials([]);
-        }
-      } catch (err) {
-        console.error('Failed to fetch available materials:', err);
+  }, []);
+
+  const fetchPOInventory = async (poNumber: string) => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+      const res = await fetch(`${BACKEND_URL}/api/check-inventory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ poNumber })
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+         const formatted = data.data.map((item: any) => ({
+           id: item.id || item.material_id || `MAT-${Math.floor(Math.random()*1000)}`,
+           name: item.name || item.material_name || `Unknown Material`,
+           category: item.category || 'Fabric',
+           available: item.available_qty || 0,
+           required: item.required_qty || 0,
+           unit: item.unit || 'units',
+           min_required: item.min_required || 0,
+           original_status: item.original_status || 'Available'
+         }));
+         setPoInventoryData(formatted);
+      } else {
+         setPoInventoryData([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch PO inventory:', err);
+      setPoInventoryData([]);
+    }
+  };
+
+  const fetchAvailableMaterials = async (poNumber: string | null) => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+      const url = poNumber 
+        ? `${BACKEND_URL}/api/inventory/available-materials?poNumber=${poNumber}`
+        : `${BACKEND_URL}/api/inventory/available-materials`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setApiAvailableMaterials(data.data);
+      } else {
         setApiAvailableMaterials([]);
       }
-    };
-    
-    const params = new URLSearchParams(window.location.search);
-    const poNumber = params.get('poNumber');
-    fetchAvailableMaterials(poNumber);
-    
+    } catch (err) {
+      console.error('Failed to fetch available materials:', err);
+      setApiAvailableMaterials([]);
+    }
+  };
+
+  React.useEffect(() => {
+    if (selectedPO) {
+      if (orders) {
+        const found = orders.find((o: any) => o.poNumber === selectedPO);
+        if (found) setCurrentOrder(found);
+        else setCurrentOrder(null);
+      }
+      fetchPOInventory(selectedPO);
+      fetchAvailableMaterials(selectedPO);
+    } else {
+      setPoInventoryData([]);
+      setCurrentOrder(null);
+      fetchAvailableMaterials(null);
+    }
+  }, [selectedPO, orders]);
+
+  React.useEffect(() => {
     // Fetch real store materials for fallback display
     const fetchStoreMaterials = async () => {
       try {
@@ -390,44 +405,74 @@ export default function InventoryPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-card-foreground">{t('inventoryVal.materialsHeader')}</h2>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search input field */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-neutral-400" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* PO Selector Dropdown */}
+                <div className="relative">
+                  <select
+                    value={selectedPO}
+                    onChange={(e) => {
+                      setSelectedPO(e.target.value);
+                      const params = new URLSearchParams(window.location.search);
+                      if (e.target.value) {
+                        params.set('poNumber', e.target.value);
+                      } else {
+                        params.delete('poNumber');
+                      }
+                      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                    }}
+                    className="block w-full sm:w-48 pl-3 pr-10 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer text-ellipsis overflow-hidden"
+                  >
+                    <option value="">Select Purchase Order</option>
+                    {orders?.map((order: any) => (
+                      <option key={order.poNumber} value={order.poNumber}>
+                        {order.poNumber} {order.customerName ? `- ${order.customerName}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  placeholder={t('inventoryVal.searchPlaceholder')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground bg-transparent"
-                />
-              </div>
 
-              {/* Category Dropdown Filter */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Filter className="h-4 w-4 text-neutral-400" />
+                {/* Search input field */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-neutral-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder={t('inventoryVal.searchPlaceholder')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full sm:w-64 pl-10 pr-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground bg-transparent"
+                  />
                 </div>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
-                >
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>
-                      {cat === 'All Categories' ? safeT('inventory.categories.allcategories', 'All Categories') : safeT(`inventory.categories.${cat.toLowerCase()}`, cat)}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+
+                {/* Category Dropdown Filter */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Filter className="h-4 w-4 text-neutral-400" />
+                  </div>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat === 'All Categories' ? safeT('inventory.categories.allcategories', 'All Categories') : safeT(`inventory.categories.${cat.toLowerCase()}`, cat)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
 
@@ -597,14 +642,33 @@ export default function InventoryPage() {
       {/* Bottom Actions Row */}
       <div className="flex justify-end pt-2 gap-3 mt-4">
         {canAdvanceAlloc ? (
-          <button
-            onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
-            disabled={hasShortage || filteredInventory.length === 0}
-            className={`w-full sm:w-auto px-5 py-2.5 bg-card border border-border hover:bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasShortage || filteredInventory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <ListChecks className="h-4 w-4" />
-            {t('inventoryVal.allocate') || 'Material Allocation'}
-          </button>
+          (() => {
+            const requiresServiceOutsource = currentOrder?.specs?.some((s: any) => s.outsourceType === 'Service Outsource');
+            
+            if (requiresServiceOutsource) {
+              return (
+                <button
+                  onClick={() => advanceStage('/outsource', 'Service Outsource')}
+                  disabled={hasShortage || filteredInventory.length === 0}
+                  className={`w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasShortage || filteredInventory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <ListChecks className="h-4 w-4" />
+                  Route to Service Outsource
+                </button>
+              );
+            }
+
+            return (
+              <button
+                onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
+                disabled={hasShortage || filteredInventory.length === 0}
+                className={`w-full sm:w-auto px-5 py-2.5 bg-card border border-border hover:bg-muted text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${hasShortage || filteredInventory.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <ListChecks className="h-4 w-4" />
+                {t('inventoryVal.allocate') || 'Material Allocation'}
+              </button>
+            );
+          })()
         ) : (
           <button
             type="button"

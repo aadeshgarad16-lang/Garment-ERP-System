@@ -289,11 +289,13 @@ export default function BOMCalculationView() {
 
   const activeGarment = activeSpecs[selectedGarmentIndex] || activeSpecs[0];
 
-  const totalProductionRequired = activeGarment
+  const totalProductionRequired = isTotalBomMode
+    ? activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0)
+    : activeGarment
     ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
     : 0;
 
-  const garmentType = activeGarment?.itemDescription || 'Shirt';
+  const garmentType = isTotalBomMode ? 'Total Order' : (activeGarment?.itemDescription || 'Shirt');
 
   useEffect(() => {
     if (currentOrder && activeGarment) {
@@ -473,7 +475,9 @@ export default function BOMCalculationView() {
                   totalQty: modifiedTotalQty || 0,
                   perUnitPrice: m.unitPrice || 0,
                   missing: m.shortage || 0,
-                  sizes: [...modifiedSizes]
+                  sizes: modifiedSizes
+                    .filter((s: any) => Number(s.perPieceQty ?? s.perPiece ?? m.perPiece ?? 0) > 0)
+                    .map((s: any) => ({ ...s }))
                 });
               } else {
                 const existing = mergedMap.get(displayName);
@@ -482,13 +486,27 @@ export default function BOMCalculationView() {
                 
                 // Merge sizes
                 modifiedSizes.forEach((s: any) => {
-                   const exSize = existing.sizes.find((ex: any) => ex.size === s.size);
-                   if (exSize) {
-                      const actualQtyEx = exSize.orderQty ?? exSize.quantity ?? exSize.garmentQty ?? 0;
-                      const actualQtyS = s.orderQty ?? s.quantity ?? s.garmentQty ?? 0;
-                      exSize.orderQty = actualQtyEx + actualQtyS;
-                   } else {
-                      existing.sizes.push(s);
+                   const sPerPiece = Number(s.perPieceQty ?? s.perPiece ?? m.perPiece ?? 0);
+                   const actualQtyS = Number(s.orderQty ?? s.quantity ?? s.garmentQty ?? 0);
+                   
+                   // Only count this size if the garment actually uses the material (rate > 0)
+                   if (sPerPiece > 0) {
+                       const exSize = existing.sizes.find((ex: any) => ex.size === s.size);
+                       if (exSize) {
+                          const actualQtyEx = Number(exSize.orderQty ?? exSize.quantity ?? exSize.garmentQty ?? 0);
+                          
+                          exSize.orderQty = actualQtyEx + actualQtyS;
+                          exSize.quantity = exSize.orderQty;
+                          exSize.garmentQty = exSize.orderQty;
+                          
+                          // Maintain the standard base consumption rate, never average it.
+                          if (!exSize.perPieceQty || exSize.perPieceQty === 0) {
+                             exSize.perPieceQty = sPerPiece;
+                             exSize.perPiece = sPerPiece;
+                          }
+                       } else {
+                          existing.sizes.push({ ...s });
+                       }
                    }
                 });
               }
@@ -563,11 +581,13 @@ export default function BOMCalculationView() {
     let estimatedCost = 0;
 
     editableMaterials.forEach((item) => {
+      const isFabric = item.category === 'Fabric' || item.name.toLowerCase().includes('fabric');
+
       const sizeRows = item.sizes?.map((sr: any) => {
         const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
         const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
         const baseReq = actualQty * currentPerPiece;
-        const wastageAmount = baseReq * (wastage / 100);
+        const wastageAmount = isFabric ? baseReq * (wastage / 100) : 0;
         const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
         const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
         const sizeFinalPrice = sizeTotalQty * currentPerUnitPrice;
@@ -792,7 +812,7 @@ export default function BOMCalculationView() {
                 <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
               ) : (
                 activeSpecs.map((spec: any, idx: number) => {
-                  const isSelected = selectedGarmentIndex === idx;
+                  const isSelected = !isTotalBomMode && selectedGarmentIndex === idx;
                   
                   const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
                   const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > idx ? garmentDetailsArray[idx] : garmentDetailsArray[0];
@@ -891,7 +911,21 @@ export default function BOMCalculationView() {
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                 {editableMaterials && editableMaterials.length > 0 ? (
-                  editableMaterials.map((item, idx) => {
+                  editableMaterials.filter((item) => {
+                    const sizeRows = item.sizes?.map((sr: any) => {
+                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+                      const baseReq = actualQty * currentPerPiece;
+                      const isFabric = item.category === 'Fabric' || item.name.toLowerCase().includes('fabric');
+                      const wastageAmount = isFabric ? baseReq * (wastage / 100) : 0;
+                      return parseFloat((baseReq + wastageAmount).toFixed(2));
+                    }) || [];
+                    const hasSizeBreakdown = sizeRows.length > 0;
+                    const rawCombinedTotalQty = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, val: number) => sum + val, 0)
+                      : safeNumber(item.totalQty);
+                    return parseFloat(rawCombinedTotalQty.toFixed(2)) > 0;
+                  }).map((item, idx) => {
                     const isShortage = item.missing > 0;
 
                     const sizeRows = item.sizes?.map((sr: any) => {

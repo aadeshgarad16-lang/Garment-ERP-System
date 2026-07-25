@@ -28,6 +28,7 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
+  XCircle,
 } from "lucide-react";
 
 import { getAuthHeaders } from "@/lib/api";
@@ -64,7 +65,7 @@ export function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 
 // ==========================================
@@ -93,10 +94,10 @@ export default function StorePage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
-            {activeTab === 'raw' ? 'Article' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : 'Material List'}
+            {activeTab === 'raw' ? 'Article' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : activeTab === 'orders' ? 'Order Status' : 'Material List'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage inventory and stock availability
+            {activeTab === 'orders' ? 'Track and verify store material deliveries' : 'Manage inventory and stock availability'}
           </p>
         </div>
 
@@ -143,6 +144,16 @@ export default function StorePage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("orders")}
+            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "orders"
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+              : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
+              }`}
+          >
+            Orders
+          </button>
+
+          <button
             onClick={() => setIsArchiveModalOpen(true)}
             className="px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border border-amber-600/50 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-2"
           >
@@ -160,8 +171,150 @@ export default function StorePage() {
         setActiveTab(type === 'Material' ? 'raw' : 'pre');
       }} />}
       {activeTab === "overview" && <StockOverviewModule />}
+      {activeTab === "orders" && <StoreOrdersModule />}
 
       {isArchiveModalOpen && <ArchiveModal onClose={() => setIsArchiveModalOpen(false)} />}
+    </div>
+  );
+}
+
+// ==========================================
+// STORE ORDERS MODULE
+// ==========================================
+function StoreOrdersModule() {
+  const [activeOrders, setActiveOrders] = useState([
+    { id: 'ORD-1001', items: 70, date: 'Thu, Jul 23, 2026', receivedDate: 'Awaiting Delivery', status: 'Pending' }
+  ]);
+  const [issueOrders, setIssueOrders] = useState<any[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<any[]>([]);
+
+  const handleConfirm = (orderId: string) => {
+    const order = activeOrders.find(o => o.id === orderId);
+    if (!order) return;
+    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+    setCompletedOrders(prev => [...prev, { ...order, status: 'Delivered', receivedDate: new Date().toLocaleDateString() }]);
+  };
+
+  const handleFlagIssue = (orderId: string) => {
+    const note = prompt("Please enter the issue details (e.g., damaged, partial delivery):");
+    if (note === null) return;
+    
+    const order = activeOrders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+    setIssueOrders(prev => [...prev, { ...order, status: `Action Required: ${note}`, receivedDate: 'Issue Flagged' }]);
+  };
+
+  const renderTable = (title: string, icon: React.ReactNode, count: number, data: any[], tableType: 'active' | 'issue' | 'completed') => (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-3">
+        {icon}
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">{count}</span>
+      </div>
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                <th className="px-6 py-4">Order Number</th>
+                <th className="px-6 py-4">Total Items</th>
+                <th className="px-6 py-4">Date of Order</th>
+                <th className="px-6 py-4">Date of Receiving Order</th>
+                <th className="px-6 py-4">Status of Delivery</th>
+                <th className="px-6 py-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {data.length > 0 ? data.map(order => (
+                <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-medium">{order.id}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{order.items}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{order.date}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{order.receivedDate}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                      order.status.includes('Pending') ? 'bg-amber-500/10 text-amber-500' :
+                      order.status.includes('Action Required') ? 'bg-red-500/10 text-red-500' :
+                      'bg-emerald-500/10 text-emerald-500'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 flex items-center justify-center gap-3">
+                    {tableType === 'active' ? (
+                      <>
+                        <button 
+                          onClick={() => handleConfirm(order.id)}
+                          className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors"
+                          title="Confirm Delivery"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleFlagIssue(order.id)}
+                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                          title="Flag Issue"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : tableType === 'completed' ? (
+                      <button
+                        onClick={() => {
+                          alert(`GENERATING GRN PDF...\n\n--- GOODS RECEIVED NOTE ---\nDocument: GRN-${order.id}\nOrder Reference: ${order.id}\nDate of Order: ${order.date}\nDate Received: ${order.receivedDate}\n\nItems Received: ${order.items} Articles\n\n[ Authorized Store Stamp / Signature ]`);
+                        }}
+                        className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-1"
+                        title="Generate GRN PDF"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Generate GRN
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground text-sm">
+                    No orders in this category.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
+      {renderTable(
+        "Table 1: Active / Delivered Orders", 
+        <List className="h-5 w-5 text-indigo-500" />, 
+        activeOrders.length, 
+        activeOrders, 
+        'active'
+      )}
+      
+      {renderTable(
+        "Table 2: Issue / Action Required Box", 
+        <AlertCircle className="h-5 w-5 text-red-500" />, 
+        issueOrders.length, 
+        issueOrders, 
+        'issue'
+      )}
+      
+      {renderTable(
+        "Completed Orders", 
+        <CheckCircle2 className="h-5 w-5 text-emerald-500" />, 
+        completedOrders.length, 
+        completedOrders, 
+        'completed'
+      )}
     </div>
   );
 }
@@ -2489,12 +2642,47 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 // MATERIAL LIST MODULE
 // ==========================================
 function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => void }) {
+  const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [requestedItems, setRequestedItems] = useState<Record<string, boolean>>({});
+
+  const handleRaiseRequest = async (item: any) => {
+    try {
+      const available = Number(item.available_qty ?? item.available ?? 0);
+      const required = Number(item.min_required ?? item.min_required_qty ?? item.minimumRequired ?? 0);
+      const shortageQty = Math.max(0, required - available);
+
+      const newProcurementRequest = {
+        id: `PR-${Date.now()}-${item.id || item.material_id}`,
+        itemId: item.id || item.material_id,
+        itemCode: item.hsn_code || item.code,
+        itemName: item.name || item.material_name,
+        requiredQty: required,
+        availableQty: available,
+        shortageQty: shortageQty,
+        source: "Store's Article",
+        status: "Pending",
+        vendorId: null,
+        created_at: new Date().toISOString()
+      };
+
+      const existingReqsStr = localStorage.getItem('procurement_requests') || '[]';
+      const existingReqs = JSON.parse(existingReqsStr);
+      localStorage.setItem('procurement_requests', JSON.stringify([...existingReqs, newProcurementRequest]));
+
+      setRequestedItems(prev => ({
+        ...prev,
+        [item.id || item.material_id]: true
+      }));
+    } catch (error) {
+      console.error("Failed to raise request:", error);
+    }
+  };
 
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
@@ -2534,7 +2722,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
         <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
           <List className="h-5 w-5 text-indigo-500" />
-          Unified Material List
+          Unified Article List
         </h2>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
@@ -2554,40 +2742,63 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
         <table className="w-full text-sm text-left">
           <thead className="text-xs text-muted-foreground uppercase bg-neutral-50 dark:bg-card/50">
             <tr>
-              <th className="px-4 py-3 font-medium rounded-tl-lg">Type</th>
-              <th className="px-4 py-3 font-medium">Code/SKU</th>
-              <th className="px-4 py-3 font-medium">Name/Desc</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium text-right">Available</th>
-              <th className="px-4 py-3 font-medium text-right">Min Required</th>
-              <th className="px-4 py-3 font-medium text-right">Unit Price</th>
-              <th className="px-4 py-3 font-medium text-right rounded-tr-lg">Actions</th>
+              <th className="px-4 py-3 font-medium rounded-tl-lg text-left">Type</th>
+              <th className="px-4 py-3 font-medium text-center">Code/SKU</th>
+              <th className="px-4 py-3 font-medium text-left">Name/Desc</th>
+              <th className="px-4 py-3 font-medium text-left">Category</th>
+              <th className="px-4 py-3 font-medium text-center">Available</th>
+              <th className="px-4 py-3 font-medium text-center">Min Required</th>
+              <th className="px-4 py-3 font-medium text-center">Unit Price</th>
+              <th className="px-4 py-3 font-medium text-center">Procurement</th>
+              <th className="px-4 py-3 font-medium text-center rounded-tr-lg">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">Loading...</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-neutral-500">Loading...</td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">No items found.</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-neutral-500">No items found.</td>
               </tr>
             ) : (
-              items.map((item, index) => (
+              items.map((item, index) => {
+                const displayType = item.type === 'Material' ? 'Article' : item.type === 'Garment' ? 'Finished Goods' : item.type;
+                const isShortage = (Number(item.available_qty) < Number(item.min_required)) || Number(item.available_qty) === 0;
+                
+                return (
                 <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {item.type}
+                  <td className="px-4 py-3 text-left">
+                    <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {displayType}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-foreground">{item.hsn_code || item.name}</td>
-                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.name}</td>
-                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{item.category}</td>
-                  <td className="px-4 py-3 text-right font-medium">{item.available_qty}</td>
-                  <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
-                  <td className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 font-medium text-foreground text-center">{item.hsn_code || item.name}</td>
+                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.name}</td>
+                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.category}</td>
+                  <td className="px-4 py-3 text-center font-medium">{item.available_qty}</td>
+                  <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
+                  <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
+                  <td className="px-4 py-3 text-center">
+                    {isShortage ? (
+                      requestedItems[item.id || item.material_id] ? (
+                        <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-md text-xs font-semibold whitespace-nowrap">
+                          Requested
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleRaiseRequest(item)}
+                          className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-md text-xs font-semibold hover:bg-red-100 transition-colors whitespace-nowrap"
+                        >
+                          Raise Request
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-neutral-400 font-medium">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     {userRole === 'Super Admin' && (
                       <button
                         onClick={() => onEdit(item.type, item)}
@@ -2599,7 +2810,8 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
                     )}
                   </td>
                 </tr>
-              ))
+              );
+            })
             )}
           </tbody>
         </table>
