@@ -10,7 +10,7 @@ import 'jspdf-autotable';
 
 // Mock Data
 const MOCK_EXISTING_POS = ['PO-2023-001', 'PO-2023-002', 'PO-2023-003', 'PO-2023-004'];
-const MOCK_VENDORS = ['Acme Corp', 'Global Textiles', 'Fast Delivery Logistics', 'Premium Threads Co.', 'Apex Manufacturers'];
+const MOCK_SUPPLIERS = ['Acme Corp', 'Global Textiles', 'Fast Delivery Logistics', 'Premium Threads Co.', 'Apex Manufacturers'];
 
 export default function CreateProcurementPage() {
   const router = useRouter();
@@ -23,10 +23,10 @@ export default function CreateProcurementPage() {
   const [existingPoNumber, setExistingPoNumber] = useState('');
   const [procurementPoNumber, setProcurementPoNumber] = useState(`PR-${Date.now().toString().slice(-6)}`);
   
-  // Vendor State
-  const [vendors, setVendors] = useState<string[]>([]);
-  const [vendorInput, setVendorInput] = useState('');
-  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  // Supplier State
+  const [suppliers, setSuppliers] = useState<string[]>([]);
+  const [supplierInput, setSupplierInput] = useState('');
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
   
   // Metadata State
   const [branch, setBranch] = useState('Main Plant');
@@ -34,13 +34,13 @@ export default function CreateProcurementPage() {
   
   // Specifications State (Dynamic Rows)
   const [specifications, setSpecifications] = useState([
-    { id: '1', articleId: '', totalQty: 0, vendor: '', orderQty: 0 }
+    { id: '1', articleId: '', totalQty: 0, supplier: '', orderQty: 0 }
   ]);
 
   // Table State
   const [materials, setMaterials] = useState([
-    { id: '1', name: 'Cotton Fabric 180 GSM', qty: 500, vendor: '', vendorQty: 500, unit: 'Meters', unitCost: 45 },
-    { id: '2', name: 'Polyester Thread (White)', qty: 100, vendor: '', vendorQty: 100, unit: 'Cones', unitCost: 120 }
+    { id: '1', name: 'Cotton Fabric 180 GSM', qty: 500, supplier: '', supplierQty: 500, unit: 'Meters', unitCost: 45 },
+    { id: '2', name: 'Polyester Thread (White)', qty: 100, supplier: '', supplierQty: 100, unit: 'Cones', unitCost: 120 }
   ]);
   
   // Financial State
@@ -52,12 +52,12 @@ export default function CreateProcurementPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const vendorDropdownRef = useRef<HTMLDivElement>(null);
+  const supplierDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
-        setShowVendorDropdown(false);
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node)) {
+        setShowSupplierDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -70,13 +70,13 @@ export default function CreateProcurementPage() {
       if (payloadStr) {
         const payload = JSON.parse(payloadStr);
         if (payload.isBulkOrder) {
-          const uniqueVendors = Array.from(new Set<string>(payload.items.map((i: any) => i.selectedVendorName)));
-          setVendors(prev => {
-            const newVendors = [...prev];
-            uniqueVendors.forEach(uv => {
-              if (uv && !newVendors.includes(uv)) newVendors.push(uv);
+          const uniqueSuppliers = Array.from(new Set<string>(payload.items.map((i: any) => i.selectedSupplierName)));
+          setSuppliers(prev => {
+            const newSuppliers = [...prev];
+            uniqueSuppliers.forEach(uv => {
+              if (uv && !newSuppliers.includes(uv)) newSuppliers.push(uv);
             });
-            return newVendors;
+            return newSuppliers;
           });
           
           if (payload.items && Array.isArray(payload.items) && payload.items.length > 0) {
@@ -84,23 +84,23 @@ export default function CreateProcurementPage() {
               id: item.articleId || `bulk-${Date.now()}-${index}`,
               name: item.articleName || '',
               qty: item.requiredQty || 1,
-              vendor: item.selectedVendorName || '',
-              vendorQty: item.requiredQty || 1,
+              supplier: item.selectedSupplierName || '',
+              supplierQty: item.requiredQty || 1,
               unit: 'Pieces',
               unitCost: item.unitPrice || 0
             })));
           }
         } else {
-          if (payload.vendorName) {
-            setVendors(prev => prev.includes(payload.vendorName) ? prev : [...prev, payload.vendorName]);
+          if (payload.supplierName) {
+            setSuppliers(prev => prev.includes(payload.supplierName) ? prev : [...prev, payload.supplierName]);
           }
           if (payload.items && Array.isArray(payload.items) && payload.items.length > 0) {
             setMaterials(payload.items.map((item: any, index: number) => ({
               id: item.articleId || `${Date.now()}-${index}`,
               name: item.articleName || '',
               qty: item.requiredQty || 1,
-              vendor: payload.vendorName || '',
-              vendorQty: item.requiredQty || 1,
+              supplier: payload.supplierName || '',
+              supplierQty: item.requiredQty || 1,
               unit: 'Pieces',
               unitCost: item.unitPrice || 0
             })));
@@ -114,27 +114,27 @@ export default function CreateProcurementPage() {
   }, []);
 
   // Computed Financials
-  const subtotal = materials.reduce((acc, item) => acc + ((Number(item.vendorQty) || 0) * (Number(item.unitCost) || 0)), 0);
+  const subtotal = materials.reduce((acc, item) => acc + ((Number(item.supplierQty) || 0) * (Number(item.unitCost) || 0)), 0);
   const gstAmount = (subtotal * (Number(gst) || 0)) / 100;
   const igstAmount = (subtotal * (Number(igst) || 0)) / 100;
   const grandTotal = subtotal + gstAmount + igstAmount;
 
   // Handlers
-  const handleAddVendor = (name: string) => {
-    if (name.trim() && !vendors.includes(name.trim())) {
-      setVendors([...vendors, name.trim()]);
+  const handleAddSupplier = (name: string) => {
+    if (name.trim() && !suppliers.includes(name.trim())) {
+      setSuppliers([...suppliers, name.trim()]);
     }
-    setVendorInput('');
-    setShowVendorDropdown(false);
+    setSupplierInput('');
+    setShowSupplierDropdown(false);
   };
 
-  const handleRemoveVendor = (name: string) => {
-    setVendors(vendors.filter(v => v !== name));
+  const handleRemoveSupplier = (name: string) => {
+    setSuppliers(suppliers.filter(v => v !== name));
   };
 
   const handleMaterialChange = (id: string, field: string, value: string) => {
     let finalValue: string | number = value;
-    if (['qty', 'vendorQty', 'unitCost'].includes(field)) {
+    if (['qty', 'supplierQty', 'unitCost'].includes(field)) {
       finalValue = value === '' ? 0 : Number(value);
     }
     setMaterials(materials.map(m => m.id === id ? { ...m, [field]: finalValue } : m));
@@ -147,8 +147,8 @@ export default function CreateProcurementPage() {
         id: Date.now().toString(),
         name: '',
         qty: 1,
-        vendor: '',
-        vendorQty: 1,
+        supplier: '',
+        supplierQty: 1,
         unit: 'Pieces',
         unitCost: 0
       }
@@ -162,7 +162,7 @@ export default function CreateProcurementPage() {
   const handleAddSpecification = () => {
     setSpecifications([
       ...specifications,
-      { id: Date.now().toString(), articleId: '', totalQty: 0, vendor: '', orderQty: 0 }
+      { id: Date.now().toString(), articleId: '', totalQty: 0, supplier: '', orderQty: 0 }
     ]);
   };
 
@@ -196,30 +196,30 @@ export default function CreateProcurementPage() {
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 56);
     
     // Metadata Right
-    doc.text(`Vendors:`, 120, 32);
+    doc.text(`Suppliers:`, 120, 32);
     doc.setFont(undefined, 'normal');
-    const vendorText = vendors.length > 0 ? vendors.join(', ') : 'None specified';
-    const splitVendors = doc.splitTextToSize(vendorText, 70);
-    doc.text(splitVendors, 120, 38);
+    const supplierText = suppliers.length > 0 ? suppliers.join(', ') : 'None specified';
+    const splitSuppliers = doc.splitTextToSize(supplierText, 70);
+    doc.text(splitSuppliers, 120, 38);
     
-    doc.text(`Payment Terms: ${paymentTerms}`, 120, 38 + (splitVendors.length * 5) + 5);
+    doc.text(`Payment Terms: ${paymentTerms}`, 120, 38 + (splitSuppliers.length * 5) + 5);
 
     // Table
     const tableData = materials.map((m, i) => [
       i + 1,
       m.name,
       m.qty.toString(),
-      m.vendor || 'N/A',
-      m.vendorQty.toString(),
+      m.supplier || 'N/A',
+      m.supplierQty.toString(),
       `${m.unitCost.toFixed(2)}`,
-      `${(m.vendorQty * m.unitCost).toFixed(2)}`
+      `${(m.supplierQty * m.unitCost).toFixed(2)}`
     ]);
 
-    const startY = 70 + (splitVendors.length > 2 ? (splitVendors.length - 2) * 5 : 0);
+    const startY = 70 + (splitSuppliers.length > 2 ? (splitSuppliers.length - 2) * 5 : 0);
 
     (doc as any).autoTable({
       startY: startY,
-      head: [['#', 'Article / Material', 'Req Qty', 'Vendor', 'Order Qty', 'Cost / Unit (Rs.)', 'Total (Rs.)']],
+      head: [['#', 'Article / Material', 'Req Qty', 'Supplier', 'Order Qty', 'Cost / Unit (Rs.)', 'Total (Rs.)']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
@@ -259,7 +259,7 @@ export default function CreateProcurementPage() {
       specifications.forEach(s => {
         if (!s.articleId) return;
         const articleName = materials.find(m => m.id === s.articleId)?.name || 'Unknown Article';
-        doc.text(`- ${articleName}: Total ${s.totalQty} -> Order ${s.orderQty} from ${s.vendor || 'N/A'}`, 14, specY);
+        doc.text(`- ${articleName}: Total ${s.totalQty} -> Order ${s.orderQty} from ${s.supplier || 'N/A'}`, 14, specY);
         specY += 6;
       });
     }
@@ -392,62 +392,62 @@ export default function CreateProcurementPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Multi-Select Vendor */}
-              <div className="space-y-2 md:col-span-1" ref={vendorDropdownRef}>
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Vendors</label>
+              {/* Multi-Select Supplier */}
+              <div className="space-y-2 md:col-span-1" ref={supplierDropdownRef}>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Suppliers</label>
                 <div className="relative">
                   <input
                     type="text"
-                    value={vendorInput}
+                    value={supplierInput}
                     onChange={(e) => {
-                      setVendorInput(e.target.value);
-                      setShowVendorDropdown(true);
+                      setSupplierInput(e.target.value);
+                      setShowSupplierDropdown(true);
                     }}
-                    onFocus={() => setShowVendorDropdown(true)}
+                    onFocus={() => setShowSupplierDropdown(true)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && vendorInput.trim()) {
+                      if (e.key === 'Enter' && supplierInput.trim()) {
                         e.preventDefault();
-                        handleAddVendor(vendorInput);
+                        handleAddSupplier(supplierInput);
                       }
                     }}
-                    placeholder="Search or add vendor..."
+                    placeholder="Search or add supplier..."
                     className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
-                  {showVendorDropdown && (
+                  {showSupplierDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
-                      {MOCK_VENDORS.filter(v => v.toLowerCase().includes(vendorInput.toLowerCase()) && !vendors.includes(v)).map(vendor => (
+                      {MOCK_SUPPLIERS.filter(v => v.toLowerCase().includes(supplierInput.toLowerCase()) && !suppliers.includes(v)).map(supplier => (
                         <button
-                          key={vendor}
+                          key={supplier}
                           type="button"
-                          onClick={() => handleAddVendor(vendor)}
+                          onClick={() => handleAddSupplier(supplier)}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-muted text-foreground transition-colors"
                         >
-                          {vendor}
+                          {supplier}
                         </button>
                       ))}
-                      {vendorInput.trim() && !MOCK_VENDORS.some(v => v.toLowerCase() === vendorInput.toLowerCase()) && (
+                      {supplierInput.trim() && !MOCK_SUPPLIERS.some(v => v.toLowerCase() === supplierInput.toLowerCase()) && (
                         <button
                           type="button"
-                          onClick={() => handleAddVendor(vendorInput)}
+                          onClick={() => handleAddSupplier(supplierInput)}
                           className="w-full text-left px-3 py-2 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors border-t border-border"
                         >
-                          Add "{vendorInput}" as new vendor
+                          Add "{supplierInput}" as new supplier
                         </button>
                       )}
-                      {MOCK_VENDORS.filter(v => v.toLowerCase().includes(vendorInput.toLowerCase()) && !vendors.includes(v)).length === 0 && !vendorInput.trim() && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground italic">No more vendors found</div>
+                      {MOCK_SUPPLIERS.filter(v => v.toLowerCase().includes(supplierInput.toLowerCase()) && !suppliers.includes(v)).length === 0 && !supplierInput.trim() && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground italic">No more suppliers found</div>
                       )}
                     </div>
                   )}
                 </div>
-                {/* Selected Vendor Pills */}
-                {vendors.length > 0 && (
+                {/* Selected Supplier Pills */}
+                {suppliers.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {vendors.map(v => (
+                    {suppliers.map(v => (
                       <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs font-medium rounded-full">
                         <Building2 className="w-3 h-3" />
                         {v}
-                        <button onClick={() => handleRemoveVendor(v)} className="hover:text-indigo-950 dark:hover:text-indigo-100 ml-0.5">
+                        <button onClick={() => handleRemoveSupplier(v)} className="hover:text-indigo-950 dark:hover:text-indigo-100 ml-0.5">
                           <X className="w-3 h-3" />
                         </button>
                       </span>
@@ -531,14 +531,14 @@ export default function CreateProcurementPage() {
                     />
                   </div>
                   <div className="md:col-span-3 space-y-1.5">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Select Vendor</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Select Supplier</label>
                     <select
-                      value={spec.vendor}
-                      onChange={e => handleSpecChange(spec.id, 'vendor', e.target.value)}
+                      value={spec.supplier}
+                      onChange={e => handleSpecChange(spec.id, 'supplier', e.target.value)}
                       className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="">-- Choose Vendor --</option>
-                      {vendors.map(v => (
+                      <option value="">-- Choose Supplier --</option>
+                      {suppliers.map(v => (
                         <option key={v} value={v}>{v}</option>
                       ))}
                     </select>
@@ -599,8 +599,8 @@ export default function CreateProcurementPage() {
                       <tr className="bg-muted/10 border-b border-border">
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[25%]">Article Name</th>
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[12%]">Required Qty</th>
-                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[20%]">Selected Vendor</th>
-                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[12%]">Order Qty (Vendor)</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[20%]">Selected Supplier</th>
+                        <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[12%]">Order Qty (Supplier)</th>
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[13%]">Cost / Unit (₹)</th>
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[13%] text-right">Total Price (₹)</th>
                         <th className="px-2 py-3 w-[5%]"></th>
@@ -629,12 +629,12 @@ export default function CreateProcurementPage() {
                           </td>
                           <td className="px-4 py-3">
                             <select 
-                              value={item.vendor}
-                              onChange={(e) => handleMaterialChange(item.id, 'vendor', e.target.value)}
+                              value={item.supplier}
+                              onChange={(e) => handleMaterialChange(item.id, 'supplier', e.target.value)}
                               className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
                             >
                               <option value="">Select...</option>
-                              {vendors.map(v => (
+                              {suppliers.map(v => (
                                 <option key={v} value={v}>{v}</option>
                               ))}
                             </select>
@@ -643,8 +643,8 @@ export default function CreateProcurementPage() {
                             <input 
                               type="number" 
                               min={0}
-                              value={item.vendorQty}
-                              onChange={(e) => handleMaterialChange(item.id, 'vendorQty', e.target.value)}
+                              value={item.supplierQty}
+                              onChange={(e) => handleMaterialChange(item.id, 'supplierQty', e.target.value)}
                               className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-1 focus:ring-indigo-500"
                             />
                           </td>
@@ -662,7 +662,7 @@ export default function CreateProcurementPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-foreground whitespace-nowrap">
-                            ₹{(item.vendorQty * item.unitCost).toFixed(2)}
+                            ₹{(item.supplierQty * item.unitCost).toFixed(2)}
                           </td>
                           <td className="px-2 py-3 text-center">
                             <button 
