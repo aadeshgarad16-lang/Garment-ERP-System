@@ -12,6 +12,8 @@ import {
   Filter,
   Plus,
   Eye,
+  Package,
+  X,
   CheckCircle2,
   AlertCircle,
   ChevronLeft,
@@ -125,9 +127,19 @@ export default function ProcurementPage() {
   const [inProcessPOs, setInProcessPOs] = useState<any[]>([]);
   const [completedPOs, setCompletedPOs] = useState<any[]>([]);
   const [historyPOs, setHistoryPOs] = useState<any[]>([]);
+  const [allocatedItems, setAllocatedItems] = useState<any[]>([]);
+  const [editModeSupplier, setEditModeSupplier] = useState<string | null>(null);
+  const [showAllocatedModal, setShowAllocatedModal] = useState(false);
 
   React.useEffect(() => {
     const loadSharedOrders = () => {
+      const storedAllocated = localStorage.getItem('allocatedProcurementItems');
+      if (storedAllocated) {
+        try {
+          setAllocatedItems(JSON.parse(storedAllocated));
+        } catch (e) {}
+      }
+
       const stored = localStorage.getItem('sharedPurchaseOrders');
       if (stored) {
         try {
@@ -150,6 +162,7 @@ export default function ProcurementPage() {
 
   const [showGrnModal, setShowGrnModal] = useState(false);
   const [selectedGrnPo, setSelectedGrnPo] = useState<any>(null);
+  const [viewPoDetails, setViewPoDetails] = useState<any>(null);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -242,15 +255,62 @@ export default function ProcurementPage() {
     if (archivedStr) {
       try { setArchivedRequests(JSON.parse(archivedStr)); } catch (e) { }
     }
+  }, [orders]);
 
+  React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const currentPO = params.get('poNumber');
       if (currentPO) {
         setPoInput(currentPO);
       }
+      
+      const editSupplier = params.get('supplier');
+      try {
+        const session = localStorage.getItem('review_po_session');
+        if (session) {
+          const parsedSession = JSON.parse(session);
+          
+          const newOrderQuantities: Record<string, number | string> = {};
+          const newSelectedSuppliers: Record<string, string> = {};
+          const newArticleSplits: { id: string, parentId: string }[] = [];
+          const allSuppliers = new Set<string>();
+
+          const seenParents = new Set<string>();
+
+          parsedSession.forEach((group: any) => {
+            allSuppliers.add(group.supplierName);
+            if (group.items) {
+              group.items.forEach((item: any) => {
+                let targetId = item.id;
+                
+                if (seenParents.has(item.id)) {
+                  targetId = `${item.id}-split-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                  newArticleSplits.push({ id: targetId, parentId: item.id });
+                } else {
+                  seenParents.add(item.id);
+                }
+                
+                newOrderQuantities[targetId] = item.orderQty;
+                newSelectedSuppliers[targetId] = group.supplierName;
+              });
+            }
+          });
+          
+          if (allSuppliers.size > 0) {
+            setSupplierFilter(Array.from(allSuppliers));
+          }
+          setOrderQuantities(prev => ({ ...prev, ...newOrderQuantities }));
+          setSelectedSuppliers(prev => ({ ...prev, ...newSelectedSuppliers }));
+          setArticleSplits(prev => [...prev, ...newArticleSplits]);
+        }
+      } catch(e) {}
+
+      if (editSupplier) {
+        setEditModeSupplier(editSupplier);
+      }
     }
-  }, [orders]);
+  }, []);
 
   const fetchStoreArticleShortages = async () => {
     try {
@@ -345,7 +405,23 @@ export default function ProcurementPage() {
     }
 
     const fetchPOShortages = (selectedPoNumber: string) => {
-      const related = loadedRequests.filter(p => p.linkedPO === selectedPoNumber);
+      let related = loadedRequests.filter(p => p.linkedPO === selectedPoNumber);
+      
+      // Filter out staged items unless we are in edit mode for them
+      try {
+        const session = localStorage.getItem('review_po_session');
+        if (session) {
+          const parsedSession = JSON.parse(session);
+          const stagedItemIds = new Set<string>();
+          parsedSession.forEach((group: any) => {
+            if (group.supplierName !== editModeSupplier) {
+              group.items.forEach((item: any) => stagedItemIds.add(item.id));
+            }
+          });
+          related = related.filter(req => !stagedItemIds.has(req.id));
+        }
+      } catch (e) {}
+
       setMockShortages(related);
 
       const unrelated = loadedRequests.filter(p => p.linkedPO !== selectedPoNumber);
@@ -361,39 +437,63 @@ export default function ProcurementPage() {
 
     if (poInput === STORE_ARTICLES || !poInput || poInput.trim() === '') {
       // CALL STORE SHORTAGES FUNCTION
-      fetchStoreArticleShortages().then(storeShortages => {
+      fetchStoreArticleShortages().then(async (storeShortages) => {
         let localRequests: any[] = [];
         try {
-          const stored = localStorage.getItem('procurement_requests');
-          if (stored) localRequests = JSON.parse(stored);
-        } catch (e) { }
+          const res = await fetch('/api/procurement-requests?status=PENDING');
+          if (res.ok) {
+            const result = await res.json();
+            if (result.success && result.data) {
+              localRequests = result.data;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch API procurement requests", e);
+        }
 
         const merged = [...storeShortages];
         localRequests.forEach(req => {
-          if (!merged.find(m => m.id === req.id || m.id === `PR-STORE-${req.itemId}`)) {
+          if (!merged.find(m => m.id === req.id)) {
             merged.push({
               id: req.id,
-              material: req.itemName + (req.itemCode ? ` (HSN: ${req.itemCode})` : ''),
-              category: 'General',
-              required: req.requiredQty,
-              available: req.availableQty,
-              shortage: req.shortageQty,
+              material: req.name + (req.sku ? ` (HSN: ${req.sku})` : ''),
+              category: req.category || 'General',
+              required: req.minRequired || 0,
+              available: req.currentStock || 0,
+              shortage: req.shortageQty || 0,
               unit: 'units',
               supplier: 'Store Restock',
-              cost: 0, // Will be updated when unit price is available
+              cost: 0,
               priority: 'High',
               status: req.status || 'Pending Procurement',
               linkedPO: null
             });
           }
         });
-        setMockShortages(merged);
+        
+        let finalMerged = merged;
+        // Filter out staged items unless we are in edit mode for them
+        try {
+          const session = localStorage.getItem('review_po_session');
+          if (session) {
+            const parsedSession = JSON.parse(session);
+            const stagedItemIds = new Set<string>();
+            parsedSession.forEach((group: any) => {
+              if (group.supplierName !== editModeSupplier) {
+                group.items.forEach((item: any) => stagedItemIds.add(item.id));
+              }
+            });
+            finalMerged = merged.filter(req => !stagedItemIds.has(req.id));
+          }
+        } catch (e) {}
+
+        setMockShortages(finalMerged);
       });
     } else {
       // CALL REGULAR PO FUNCTION
       fetchPOShortages(poInput);
     }
-  }, [poInput]);
+  }, [poInput, editModeSupplier]);
 
   const totalShortages = mockShortages.length;
   const criticalItems = mockShortages.filter(i => i.available === 0).length;
@@ -446,15 +546,17 @@ export default function ProcurementPage() {
     return Array.from(grouped.values());
   }, [mockShortages]);
 
-  const filteredShortages = deduplicatedShortages.filter(item => {
-    const matchesSearch = item.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
-    const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
+  const filteredShortages = React.useMemo(() => {
+    return deduplicatedShortages.filter(item => {
+      const matchesSearch = item.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+      const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
 
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [deduplicatedShortages, searchTerm, statusFilter, priorityFilter]);
 
   const displayRows = React.useMemo(() => {
     const rows: any[] = [];
@@ -502,9 +604,141 @@ export default function ProcurementPage() {
     }
   }, [supplierFilter, displayRows]);
 
+  // Real-Time Draft Sync to localStorage
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const selectedItems = displayRows.filter(item => {
+      const supplierName = selectedSuppliers[item.rowId] || (item.supplier !== 'Store Restock' && item.supplier !== 'Pending Assignment' ? item.supplier : null);
+      const qty = Number(orderQuantities[item.rowId]) || 0;
+      return supplierName && qty > 0;
+    });
+
+    const groupedBySupplier = new Map<string, any[]>();
+    selectedItems.forEach(item => {
+      const supplierName = selectedSuppliers[item.rowId] || item.supplier;
+      const qty = Number(orderQuantities[item.rowId]) || 0;
+      const unitPrice = item.cost ? (item.cost / (item.shortage || 1)) : 0;
+      const cost = unitPrice * qty;
+
+      if (!groupedBySupplier.has(supplierName)) {
+        groupedBySupplier.set(supplierName, []);
+      }
+      const supplierItems = groupedBySupplier.get(supplierName)!;
+      const existingItem = supplierItems.find(i => i.id === item.id);
+      if (existingItem) {
+        existingItem.orderQty += qty;
+        existingItem.orderCost += cost;
+      } else {
+        supplierItems.push({ ...item, orderQty: qty, orderCost: cost });
+      }
+    });
+
+    const newSerializedGroups = Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => ({
+      supplierName,
+      items
+    }));
+    
+    let existingSession: any[] = [];
+    try {
+      const session = localStorage.getItem('review_po_session');
+      if (session) existingSession = JSON.parse(session);
+    } catch (e) {}
+
+    // Only override suppliers that we are currently actively managing (in supplierFilter)
+    const suppliersBeingManaged = new Set(supplierFilter);
+    existingSession = existingSession.filter(g => !suppliersBeingManaged.has(g.supplierName));
+
+    newSerializedGroups.forEach(newGroup => {
+      existingSession.push(newGroup);
+    });
+
+    localStorage.setItem('review_po_session', JSON.stringify(existingSession));
+    window.dispatchEvent(new Event('storage')); // Notify other components/tabs
+  }, [displayRows, orderQuantities, selectedSuppliers, supplierFilter]);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
+      {viewPoDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-card w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-neutral-50/50 dark:bg-card/30">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Purchase Order Details</h3>
+                <p className="text-sm text-muted-foreground">{viewPoDetails.id} • {viewPoDetails.supplier}</p>
+              </div>
+              <button 
+                onClick={() => setViewPoDetails(null)}
+                className="text-neutral-400 hover:text-foreground transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Delivered On</p>
+                  <p className="text-sm font-semibold">{viewPoDetails.deliveredOn || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Items</p>
+                  <p className="text-sm font-semibold">{viewPoDetails.items}</p>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Amount</p>
+                  <p className="text-sm font-semibold text-indigo-600">₹{viewPoDetails.total?.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-sm font-semibold text-emerald-600">Completed</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-border bg-neutral-50/50 dark:bg-card/30 flex justify-end">
+              <button
+                onClick={() => setViewPoDetails(null)}
+                className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg shadow-sm hover:bg-muted transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <WorkflowIndicator currentStep="Procurement" />
+
+      {/* Edit Mode Banner */}
+      {editModeSupplier && (
+        <div className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800 rounded-lg p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-100 p-2 rounded-full dark:bg-indigo-900/40">
+              <Package className="w-5 h-5 text-indigo-700 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-indigo-900 dark:text-indigo-300">
+                Editing Purchase Order for {editModeSupplier}
+              </h3>
+              <p className="text-xs text-indigo-700/80 dark:text-indigo-400/80 mt-0.5">
+                Save or Update Allocation when done.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setEditModeSupplier(null);
+              setSupplierFilter([]);
+              window.history.replaceState({}, '', '/procurement');
+            }}
+            className="text-xs font-medium bg-white dark:bg-card px-3 py-1.5 rounded shadow-sm border border-indigo-100 dark:border-indigo-800 text-indigo-600 hover:bg-neutral-50 transition-colors"
+          >
+            Cancel Edit
+          </button>
+        </div>
+      )}
 
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -518,11 +752,18 @@ export default function ProcurementPage() {
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0 items-center">
 
           <button
-            onClick={() => router.push('/procurement/create')}
+            onClick={() => router.push('/procurement/create-po')}
             className="w-full sm:w-auto px-4 py-2 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" />
             {t('procurement.createRequest')}
+          </button>
+          <button
+            onClick={() => router.push('/procurement/review-po')}
+            className="w-full sm:w-auto px-4 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg shadow-sm hover:bg-purple-100 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+          >
+            <ListChecks className="h-4 w-4" />
+            View Purchase Orders
           </button>
           <button
             onClick={() => router.push('/procurement/suppliers')}
@@ -532,7 +773,7 @@ export default function ProcurementPage() {
             Supplier Info
           </button>
           <button
-            onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
+            onClick={() => advanceStage('/procurement/review-po', 'Material Allocation')}
             className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
           >
             <ListChecks className="h-4 w-4" />
@@ -632,9 +873,32 @@ export default function ProcurementPage() {
                   </div>
 
                   {isSupplierDropdownOpen && (
-                    <div className="absolute z-10 mt-1 right-0 w-full sm:w-56 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      <div className="p-2 space-y-1">
-                        {suppliersList.map((supplier) => (
+                    <div className="absolute z-10 mt-1 right-0 w-full sm:w-64 bg-card border border-border rounded-lg shadow-lg max-h-72 flex flex-col">
+                      <div className="p-2 border-b border-border sticky top-0 bg-card z-10">
+                        <div className="relative">
+                          <Search className="h-3.5 w-3.5 text-neutral-400 absolute left-2 top-2.5" />
+                          <input
+                            type="text"
+                            placeholder="Search suppliers..."
+                            className="w-full pl-7 pr-2 py-1.5 text-sm border border-border rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-background"
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const search = e.target.value.toLowerCase();
+                              // Filter is handled inline below
+                              e.target.setAttribute('data-search', search);
+                            }}
+                            id="supplier-search-input"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 space-y-1 overflow-y-auto">
+                        {suppliersList
+                          .filter(s => {
+                            const searchEl = document.getElementById('supplier-search-input') as HTMLInputElement;
+                            const search = (searchEl?.getAttribute('data-search') || '').toLowerCase();
+                            return s.name.toLowerCase().includes(search);
+                          })
+                          .map((supplier) => (
                           <label key={supplier.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md cursor-pointer transition-colors">
                             <input
                               type="checkbox"
@@ -671,12 +935,11 @@ export default function ProcurementPage() {
             <table className="w-full text-left border-collapse ">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-card border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                  <th className="px-4 py-3 text-left w-[26%]">{t('inventoryVal.materialsHeader') || 'ARTICLES INVENTORY'}</th>
-                  <th className="px-4 py-3 text-center w-[14%]">Required Qty</th>
-                  <th className="px-4 py-3 text-center w-[22%]">Supplier</th>
-                  <th className="px-4 py-3 text-center w-[14%]">Order Qty</th>
-                  <th className="px-4 py-3 text-center w-[14%]">Priority & Status</th>
-                  <th className="px-4 py-3 text-center w-[10%]">Actions</th>
+                  <th className="px-4 py-3 text-left w-[28%]">{t('inventoryVal.materialsHeader') || 'ARTICLES INVENTORY'}</th>
+                  <th className="px-4 py-3 text-center w-[16%]">Required Qty</th>
+                  <th className="px-4 py-3 text-center w-[28%]">Supplier</th>
+                  <th className="px-4 py-3 text-center w-[16%]">Order Qty</th>
+                  <th className="px-4 py-3 text-center w-[12%]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -685,12 +948,35 @@ export default function ProcurementPage() {
                     const splits = articleSplits.filter(s => s.parentId === item.id);
                     const totalRows = splits.length > 0 ? splits.length + 2 : 1; 
 
+                    const allRowIds = [item.id, ...splits.map(s => s.id)];
+                    
+                    const getAvailableSuppliers = (currentRowId: string) => {
+                      const selectedSupplierNames = allRowIds
+                        .filter(id => id !== currentRowId)
+                        .map(id => {
+                          const val = selectedSuppliers[id];
+                          if (val !== undefined) return val;
+                          if (id === item.id) return (item.supplier === 'Store Restock' || item.supplier === 'Pending Assignment') ? '' : item.supplier;
+                          return '';
+                        })
+                        .filter(Boolean);
+                        
+                      return suppliersList.filter(
+                        v => supplierFilter.includes(v.name) && !selectedSupplierNames.includes(v.name)
+                      );
+                    };
+
+                    const isMaxSplitsReached = supplierFilter.length > 0 && getAvailableSuppliers('new-split-check').length === 0;
+
+                    const totalAllocated = allRowIds.reduce((sum, id) => sum + (Number(orderQuantities[id]) || 0), 0);
+                    const dynamicShortage = Math.max(0, item.required - totalAllocated);
+
                     return (
                       <React.Fragment key={item.id}>
-                        <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ease-in-out">
+                        <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ease-in-out ${editModeSupplier && Object.values(selectedSuppliers).includes(editModeSupplier) ? 'bg-indigo-50/20 dark:bg-indigo-900/10' : ''}`}>
                           <td className="px-4 py-3 align-top border-r border-border/50" rowSpan={totalRows}>
                             <div className="flex flex-col">
-                              <span className={`text-sm font-medium ${item.shortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-foreground'}`}>{item.material}</span>
+                              <span className={`text-sm font-medium ${dynamicShortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-foreground'}`}>{item.material}</span>
                               <span className="text-xs text-muted-foreground mt-1">{item.category} • {item.id}</span>
                             </div>
                           </td>
@@ -707,9 +993,12 @@ export default function ProcurementPage() {
                               ) : (
                                 <>
                                   <option value="" disabled>Select Supplier</option>
-                                  {suppliersList.filter(v => supplierFilter.includes(v.name)).map((supplier) => (
+                                  {getAvailableSuppliers(item.id).map((supplier) => (
                                     <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
                                   ))}
+                                  {getAvailableSuppliers(item.id).length === 0 && !selectedSuppliers[item.id] && (
+                                    <option value="" disabled>All selected suppliers allocated</option>
+                                  )}
                                 </>
                               )}
                             </select>
@@ -717,44 +1006,37 @@ export default function ProcurementPage() {
 
                           <td className="px-4 py-3 text-center align-top">
                             <div className="flex flex-col items-center justify-center gap-1">
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
-                                value={orderQuantities[item.id] !== undefined ? orderQuantities[item.id] : ''}
-                                placeholder="0"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setOrderQuantities(prev => ({ ...prev, [item.id]: val === '' ? '' : parseFloat(val) }));
-                                }}
-                              />
-                              <span className="text-xs font-bold text-red-600">Shortage: {item.shortage}</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
+                                  value={orderQuantities[item.id] !== undefined ? orderQuantities[item.id] : ''}
+                                  placeholder="0"
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setOrderQuantities(prev => ({ ...prev, [item.id]: val === '' ? '' : parseFloat(val) }));
+                                  }}
+                                />
+                                <span className={`text-xs font-bold ${dynamicShortage > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                  {dynamicShortage > 0 ? `Shortage: ${dynamicShortage}` : 'Fulfilled'}
+                                </span>
                             </div>
                           </td>
                           
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getPriorityStyle(item.priority)}`}>
-                                {item.priority === 'Critical' && <ShieldAlert className="h-3 w-3 mr-1" />}
-                                {item.priority === 'Critical' ? (t('procurement.critical') || 'Critical') : item.priority === 'High' ? (t('procurement.high') || 'High') : item.priority === 'Medium' ? (t('procurement.medium') || 'Medium') : (t('procurement.low') || 'Low')}
-                              </span>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyle(item.status)}`}>
-                                {item.status === 'Pending Procurement' ? (t('procurement.pending') || 'Pending') : item.status === 'Supplier Assigned' ? (t('procurement.supplierAssigned') || 'Supplier Assigned') : (t('procurement.ordered') || 'Ordered')}
-                              </span>
-                            </div>
-                          </td>
                           <td className="px-4 py-3 text-center align-top">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => {
-                                  const newId = `${item.id}-split-${Date.now()}`;
-                                  setArticleSplits(prev => [...prev, { id: newId, parentId: item.id }]);
-                                  setOrderQuantities(prev => ({ ...prev, [newId]: 0 }));
-                                }}
-                                className="p-1.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                                title="Split Allocation"
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7l-4 4m4-4l4 4m0 6l4-4m-4 4l-4-4" /></svg>
+                                  onClick={() => {
+                                    if (isMaxSplitsReached) return;
+                                    const newId = `${item.id}-split-${Date.now()}`;
+                                    setArticleSplits(prev => [...prev, { id: newId, parentId: item.id }]);
+                                    setOrderQuantities(prev => ({ ...prev, [newId]: 0 }));
+                                  }}
+                                  disabled={isMaxSplitsReached}
+                                  className={`p-1.5 rounded-md transition-colors ${isMaxSplitsReached ? 'text-neutral-300 cursor-not-allowed' : 'text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                  title={isMaxSplitsReached ? "All selected suppliers allocated" : "Split Allocation"}
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7l-4 4m4-4l4 4m0 6l4-4m-4 4l-4-4" /></svg>
                               </button>
                             </div>
                           </td>
@@ -771,15 +1053,18 @@ export default function ProcurementPage() {
                                 onChange={(e) => setSelectedSuppliers(prev => ({ ...prev, [split.id]: e.target.value }))}
                               >
                                 {supplierFilter.length === 0 ? (
-                                  <option value="" disabled>Select Suppliers above first</option>
-                                ) : (
-                                  <>
-                                    <option value="" disabled>Select Supplier</option>
-                                    {suppliersList.filter(v => supplierFilter.includes(v.name)).map((supplier) => (
-                                      <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
-                                    ))}
-                                  </>
-                                )}
+                                    <option value="" disabled>Select Suppliers above first</option>
+                                  ) : (
+                                    <>
+                                      <option value="" disabled>Select Supplier</option>
+                                      {getAvailableSuppliers(split.id).map((supplier) => (
+                                        <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
+                                      ))}
+                                      {getAvailableSuppliers(split.id).length === 0 && !selectedSuppliers[split.id] && (
+                                        <option value="" disabled>All selected suppliers allocated</option>
+                                      )}
+                                    </>
+                                  )}
                               </select>
                             </td>
 
@@ -799,13 +1084,7 @@ export default function ProcurementPage() {
                               </div>
                             </td>
                             
-                            <td className="px-4 py-3 align-top">
-                              <div className="flex flex-col items-center justify-center gap-1">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getPriorityStyle(item.priority)}`}>
-                                  {item.priority === 'Critical' ? (t('procurement.critical') || 'Critical') : item.priority === 'High' ? (t('procurement.high') || 'High') : item.priority === 'Medium' ? (t('procurement.medium') || 'Medium') : (t('procurement.low') || 'Low')}
-                                </span>
-                              </div>
-                            </td>
+
                             <td className="px-4 py-3 text-center align-top">
                               <div className="flex items-center justify-center gap-2">
                                 <button
@@ -830,7 +1109,7 @@ export default function ProcurementPage() {
                               { (Number(orderQuantities[item.id]) || 0) + 
                                 splits.reduce((sum, s) => sum + (Number(orderQuantities[s.id]) || 0), 0) }
                             </td>
-                            <td colSpan={2} className="px-4 py-2 border-t border-border"></td>
+                            <td colSpan={1} className="px-4 py-2 border-t border-border"></td>
                           </tr>
                         )}
                       </React.Fragment>
@@ -885,8 +1164,6 @@ export default function ProcurementPage() {
                     }
 
                     const supplierItems = groupedBySupplier.get(supplierName)!;
-
-                    // Deduplication Logic (group by original item.id)
                     const existingItem = supplierItems.find(i => i.id === item.id);
                     if (existingItem) {
                       existingItem.orderQty += qty;
@@ -896,12 +1173,68 @@ export default function ProcurementPage() {
                     }
                   });
 
-                  const serializedGroups = Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => ({
-                    supplierName,
-                    items
-                  }));
-                  
-                  localStorage.setItem('review_po_session', JSON.stringify(serializedGroups));
+                  // Real-time sync of local storage to deduct quantity
+                  try {
+                    const autoGenStr = localStorage.getItem('autoGeneratedProcurementRequests');
+                    if (autoGenStr) {
+                      const autoGen = JSON.parse(autoGenStr);
+                      const updated = autoGen.map((req: any) => {
+                        const ordered = selectedItems.filter(i => {
+                           if (i.originalIds) {
+                              return i.originalIds.includes(req.id);
+                           }
+                           return i.id === req.id || i.id.startsWith(`${req.id}-split-`);
+                        });
+                        
+                        if (ordered.length > 0) {
+                          const totalOrderedQty = ordered.reduce((sum, item) => sum + (Number(orderQuantities[item.rowId]) || 0), 0);
+                          const newRequiredQty = Math.max(0, req.required - totalOrderedQty);
+                          return {
+                            ...req,
+                            required: newRequiredQty,
+                            shortage: Math.max(0, newRequiredQty - (req.available || 0)),
+                            status: newRequiredQty === 0 ? 'COMPLETED' : 'IN_PROCESS'
+                          };
+                        }
+                        return req;
+                      });
+                      localStorage.setItem('autoGeneratedProcurementRequests', JSON.stringify(updated));
+                    }
+                  } catch(e) {
+                    console.error("Failed to update autoGeneratedProcurementRequests", e);
+                  }
+
+                  try {
+                    const procReqStr = localStorage.getItem('procurement_requests');
+                    if (procReqStr) {
+                      const procReq = JSON.parse(procReqStr);
+                      const updated = procReq.map((req: any) => {
+                        const reqIdStr = `PR-STORE-${req.itemId}`;
+                        const ordered = selectedItems.filter(i => {
+                           if (i.originalIds) return i.originalIds.includes(req.id) || i.originalIds.includes(reqIdStr);
+                           return i.id === req.id || i.id === reqIdStr || i.id.startsWith(`${req.id}-split-`) || i.id.startsWith(`${reqIdStr}-split-`);
+                        });
+                        
+                        if (ordered.length > 0) {
+                          const totalOrderedQty = ordered.reduce((sum, item) => sum + (Number(orderQuantities[item.rowId]) || 0), 0);
+                          const newRequiredQty = Math.max(0, (req.requiredQty || req.required) - totalOrderedQty);
+                          return {
+                            ...req,
+                            requiredQty: newRequiredQty,
+                            shortageQty: Math.max(0, newRequiredQty - (req.availableQty || 0)),
+                            status: newRequiredQty === 0 ? 'COMPLETED' : 'IN_PROCESS'
+                          };
+                        }
+                        return req;
+                      });
+                      localStorage.setItem('procurement_requests', JSON.stringify(updated));
+                    }
+                  } catch(e) {
+                    console.error("Failed to update procurement_requests", e);
+                  }
+
+                  // The real-time sync useEffect handles pushing to localStorage already!
+                  // We just need to route the user.
                   router.push('/procurement/review-po');
                 }}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1046,6 +1379,13 @@ export default function ProcurementPage() {
                     <td className="px-6 py-4">{po.items}</td>
                     <td className="px-6 py-4">₹{po.total.toLocaleString()}</td>
                     <td className="px-6 py-4 flex items-center justify-center gap-2">
+                      <button 
+                        className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" 
+                        title="View Details"
+                        onClick={() => setViewPoDetails(po)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                       <button className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Export PDF">
                         <Download className="h-4 w-4" />
                       </button>
@@ -1177,14 +1517,14 @@ export default function ProcurementPage() {
             </div>
 
             <button
-              onClick={() => advanceStage('/material-allocation', 'Material Allocation')}
+              onClick={() => advanceStage('/procurement/review-po', 'Material Allocation')}
               className="mt-8 w-full px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors font-medium text-sm flex items-center justify-center gap-2 group"
             >
               {t('procurement.continueAllocation')}
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
-              onClick={() => router.push('/procurement/create')}
+              onClick={() => router.push('/procurement/create-po')}
               className="mt-3 w-full px-4 py-3 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4" />

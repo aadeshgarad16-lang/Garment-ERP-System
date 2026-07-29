@@ -294,7 +294,7 @@
     "high": "उच्च",
     "critical": "गंभीर",
     "pending": "लंबित",
-    "vendorAssigned": "विक्रेता नियत",
+    "supplierAssigned": "विक्रेता नियत",
     "ordered": "आदेशित",
     "awaitingDelivery": "वितरण की प्रतीक्षा",
     "reservationAllocation": "आरक्षण और आवंटन",

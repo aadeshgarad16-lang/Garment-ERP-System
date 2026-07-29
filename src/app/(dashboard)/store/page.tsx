@@ -29,9 +29,15 @@ import {
   FileText,
   FileSpreadsheet,
   XCircle,
+  Truck,
+  Building2,
+  ScanLine,
+  MoreVertical,
 } from "lucide-react";
 
 import { getAuthHeaders } from "@/lib/api";
+import { generateGRNPDF } from "@/utils/pdfGenerator";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
 
@@ -65,7 +71,6 @@ export function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-import { useSearchParams, useRouter } from "next/navigation";
 import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 
 // ==========================================
@@ -73,6 +78,7 @@ import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 // ==========================================
 export default function StorePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'raw';
 
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -82,19 +88,30 @@ export default function StorePage() {
   // Sync tab state if the URL parameter changes directly
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list' || tab === 'overview')) {
+    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list' || tab === 'overview' || tab === 'orders')) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
+  // Sync state back to URL
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Replace URL without full page reload
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    current.set('tab', tab);
+    const search = current.toString();
+    const query = search ? `?${search}` : '';
+    router.replace(`/store${query}`);
+  };
+
   return (
     <div className="max-w-full mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
-            {activeTab === 'raw' ? 'Article' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : activeTab === 'orders' ? 'Order Status' : 'Material List'}
+            {activeTab === 'raw' ? 'Article' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : activeTab === 'orders' ? 'Order Status' : 'Material Master'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {activeTab === 'orders' ? 'Track and verify store material deliveries' : 'Manage inventory and stock availability'}
@@ -102,10 +119,10 @@ export default function StorePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-row items-center gap-1.5 flex-nowrap">
           <button
-            onClick={() => setActiveTab("raw")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "raw"
+            onClick={() => handleTabChange("raw")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "raw"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -114,8 +131,8 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("pre")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "pre"
+            onClick={() => handleTabChange("pre")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "pre"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -124,18 +141,18 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("list")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "list"
+            onClick={() => handleTabChange("list")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "list"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
-            Material List
+            Material Master
           </button>
 
           <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "overview"
+            onClick={() => handleTabChange("overview")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "overview"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -144,8 +161,8 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("orders")}
-            className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border ${activeTab === "orders"
+            onClick={() => handleTabChange("orders")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "orders"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -155,9 +172,9 @@ export default function StorePage() {
 
           <button
             onClick={() => setIsArchiveModalOpen(true)}
-            className="px-6 py-2.5 rounded-lg font-medium text-sm transition-colors border border-amber-600/50 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-2"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-amber-600/50 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
           >
-            <Archive className="h-4 w-4" />
+            <Archive className="h-3.5 w-3.5" />
             Archive Box
           </button>
         </div>
@@ -182,17 +199,104 @@ export default function StorePage() {
 // STORE ORDERS MODULE
 // ==========================================
 function StoreOrdersModule() {
-  const [activeOrders, setActiveOrders] = useState([
-    { id: 'ORD-1001', items: 70, date: 'Thu, Jul 23, 2026', receivedDate: 'Awaiting Delivery', status: 'Pending' }
-  ]);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [issueOrders, setIssueOrders] = useState<any[]>([]);
   const [completedOrders, setCompletedOrders] = useState<any[]>([]);
 
+  // State for Orders Tab Navigation
+  const [activeOrderTab, setActiveOrderTab] = useState<'active' | 'issue' | 'completed'>('active');
+
+  // State for GRN Modal
+  const [showGrnModal, setShowGrnModal] = useState(false);
+  const [selectedGrnPo, setSelectedGrnPo] = useState<any>(null);
+  const [grnReceivedQty, setGrnReceivedQty] = useState<number>(0);
+
+  // Sync with localStorage
+  useEffect(() => {
+    const loadSharedOrders = () => {
+      const stored = localStorage.getItem('sharedPurchaseOrders');
+      let parsed = null;
+      try {
+        if (stored) parsed = JSON.parse(stored);
+      } catch (e) {}
+
+      // Force inject mock data if PO-1003 is missing (handles stale cache)
+      if (!parsed || !parsed.some((o: any) => o.id === 'PO-1003')) {
+        const defaultPOs = [
+          { id: 'PO-1001', supplier: 'Acme Corp', items: 3, total: 15000, date: '2023-10-15', status: 'In Process', expectedDelivery: '2023-11-01', receivedQty: 0, grnNumbers: [], receivingDates: [] },
+          { id: 'PO-1002', supplier: 'Global Textiles', items: 5, total: 45000, date: '2023-10-16', status: 'In Process', expectedDelivery: '2023-10-25', receivedQty: 0, grnNumbers: [], receivingDates: [] },
+          { id: 'PO-0998', supplier: 'Supreme Trims', items: 2, total: 5000, date: '2023-10-01', status: 'Completed / Received', deliveredOn: '2023-10-20', receivedQty: 2, grnNumbers: ["GRN-0998"], receivingDates: ["2023-10-20"] },
+          { id: 'PO-1003', supplier: 'Delta Logistics', items: 4, total: 20000, date: '2026-07-20', status: 'In Transit', expectedDelivery: '2026-07-28', receivedQty: 0, grnNumbers: [], receivingDates: [] },
+          { id: 'PO-1004', supplier: 'Fast Freight', items: 12, total: 60000, date: '2026-07-22', status: 'Awaiting Dispatch', expectedDelivery: '2026-07-29', receivedQty: 0, grnNumbers: [], receivingDates: [] },
+          { id: 'PO-1005', supplier: 'Alert Solutions', items: 6, total: 12000, date: '2026-07-15', status: 'Delayed', expectedDelivery: '2026-07-25', receivedQty: 0, grnNumbers: [], receivingDates: [] }
+        ];
+        parsed = defaultPOs;
+        localStorage.setItem('sharedPurchaseOrders', JSON.stringify(defaultPOs));
+      }
+
+      setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
+      setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
+      setIssueOrders(parsed.filter((o: any) => o.status.includes('Action Required') || o.status.includes('Delayed')));
+    };
+    loadSharedOrders();
+
+    const handleStorage = () => loadSharedOrders();
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('orders-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('orders-updated', handleStorage);
+    };
+  }, []);
+
+  const updateSharedOrders = (updatedOrders: any[]) => {
+    localStorage.setItem('sharedPurchaseOrders', JSON.stringify(updatedOrders));
+    window.dispatchEvent(new Event('orders-updated'));
+    setActiveOrders(updatedOrders.filter(o => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
+    setCompletedOrders(updatedOrders.filter(o => o.status === 'Completed / Received'));
+    setIssueOrders(updatedOrders.filter((o: any) => o.status.includes('Action Required') || o.status.includes('Delayed')));
+  };
+
   const handleConfirm = (orderId: string) => {
-    const order = activeOrders.find(o => o.id === orderId);
+    const order = activeOrders.find(o => o.id === orderId) || issueOrders.find(o => o.id === orderId);
     if (!order) return;
-    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
-    setCompletedOrders(prev => [...prev, { ...order, status: 'Delivered', receivedDate: new Date().toLocaleDateString() }]);
+    setSelectedGrnPo(order);
+    setGrnReceivedQty(order.items - (order.receivedQty || 0));
+    setShowGrnModal(true);
+  };
+
+  const submitGrn = () => {
+    if (!selectedGrnPo) return;
+    const stored = JSON.parse(localStorage.getItem('sharedPurchaseOrders') || '[]');
+    
+    const updated = stored.map((o: any) => {
+      if (o.id === selectedGrnPo.id) {
+        const newReceivedQty = (o.receivedQty || 0) + Number(grnReceivedQty);
+        const newGrnId = `GRN-${o.id}-${Date.now().toString().slice(-4)}`;
+        const today = new Date().toLocaleDateString();
+        
+        const grnNumbers = [...(o.grnNumbers || []), newGrnId];
+        const receivingDates = [...(o.receivingDates || []), today];
+        
+        const isFull = newReceivedQty >= o.items;
+        
+        return {
+          ...o,
+          receivedQty: newReceivedQty,
+          grnNumbers,
+          receivingDates,
+          deliveredOn: today,
+          status: isFull ? 'Completed / Received' : 'Partially Received'
+        };
+      }
+      return o;
+    });
+
+    updateSharedOrders(updated);
+    setShowGrnModal(false);
+    
+    // Show success alert
+    alert(`GRN GENERATED SUCCESSFULLY!\n\nDocument: GRN for ${selectedGrnPo.id}\nReceived Qty: ${grnReceivedQty}\nStatus: ${updated.find((o: any) => o.id === selectedGrnPo.id).status}`);
   };
 
   const handleFlagIssue = (orderId: string) => {
@@ -206,75 +310,94 @@ function StoreOrdersModule() {
     setIssueOrders(prev => [...prev, { ...order, status: `Action Required: ${note}`, receivedDate: 'Issue Flagged' }]);
   };
 
-  const renderTable = (title: string, icon: React.ReactNode, count: number, data: any[], tableType: 'active' | 'issue' | 'completed') => (
+  const renderTable = (data: any[], tableType: 'active' | 'issue' | 'completed') => (
     <div className="mb-8">
-      <div className="flex items-center gap-2 mb-3">
-        {icon}
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">{count}</span>
-      </div>
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+        <div className="w-full overflow-x-hidden">
+          <table className="w-full text-left border-collapse whitespace-nowrap table-fixed">
             <thead>
               <tr className="bg-muted/50 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                <th className="px-6 py-4">Order Number</th>
-                <th className="px-6 py-4">Total Items</th>
-                <th className="px-6 py-4">Date of Order</th>
-                <th className="px-6 py-4">Date of Receiving Order</th>
-                <th className="px-6 py-4">Status of Delivery</th>
-                <th className="px-6 py-4 text-center">Actions</th>
+                <th className="px-6 py-4 w-[15%] text-center">Order Number</th>
+                <th className="px-6 py-4 w-[10%] text-center">Total Items</th>
+                <th className="px-6 py-4 w-[15%] text-center">Date of Order</th>
+                <th className="px-6 py-4 w-[18%] text-center">Date of Receiving Order</th>
+                <th className="px-6 py-4 w-[17%] text-center">Status of Delivery</th>
+                <th className="px-6 py-4 w-[25%] text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {data.length > 0 ? data.map(order => (
                 <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-medium">{order.id}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{order.items}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{order.date}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{order.receivedDate}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                      order.status.includes('Pending') ? 'bg-amber-500/10 text-amber-500' :
-                      order.status.includes('Action Required') ? 'bg-red-500/10 text-red-500' :
-                      'bg-emerald-500/10 text-emerald-500'
-                    }`}>
-                      {order.status}
-                    </span>
+                  <td className="px-6 py-4 text-center text-indigo-600 dark:text-indigo-400 font-medium">{order.id}</td>
+                  <td className="px-6 py-4 text-center text-muted-foreground">{order.items}</td>
+                  <td className="px-6 py-4 text-center text-muted-foreground">{order.date}</td>
+                  <td className="px-6 py-4 text-center text-muted-foreground">{order.receivedDate}</td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex justify-center">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                        order.status.includes('Pending') || order.status.includes('Awaiting') ? 'bg-amber-500/10 text-amber-500' :
+                        order.status.includes('Action Required') || order.status.includes('Delayed') ? 'bg-red-500/10 text-red-500' :
+                        order.status.includes('In Transit') ? 'bg-blue-500/10 text-blue-500' :
+                        'bg-emerald-500/10 text-emerald-500'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 flex items-center justify-center gap-3">
-                    {tableType === 'active' ? (
-                      <>
-                        <button 
-                          onClick={() => handleConfirm(order.id)}
-                          className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors"
-                          title="Confirm Delivery"
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                      {tableType === 'active' ? (
+                        <>
+                          <button 
+                            onClick={() => handleConfirm(order.id)}
+                            className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                            title="Generate GRN"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Generate GRN
+                          </button>
+                          <button 
+                            onClick={() => handleFlagIssue(order.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Flag Issue"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </>
+                      ) : tableType === 'issue' ? (
+                        <>
+                          <button 
+                            onClick={() => handleConfirm(order.id)}
+                            className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                            title="Generate GRN"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Generate GRN
+                          </button>
+                          <button 
+                            className="px-2.5 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 rounded text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1"
+                            title="View Issues"
+                          >
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            View Issues
+                          </button>
+                        </>
+                      ) : tableType === 'completed' ? (
+                        <button
+                          onClick={() => {
+                            generateGRNPDF(order);
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:emerald-400 border border-emerald-200 dark:border-emerald-800 rounded text-xs font-semibold hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                          title="Download GRN PDF"
                         >
-                          <CheckCircle2 className="h-4 w-4" />
+                          <Download className="h-3.5 w-3.5" />
+                          Download PDF
                         </button>
-                        <button 
-                          onClick={() => handleFlagIssue(order.id)}
-                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                          title="Flag Issue"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </>
-                    ) : tableType === 'completed' ? (
-                      <button
-                        onClick={() => {
-                          alert(`GENERATING GRN PDF...\n\n--- GOODS RECEIVED NOTE ---\nDocument: GRN-${order.id}\nOrder Reference: ${order.id}\nDate of Order: ${order.date}\nDate Received: ${order.receivedDate}\n\nItems Received: ${order.items} Articles\n\n[ Authorized Store Stamp / Signature ]`);
-                        }}
-                        className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-1"
-                        title="Generate GRN PDF"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        Generate GRN
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
-                  </td>
+                      ) : (
+                        <span className="text-muted-foreground text-sm flex justify-center">-</span>
+                      )}
+                      </div>
+                    </td>
                 </tr>
               )) : (
                 <tr>
@@ -292,28 +415,257 @@ function StoreOrdersModule() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-      {renderTable(
-        "Table 1: Active / Delivered Orders", 
-        <List className="h-5 w-5 text-indigo-500" />, 
-        activeOrders.length, 
-        activeOrders, 
-        'active'
-      )}
-      
-      {renderTable(
-        "Table 2: Issue / Action Required Box", 
-        <AlertCircle className="h-5 w-5 text-red-500" />, 
-        issueOrders.length, 
-        issueOrders, 
-        'issue'
-      )}
-      
-      {renderTable(
-        "Completed Orders", 
-        <CheckCircle2 className="h-5 w-5 text-emerald-500" />, 
-        completedOrders.length, 
-        completedOrders, 
-        'completed'
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+        <div 
+          onClick={() => setActiveOrderTab('active')}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
+            activeOrderTab === 'active' 
+              ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] bg-blue-500/10' 
+              : 'border-blue-500/30 hover:bg-blue-500/5'
+          }`}
+        >
+          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-500/10 mr-4 flex-shrink-0">
+            <List className="h-6 w-6 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-blue-500 mb-1">Active / In Process</p>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-2xl font-bold text-foreground">{activeOrders.length}</h2>
+              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Orders</span>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setActiveOrderTab('issue')}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
+            activeOrderTab === 'issue' 
+              ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)] bg-orange-500/10' 
+              : 'border-orange-500/30 hover:bg-orange-500/5'
+          }`}
+        >
+          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-orange-500/10 mr-4 flex-shrink-0">
+            <AlertCircle className="h-6 w-6 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-orange-500 mb-1">Issue / Action Required</p>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-2xl font-bold text-foreground">{issueOrders.length}</h2>
+              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Orders</span>
+            </div>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setActiveOrderTab('completed')}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
+            activeOrderTab === 'completed' 
+              ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] bg-emerald-500/10' 
+              : 'border-emerald-500/30 hover:bg-emerald-500/5'
+          }`}
+        >
+          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-emerald-500/10 mr-4 flex-shrink-0">
+            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-emerald-500 mb-1">Completed Orders</p>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-2xl font-bold text-foreground">{completedOrders.length}</h2>
+              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Orders</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {activeOrderTab === 'active' && renderTable(activeOrders, 'active')}
+      {activeOrderTab === 'issue' && renderTable(issueOrders, 'issue')}
+      {activeOrderTab === 'completed' && renderTable(completedOrders, 'completed')}
+
+      {/* GRN Generation Modal */}
+      {showGrnModal && selectedGrnPo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-background rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden border border-border">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border bg-card flex justify-between items-center sticky top-0 z-10">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-indigo-600" />
+                Generate Goods Receipt Note
+              </h3>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowGrnModal(false)}
+                  className="px-4 py-2 bg-transparent text-foreground border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitGrn}
+                  disabled={grnReceivedQty <= 0}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirm & Generate GRN
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* TOP LAYOUT */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: Basic Information */}
+                <div className="lg:col-span-2 border border-border rounded-xl p-5 bg-card">
+                  <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-foreground border-b border-border pb-3">
+                    <FileText className="h-4 w-4 text-indigo-500" /> Basic Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-muted-foreground">GRN Number <span className="text-red-500">*</span></label>
+                      <div className="flex bg-muted/30 rounded-lg overflow-hidden border border-border">
+                        <input type="text" readOnly value={`GRN-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`} className="w-full px-3 py-2 bg-transparent outline-none text-sm font-medium text-foreground" />
+                        <span className="px-2 py-1.5 bg-indigo-500/10 text-indigo-500 text-[10px] font-bold self-center mr-2 rounded">AUTO-GEN</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-muted-foreground">GRN Date <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <input type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg outline-none text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-muted-foreground">Purchase Order No <span className="text-red-500">*</span></label>
+                      <select className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg outline-none text-sm">
+                        <option>{selectedGrnPo.id} - {selectedGrnPo.supplier}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-muted-foreground">Vendor Delivery Note <span className="text-red-500">*</span></label>
+                      <input type="text" placeholder="Enter Delivery Note Number" className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg outline-none text-sm placeholder:text-muted-foreground" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold mb-1 text-muted-foreground">Remarks</label>
+                      <textarea placeholder="Optional comments regarding the shipment..." rows={2} className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg outline-none text-sm placeholder:text-muted-foreground resize-none"></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Vendor Details */}
+                <div className="border border-border rounded-xl p-5 bg-card">
+                  <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-foreground border-b border-border pb-3">
+                    <Truck className="h-4 w-4 text-neutral-500" /> Vendor Details
+                  </h4>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 bg-indigo-600 rounded flex items-center justify-center text-white shrink-0">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground line-clamp-1">{selectedGrnPo.supplier}</p>
+                      <p className="text-xs text-muted-foreground">ID: VEN-{Math.floor(Math.random() * 90000) + 10000}</p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm mb-4 border border-border">
+                    <div className="flex justify-between"><span className="text-muted-foreground text-xs">Warehouse Location</span><span className="font-semibold text-xs text-foreground">Zone B, Bin 04</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground text-xs">Expected Arrival</span><span className="font-semibold text-xs text-foreground">{selectedGrnPo.expectedDelivery || "Nov 24, 2023"}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground text-xs">Payment Terms</span><span className="font-semibold text-xs text-foreground">Net 30</span></div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Internal Status</p>
+                    <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs font-medium rounded-full flex items-center w-max gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Verified Supplier
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM SECTION */}
+              <div className="border border-border rounded-xl bg-card overflow-hidden">
+                <div className="p-4 border-b border-border flex justify-between items-center bg-muted/10">
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                    <List className="h-4 w-4 text-indigo-500" /> Receive Goods Validation
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-muted/50 rounded-lg p-1 border border-border">
+                      <button className="px-3 py-1 bg-background shadow-sm rounded text-xs font-medium text-foreground">All Items ({selectedGrnPo.items})</button>
+                      <button className="px-3 py-1 text-muted-foreground rounded text-xs font-medium">Partial Recv.</button>
+                    </div>
+                    <button className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-500/30 text-indigo-500 rounded-lg text-xs font-medium hover:bg-indigo-500/10 transition-colors">
+                      <ScanLine className="h-3.5 w-3.5" /> Scan Item
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                      <tr>
+                        <th className="px-4 py-3">SKU / Item Name</th>
+                        <th className="px-4 py-3">PO Qty</th>
+                        <th className="px-4 py-3">Delivered Qty</th>
+                        <th className="px-4 py-3">Rejected Qty</th>
+                        <th className="px-4 py-3">UOM</th>
+                        <th className="px-4 py-3">Condition</th>
+                        <th className="px-4 py-3">Storage Bin</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      <tr className="hover:bg-muted/10 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-foreground">ST-0012</p>
+                          <p className="text-xs text-muted-foreground">Industrial Steel Girders</p>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-foreground">{(selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)).toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max={selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)}
+                            value={grnReceivedQty}
+                            onChange={(e) => setGrnReceivedQty(Number(e.target.value))}
+                            className="w-24 px-2 py-1.5 border border-border rounded bg-background text-sm text-foreground outline-none focus:border-indigo-500" 
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input type="number" defaultValue="0.00" className="w-24 px-2 py-1.5 border border-red-500/50 rounded bg-red-500/5 text-red-500 font-medium text-sm outline-none focus:border-red-500" />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs font-medium">Units</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-500 text-[10px] font-bold rounded">GOOD</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <select className="bg-transparent text-xs font-medium text-foreground outline-none border border-border rounded py-1 px-2">
+                            <option>BIN-A1-01</option>
+                            <option>BIN-B2-04</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button className="text-muted-foreground hover:text-foreground p-1">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="bg-muted/10 border-t border-border p-4 flex flex-wrap justify-end gap-8">
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Expected Total Qty</p>
+                    <p className="font-bold text-foreground text-lg">{(selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)).toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Received Total Qty</p>
+                    <p className="font-bold text-indigo-500 text-lg">{grnReceivedQty.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-0.5">Total Rejections</p>
+                    <p className="font-bold text-red-500 text-lg">0.00</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -322,6 +674,62 @@ function StoreOrdersModule() {
 // ==========================================
 // STOCK OVERVIEW MODULE
 // ==========================================
+
+const USE_MOCK_DATA = false;
+const MOCK_STOCK_DATA = [
+  {
+    id: "RM-001",
+    description: "Cotton Fabric",
+    code: "RM-001",
+    category: "Fabric",
+    unit: "meters",
+    openingStock: 500,
+    purchase: 1000,
+    total: 1500,
+    issue: 200,
+    closing: 1300,
+    wip: 0,
+    netTotal: 1300,
+    rate: 150,
+    totalAmount: 195000,
+    is_archived: false,
+    type: "article"
+  },
+  {
+    id: "RM-002",
+    description: "Thread",
+    code: "RM-002",
+    category: "Accessories",
+    unit: "spools",
+    openingStock: 200,
+    purchase: 500,
+    total: 700,
+    issue: 50,
+    closing: 650,
+    wip: 0,
+    netTotal: 650,
+    rate: 20,
+    totalAmount: 13000,
+    is_archived: false,
+    type: "article"
+  },
+  {
+    id: "FG-001",
+    srNo: "1",
+    type: "T-Shirt",
+    code: "FG-001",
+    openingStock: 100,
+    production: 500,
+    sale: 200,
+    closingStock: 400,
+    cost: 500,
+    totalAmount: 200000,
+    unit: "pieces",
+    is_archived: false,
+    description: "Cotton T-Shirt"
+  }
+];
+
 function StockOverviewModule() {
   const [selectedYear, setSelectedYear] = useState(() => {
     const date = new Date();
@@ -372,12 +780,43 @@ function StockOverviewModule() {
 
       const endpoint = `/api/stock-overview`;
 
+      if (USE_MOCK_DATA) {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        let activeData = MOCK_STOCK_DATA.filter((item: any) => item.is_archived !== true);
+        if (materialType === "raw") {
+          activeData = activeData.filter((item: any) => item.type === "article");
+        } else {
+          activeData = activeData.filter((item: any) => item.code?.startsWith("FG"));
+        }
+        setStockData(activeData);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(`${endpoint}?${params.toString()}`);
       if (!res.ok) {
         throw new Error(`Failed to fetch stock data: ${res.statusText}`);
       }
 
       const resData = await res.json();
+
+      if (resData.success === false) {
+        console.warn("Backend API returned an error:", resData.message);
+        if (USE_MOCK_DATA) {
+          console.log("Falling back to MOCK_STOCK_DATA seamlessly.");
+          let activeData = MOCK_STOCK_DATA.filter((item: any) => item.is_archived !== true);
+          if (materialType === "raw") {
+            activeData = activeData.filter((item: any) => item.type === "article");
+          } else {
+            activeData = activeData.filter((item: any) => item.code?.startsWith("FG"));
+          }
+          setStockData(activeData);
+          setLoading(false);
+          return;
+        }
+      }
 
       // Handle both data structures (if wrapped in success/data or just an array)
       const data = resData.data ? resData.data : resData;
@@ -586,24 +1025,35 @@ function StockOverviewModule() {
               </div>
 
               {isDatePickerOpen && (
-                <div className="absolute top-full left-0 mt-2 p-3 bg-[#1A1F2C] border border-neutral-700/50 rounded-xl shadow-2xl z-50 flex gap-4 min-w-[240px]">
-                  <div className="flex-1 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                    <div className="text-xs text-neutral-500 font-semibold mb-2 px-2">Year</div>
-                    {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
-                      <div
-                        key={y}
-                        onClick={() => { setSelectedYear(y.toString()); if (selectedMonth) setIsDatePickerOpen(false); }}
-                        className={`px-2 py-1.5 text-sm rounded cursor-pointer transition-colors ${selectedYear === y.toString() ? 'bg-indigo-600 text-white font-medium shadow-sm' : 'text-neutral-300 hover:bg-white/10'}`}
-                      >
-                        {y}
-                      </div>
-                    ))}
+                <div className="absolute top-full left-0 mt-2 p-4 bg-[#1A1F2C] border border-neutral-700/50 rounded-xl shadow-2xl z-50 w-[280px]">
+                  <div className="flex items-center justify-between mb-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) - 10).toString()); }}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    >
+                      «
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) - 1).toString()); }}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-white font-semibold">{selectedYear}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) + 1).toString()); }}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    >
+                      ›
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) + 10).toString()); }}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    >
+                      »
+                    </button>
                   </div>
-
-                  <div className="w-px bg-neutral-700/50 my-1"></div>
-
-                  <div className="flex-1 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                    <div className="text-xs text-neutral-500 font-semibold mb-2 px-2">Month</div>
+                  <div className="grid grid-cols-3 gap-2">
                     {[
                       { v: "01", l: "Jan" }, { v: "02", l: "Feb" }, { v: "03", l: "Mar" },
                       { v: "04", l: "Apr" }, { v: "05", l: "May" }, { v: "06", l: "Jun" },
@@ -612,8 +1062,8 @@ function StockOverviewModule() {
                     ].map(m => (
                       <div
                         key={m.v}
-                        onClick={() => { setSelectedMonth(m.v); if (selectedYear) setIsDatePickerOpen(false); }}
-                        className={`px-2 py-1.5 text-sm rounded cursor-pointer transition-colors ${selectedMonth === m.v ? 'bg-indigo-600 text-white font-medium shadow-sm' : 'text-neutral-300 hover:bg-white/10'}`}
+                        onClick={() => { setSelectedMonth(m.v); setIsDatePickerOpen(false); }}
+                        className={`py-2 px-1 text-center text-xs rounded-lg cursor-pointer transition-colors ${selectedMonth === m.v ? 'bg-indigo-600 text-white font-medium shadow-md' : 'text-neutral-300 hover:bg-white/10'}`}
                       >
                         {m.l}
                       </div>
@@ -1526,7 +1976,7 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
                   className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
                   <option value="Fabric">Fabric</option>
-                  <option value="Solid">Alid</option>
+                  <option value="Solid">Solid</option>
                 </select>
               </div>
 
@@ -1756,9 +2206,6 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
   useEffect(() => {
     fetchGarments();
   }, [fetchGarments]);
-
-  // Recalculate metrics based on actual array volume
-
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -2651,34 +3098,51 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
   const [searchTerm, setSearchTerm] = useState("");
   const [requestedItems, setRequestedItems] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch('/api/procurement-requests?status=PENDING');
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success) {
+            const reqMap: Record<string, boolean> = {};
+            result.data.forEach((r: any) => {
+              if (r.sku) reqMap[r.sku] = true;
+            });
+            setRequestedItems(reqMap);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch existing requests", err);
+      }
+    };
+    fetchRequests();
+  }, []);
+
   const handleRaiseRequest = async (item: any) => {
     try {
       const available = Number(item.available_qty ?? item.available ?? 0);
       const required = Number(item.min_required ?? item.min_required_qty ?? item.minimumRequired ?? 0);
       const shortageQty = Math.max(0, required - available);
+      const sku = item.hsn_code || item.code || item.sku || `SKU-${item.id || item.material_id}`;
 
-      const newProcurementRequest = {
-        id: `PR-${Date.now()}-${item.id || item.material_id}`,
-        itemId: item.id || item.material_id,
-        itemCode: item.hsn_code || item.code,
-        itemName: item.name || item.material_name,
-        requiredQty: required,
-        availableQty: available,
-        shortageQty: shortageQty,
-        source: "Store's Article",
-        status: "Pending",
-        vendorId: null,
-        created_at: new Date().toISOString()
-      };
+      const res = await fetch('/api/procurement-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sku,
+          name: item.name || item.material_name,
+          category: item.type || 'Article',
+          currentStock: available,
+          minRequired: required,
+          shortageQty: shortageQty,
+          status: 'PENDING'
+        })
+      });
 
-      const existingReqsStr = localStorage.getItem('procurement_requests') || '[]';
-      const existingReqs = JSON.parse(existingReqsStr);
-      localStorage.setItem('procurement_requests', JSON.stringify([...existingReqs, newProcurementRequest]));
-
-      setRequestedItems(prev => ({
-        ...prev,
-        [item.id || item.material_id]: true
-      }));
+      if (res.ok) {
+        setRequestedItems(prev => ({ ...prev, [sku]: true }));
+      }
     } catch (error) {
       console.error("Failed to raise request:", error);
     }
@@ -2766,6 +3230,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
               items.map((item, index) => {
                 const displayType = item.type === 'Material' ? 'Article' : item.type === 'Garment' ? 'Finished Goods' : item.type;
                 const isShortage = (Number(item.available_qty) < Number(item.min_required)) || Number(item.available_qty) === 0;
+                const sku = item.hsn_code || item.code || item.sku || `SKU-${item.id || item.material_id}`;
                 
                 return (
                 <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-muted/50 transition-colors">
@@ -2782,7 +3247,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
                   <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
                   <td className="px-4 py-3 text-center">
                     {isShortage ? (
-                      requestedItems[item.id || item.material_id] ? (
+                      requestedItems[sku] ? (
                         <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-md text-xs font-semibold whitespace-nowrap">
                           Requested
                         </span>

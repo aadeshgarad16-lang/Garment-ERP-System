@@ -5,14 +5,19 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Mail, Phone, MapPin, Receipt, Search, FileDown, TrendingUp, AlertTriangle, Plus, X, CheckCircle2 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 
-// Initial list of suppliers for the sidebar
-const INITIAL_SUPPLIERS = [
-  { id: "v1", name: "Apex Textiles Ltd" },
-  { id: "v2", name: "Global Threads & Yarns" },
-  { id: "v3", name: "Supreme Trims Co." },
-  { id: "v4", name: "Vardhman Yarns" },
-  { id: "v5", name: "Reliable Buttons & Zippers" }
-];
+// Real suppliers will be fetched on mount
+
+interface SupplierAddress {
+  id: string;
+  name: string;
+  line1: string;
+  line2: string;
+  city: string;
+  country: string;
+  contact: string;
+  isDefault: boolean;
+  type: string;
+}
 
 interface SupplierHistoryData {
   generalInfo: {
@@ -36,6 +41,7 @@ interface SupplierHistoryData {
     netQty: number;
     netSpend: number;
   }[];
+  addresses?: SupplierAddress[];
 }
 
 interface CreatableMultiSelectProps {
@@ -92,8 +98,8 @@ const CreatableMultiSelect: React.FC<CreatableMultiSelectProps> = ({ label, plac
 export default function SupplierHistoryPage() {
   const router = useRouter();
   
-  const [suppliersList, setSuppliersList] = useState(INITIAL_SUPPLIERS);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string>(INITIAL_SUPPLIERS[0].id);
+  const [suppliersList, setSuppliersList] = useState<{id: string, name: string}[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
   const [supplierData, setSupplierData] = useState<SupplierHistoryData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,6 +120,26 @@ export default function SupplierHistoryPage() {
 
   const [rawMaterials, setRawMaterials] = useState<string[]>([]);
   const [finishedGoods, setFinishedGoods] = useState<string[]>([]);
+
+  // Address Modal State (for specific supplier)
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [addressFormData, setAddressFormData] = useState({
+    name: "", line1: "", line2: "", city: "", country: "India", contact: "", type: "consignee", isDefault: false
+  });
+
+  // Company Address Modal State (for our own company addresses)
+  const [isCompanyAddressModalOpen, setIsCompanyAddressModalOpen] = useState(false);
+  const [companyAddressFormData, setCompanyAddressFormData] = useState({
+    type: "Invoice To / Billing",
+    entityName: "",
+    fullAddress: "",
+    email: "",
+    gstin: "",
+    panUn: "",
+    phone: "",
+    isDefaultInvoice: false,
+    isDefaultConsignee: false
+  });
 
   const filteredSuppliers = suppliersList.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -137,8 +163,8 @@ export default function SupplierHistoryPage() {
       const result = await res.json();
       
       if (result.success) {
-        const newSupplier = { id: result.data.id, name: result.data.name };
-        setSuppliersList(prev => [...prev, newSupplier]);
+        const newSupplier = { id: result.data.id, name: result.data.companyName };
+        setSuppliersList(prev => [newSupplier, ...prev]);
         setSelectedSupplierId(newSupplier.id);
         setIsAddModalOpen(false);
         // Reset form
@@ -156,14 +182,119 @@ export default function SupplierHistoryPage() {
     }
   };
 
+  const handleAddAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSupplierId) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/suppliers/${selectedSupplierId}/addresses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addressFormData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        setIsAddressModalOpen(false);
+        setAddressFormData({ name: "", line1: "", line2: "", city: "", country: "India", contact: "", type: "consignee", isDefault: false });
+        // Refresh supplier data
+        setSupplierData(prev => prev ? {
+          ...prev, 
+          addresses: [...(prev.addresses || []), result.data] 
+        } : prev);
+      }
+    } catch (error) {
+      console.error("Failed to add address", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId: string, type: string) => {
+    if (!selectedSupplierId) return;
+    try {
+      await fetch(`/api/suppliers/${selectedSupplierId}/addresses`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addressId, type })
+      });
+      // Refresh local state to mark others as not default and this one as default
+      setSupplierData(prev => {
+        if (!prev || !prev.addresses) return prev;
+        return {
+          ...prev,
+          addresses: prev.addresses.map(a => 
+            a.type === type ? { ...a, isDefault: a.id === addressId } : a
+          )
+        };
+      });
+    } catch (error) {
+      console.error("Failed to set default address", error);
+    }
+  };
+
+  const handleAddCompanyAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/company-addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(companyAddressFormData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        setIsCompanyAddressModalOpen(false);
+        setCompanyAddressFormData({
+          type: "Invoice To / Billing",
+          entityName: "",
+          fullAddress: "",
+          email: "",
+          gstin: "",
+          panUn: "",
+          phone: "",
+          isDefaultInvoice: false,
+          isDefaultConsignee: false
+        });
+      }
+    } catch (error) {
+      console.error("Failed to add company address", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    async function loadSuppliers() {
+      try {
+        const res = await fetch('/api/suppliers');
+        const data = await res.json();
+        const mapped = data.map((s: any) => ({ id: s.id, name: s.companyName }));
+        setSuppliersList(mapped);
+        if (mapped.length > 0) {
+          setSelectedSupplierId(mapped[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to load suppliers", error);
+      }
+    }
+    loadSuppliers();
+  }, []);
+
   useEffect(() => {
     const fetchSupplierData = async () => {
+      if (!selectedSupplierId) return;
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/suppliers/${selectedSupplierId}/history`);
-        const result = await res.json();
-        if (result.success) {
-          setSupplierData(result.data);
+        const [resHist, resAddr] = await Promise.all([
+          fetch(`/api/suppliers/${selectedSupplierId}/history`),
+          fetch(`/api/suppliers/${selectedSupplierId}/addresses`)
+        ]);
+        const resultHist = await resHist.json();
+        const resultAddr = await resAddr.json();
+        if (resultHist.success) {
+          const data = resultHist.data;
+          data.addresses = Array.isArray(resultAddr) ? resultAddr : [];
+          setSupplierData(data);
         } else {
           setSupplierData(null);
         }
@@ -200,13 +331,22 @@ export default function SupplierHistoryPage() {
             Manage your suppliers, view their general information, and track complete purchase and return histories.
           </p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Supplier
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setIsCompanyAddressModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-border text-foreground font-medium rounded-lg shadow-sm hover:bg-muted transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Address
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Supplier
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -316,6 +456,65 @@ export default function SupplierHistoryPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Saved Addresses Section */}
+              <div className="bg-card border border-border rounded-xl shadow-sm p-6 mt-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-indigo-500" />
+                    Saved Addresses
+                  </h3>
+                  <button 
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Address
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(supplierData.addresses || []).map(addr => (
+                    <div key={addr.id} className="border border-border rounded-xl p-4 flex flex-col relative group">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-foreground">{addr.name}</h4>
+                        <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          {addr.type.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-0.5 flex-1">
+                        <p>{addr.line1}</p>
+                        {addr.line2 && <p>{addr.line2}</p>}
+                        <p>{addr.city}</p>
+                        <p>{addr.country}</p>
+                        {addr.contact && <p className="mt-2 font-medium text-foreground">{addr.contact}</p>}
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs font-medium">
+                        {addr.isDefault ? (
+                          <span className="text-emerald-600 dark:text-emerald-500 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Primary {addr.type === 'invoice_to' ? 'Invoice' : 'Ship'} Address
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => handleSetDefaultAddress(addr.id, addr.type)}
+                            className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                          >
+                            Set as Default
+                          </button>
+                        )}
+                        <button className="text-red-500 hover:underline">Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                  {(!supplierData.addresses || supplierData.addresses.length === 0) && (
+                    <div className="md:col-span-2 p-8 border-2 border-dashed border-border rounded-xl text-center text-muted-foreground flex flex-col items-center">
+                      <MapPin className="w-8 h-8 mb-2 opacity-50" />
+                      <p className="font-medium">No saved addresses found</p>
+                      <p className="text-sm mt-1">Add locations like Invoice To, Factory Ship To, or Billing.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -537,6 +736,135 @@ export default function SupplierHistoryPage() {
               >
                 {isSubmitting ? 'Saving...' : 'Save Supplier'}
                 {!isSubmitting && <CheckCircle2 className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Address Modal */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-card w-full max-w-lg rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/10">
+              <h2 className="text-lg font-bold text-foreground">Add New Address</h2>
+              <button onClick={() => setIsAddressModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <form id="add-addr-form" onSubmit={handleAddAddress} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Company / Location Name *</label>
+                  <input required type="text" value={addressFormData.name} onChange={e => setAddressFormData({...addressFormData, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Acme Factory 1" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Line 1 *</label>
+                    <input required type="text" value={addressFormData.line1} onChange={e => setAddressFormData({...addressFormData, line1: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Street address..." />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Line 2</label>
+                    <input type="text" value={addressFormData.line2} onChange={e => setAddressFormData({...addressFormData, line2: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Suite, floor, etc." />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">City, State, Zip *</label>
+                    <input required type="text" value={addressFormData.city} onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Pune, MH 411001" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Contact Details</label>
+                    <input type="text" value={addressFormData.contact} onChange={e => setAddressFormData({...addressFormData, contact: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Phone: +91... | GSTIN: ..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Address Type</label>
+                    <select value={addressFormData.type} onChange={e => setAddressFormData({...addressFormData, type: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background">
+                      <option value="consignee">Consignee (Ship To)</option>
+                      <option value="invoice_to">Invoice To</option>
+                      <option value="billing">Billing / Supplier Base</option>
+                      <option value="warehouse">Warehouse</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={addressFormData.isDefault} onChange={e => setAddressFormData({...addressFormData, isDefault: e.target.checked})} className="rounded" />
+                      <span className="text-sm font-medium">Set as Default</span>
+                    </label>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsAddressModalOpen(false)} className="px-4 py-2 bg-background border rounded-lg text-sm font-medium">Cancel</button>
+              <button type="submit" form="add-addr-form" disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {isSubmitting ? 'Saving...' : 'Save Address'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Company Address Modal */}
+      {isCompanyAddressModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-card w-full max-w-xl rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/10">
+              <h2 className="text-lg font-bold text-foreground">Add Company Address</h2>
+              <button onClick={() => setIsCompanyAddressModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <form id="add-company-addr-form" onSubmit={handleAddCompanyAddress} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Address Type</label>
+                  <select required value={companyAddressFormData.type} onChange={e => setCompanyAddressFormData({...companyAddressFormData, type: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background">
+                    <option value="Invoice To / Billing">Invoice To / Billing</option>
+                    <option value="Consignee / Ship To">Consignee / Ship To</option>
+                    <option value="Branch / Warehouse">Branch / Warehouse</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Company / Entity Name *</label>
+                  <input required type="text" value={companyAddressFormData.entityName} onChange={e => setCompanyAddressFormData({...companyAddressFormData, entityName: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Sasons Works Wear Pvt Ltd" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Full Street Address *</label>
+                  <textarea required value={companyAddressFormData.fullAddress} onChange={e => setCompanyAddressFormData({...companyAddressFormData, fullAddress: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px]" placeholder="123 Industrial Area..." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email ID</label>
+                    <input type="email" value={companyAddressFormData.email} onChange={e => setCompanyAddressFormData({...companyAddressFormData, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="contact@domain.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone Number</label>
+                    <input type="text" value={companyAddressFormData.phone} onChange={e => setCompanyAddressFormData({...companyAddressFormData, phone: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="+91..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">GSTIN</label>
+                    <input type="text" value={companyAddressFormData.gstin} onChange={e => setCompanyAddressFormData({...companyAddressFormData, gstin: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="27XXXX..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">PAN / UN</label>
+                    <input type="text" value={companyAddressFormData.panUn} onChange={e => setCompanyAddressFormData({...companyAddressFormData, panUn: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="ABCDE1234F" />
+                  </div>
+                </div>
+                <div className="pt-2 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={companyAddressFormData.isDefaultInvoice} onChange={e => setCompanyAddressFormData({...companyAddressFormData, isDefaultInvoice: e.target.checked})} className="rounded" />
+                    <span className="text-sm font-medium">Set as Default for Invoice To</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={companyAddressFormData.isDefaultConsignee} onChange={e => setCompanyAddressFormData({...companyAddressFormData, isDefaultConsignee: e.target.checked})} className="rounded" />
+                    <span className="text-sm font-medium">Set as Default for Consignee (Ship To)</span>
+                  </label>
+                </div>
+              </form>
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsCompanyAddressModalOpen(false)} className="px-4 py-2 bg-background border rounded-lg text-sm font-medium">Cancel</button>
+              <button type="submit" form="add-company-addr-form" disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {isSubmitting ? 'Saving...' : 'Save Address'}
               </button>
             </div>
           </div>

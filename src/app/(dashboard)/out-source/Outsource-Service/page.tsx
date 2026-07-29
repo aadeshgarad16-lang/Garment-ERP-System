@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 export default function ProductionMaterialAllocation() {
   const router = useRouter();
-  const [selectedVendor, setSelectedVendor] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState('');
   
   // Mock BOM data
   const [materials, setMaterials] = useState([
@@ -15,7 +15,7 @@ export default function ProductionMaterialAllocation() {
     { id: 'MAT-003', name: 'Standard Collar (White)', category: 'Components', stock: 800, required: 600, allocated: 0, unit: 'pieces' },
   ]);
 
-  const vendors: any[] = [];
+  const suppliers: any[] = [];
 
   const handleAllocationChange = (id: string, value: string) => {
     const qty = parseInt(value, 10) || 0;
@@ -43,7 +43,7 @@ export default function ProductionMaterialAllocation() {
           <Layers className="text-emerald-600" />
           Production Material Allocation
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">Assign and dispatch raw warehouse materials to specific production vendors for assembly.</p>
+        <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">Assign and dispatch raw warehouse materials to specific production suppliers for assembly.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -105,17 +105,17 @@ export default function ProductionMaterialAllocation() {
         {/* Right Column: Dispatch Summary */}
         <div className="space-y-6 sticky top-6">
 
-          {/* Vendor Selection */}
+          {/* Supplier Selection */}
           <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">1. Select Vendor</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">1. Select Supplier</h2>
             <div className="relative">
               <select 
                 className="w-full appearance-none bg-slate-50 dark:bg-card border border-slate-200 dark:border-border text-slate-800 dark:text-slate-100 text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer font-medium"
-                value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
+                value={selectedSupplier}
+                onChange={(e) => setSelectedSupplier(e.target.value)}
               >
-                <option value="" disabled>Choose a production vendor...</option>
-                {vendors.map(v => (
+                <option value="" disabled>Choose a production supplier...</option>
+                {suppliers.map(v => (
                   <option key={v.id} value={v.id}>{v.name}</option>
                 ))}
               </select>
@@ -131,9 +131,9 @@ export default function ProductionMaterialAllocation() {
             
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Selected Vendor:</span>
+                <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Selected Supplier:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100 text-right">
-                  {selectedVendor ? vendors.find(v => v.id === selectedVendor)?.name : <span className="text-slate-400 dark:text-slate-500 italic">None selected</span>}
+                  {selectedSupplier ? suppliers.find(v => v.id === selectedSupplier)?.name : <span className="text-slate-400 dark:text-slate-500 italic">None selected</span>}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -161,9 +161,9 @@ export default function ProductionMaterialAllocation() {
 
               <div className="pt-6">
                 <button 
-                  disabled={!selectedVendor || totalAllocated === 0}
+                  disabled={!selectedSupplier || totalAllocated === 0}
                   className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
-                    selectedVendor && totalAllocated > 0
+                    selectedSupplier && totalAllocated > 0
                       ? 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md'
                       : 'bg-slate-100 dark:bg-[#202020] text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}

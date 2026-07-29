@@ -246,7 +246,7 @@ export default function ProductionPage() {
       status: 'In Progress',
       handshakeStatus: 'ACCEPTED', // Pre-accepted since it's a direct injection
       unit: mat.unit
-    });
+    } as any);
     setStages(newStages);
     // Reset the input for this material
     setTrimInjections(prev => ({ ...prev, [mat.id]: { operator: '', qty: '' } }));
@@ -260,6 +260,7 @@ export default function ProductionPage() {
     
     if (currentStageId === 'material') {
       // Create initial tasks for the next stage (Cutting) based on partial allocations
+      const currentIndex = stages.findIndex(s => s.id === currentStageId);
       const nextStageIdx = currentIndex + 1;
       if (nextStageIdx < stages.length) {
         const nextStage = stages[nextStageIdx];
@@ -289,7 +290,7 @@ export default function ProductionPage() {
               unit: mat.unit,
               per_piece_qty: mat.per_piece_qty,
               garmentType: materialGarmentTypes[mat.id] || "Shirt"
-            });
+            } as any);
           });
         });
       }
@@ -910,7 +911,7 @@ export default function ProductionPage() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground text-sm">Outsource</h3>
-              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">Manage external vendor allocations and transit tracking.</p>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">Manage external supplier allocations and transit tracking.</p>
               <p className="text-xs font-medium text-muted-foreground">
                 500 units processing
               </p>
@@ -1321,13 +1322,13 @@ export default function ProductionPage() {
                                       {task.transitingWorkerId || 'Origin Worker'} <span className="text-neutral-400 mx-1">→</span> {task.materialAllocatedName}
                                     </div>
                                     <div className="text-xs text-neutral-500 mt-0.5">
-                                      {stages[activeStageIdx].id === 'stitching' && task.per_piece_qty ? (
+                                      {stages[activeStageIdx].id === 'stitching' && (task as any).per_piece_qty ? (
                                         <>
-                                          Quantity Received: <strong className="text-neutral-700 dark:text-neutral-300">{Math.floor((task.transferQuantity || task.targetQty) / task.per_piece_qty)} Pcs</strong> 
-                                          <span className="ml-1 text-neutral-400">(Converted from {task.transferQuantity || task.targetQty} {task.unit || 'units'} at {task.per_piece_qty} {task.unit}/pc)</span>
+                                          Quantity Received: <strong className="text-neutral-700 dark:text-neutral-300">{Math.floor((task.transferQuantity || task.targetQty) / (task as any).per_piece_qty)} Pcs</strong> 
+                                          <span className="ml-1 text-neutral-400">(Converted from {task.transferQuantity || task.targetQty} {(task as any).unit || 'units'} at {(task as any).per_piece_qty} {(task as any).unit}/pc)</span>
                                         </>
                                       ) : (
-                                        <>Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} {task.unit || 'units'}</strong></>
+                                        <>Quantity Sent: <strong className="text-neutral-700 dark:text-neutral-300">{task.transferQuantity || task.targetQty} {(task as any).unit || 'units'}</strong></>
                                       )}
                                     </div>
                                   </div>
@@ -1388,11 +1389,11 @@ export default function ProductionPage() {
                                             Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
                                               <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
                                                 <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
-                                                {task.per_piece_qty && (
+                                                {(task as any).per_piece_qty && (
                                                   <>
                                                     <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
                                                     <span className="text-[8px] text-neutral-500 font-medium">
-                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * (task as any).per_piece_qty).toFixed(1)} {(task as any).unit || 'm'}
                                                     </span>
                                                   </>
                                                 )}
@@ -1438,11 +1439,11 @@ export default function ProductionPage() {
                                             Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
                                               <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
                                                 <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
-                                                {task.per_piece_qty && (
+                                                {(task as any).per_piece_qty && (
                                                   <>
                                                     <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
                                                     <span className="text-[8px] text-neutral-500 font-medium">
-                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * (task as any).per_piece_qty).toFixed(1)} {(task as any).unit || 'm'}
                                                     </span>
                                                   </>
                                                 )}
@@ -1502,11 +1503,11 @@ export default function ProductionPage() {
                                             Object.entries(task.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
                                               <div key={size} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-100 dark:bg-slate-800/80 rounded border border-neutral-200/60 dark:border-slate-700/50">
                                                 <span className="text-[9px] font-bold text-neutral-700 dark:text-neutral-300">Sz {size}: <span className="text-indigo-600 dark:text-indigo-400">{qty}</span></span>
-                                                {task.per_piece_qty && (
+                                                {(task as any).per_piece_qty && (
                                                   <>
                                                     <span className="w-[1px] h-2 bg-neutral-300 dark:bg-slate-600"></span>
                                                     <span className="text-[8px] text-neutral-500 font-medium">
-                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * task.per_piece_qty).toFixed(1)} {task.unit || 'm'}
+                                                      {getMaterialMetricLabel(stages[activeStageIdx].id)}: {(qty * (task as any).per_piece_qty).toFixed(1)} {(task as any).unit || 'm'}
                                                     </span>
                                                   </>
                                                 )}
@@ -1600,7 +1601,7 @@ export default function ProductionPage() {
                     <div className="text-right">
                       <p className="text-[10px] uppercase text-amber-600 dark:text-amber-500 font-bold mb-0.5">Meters Used vs Pieces Output</p>
                       <p className="text-sm font-bold text-amber-900 dark:text-amber-300">
-                        {(totalAssignedInRows * (pendingHandoverTask?.per_piece_qty || 1.5)).toFixed(1)} {pendingHandoverTask?.unit || 'Meters'} <span className="mx-1 text-amber-500 font-normal">for</span> {totalAssignedInRows} Pcs
+                        {(totalAssignedInRows * ((pendingHandoverTask as any)?.per_piece_qty || 1.5)).toFixed(1)} {(pendingHandoverTask as any)?.unit || 'Meters'} <span className="mx-1 text-amber-500 font-normal">for</span> {totalAssignedInRows} Pcs
                       </p>
                     </div>
                   </div>
@@ -1705,9 +1706,9 @@ export default function ProductionPage() {
                               <td className="px-3 py-2 font-medium text-card-foreground">{task.assignee}</td>
                               <td className="px-3 py-2 text-muted-foreground">
                                 <span className="font-bold text-foreground">Total: {task.targetQty} pcs</span>
-                                {task.sizes && Object.keys(task.sizes).length > 0 && (
+                                {(task as any).sizes && Object.keys((task as any).sizes).length > 0 && (
                                   <span className="block text-[10px] mt-0.5 text-neutral-500 font-medium tracking-wide">
-                                    [{Object.entries(task.sizes).filter(([_,v]) => v > 0).map(([k,v]) => `${k}: ${v}`).join(', ')}]
+                                    [{Object.entries((task as any).sizes as Record<string, number>).filter(([_,v]) => v > 0).map(([k,v]) => `${k}: ${v}`).join(', ')}]
                                   </span>
                                 )}
                               </td>
@@ -1750,7 +1751,7 @@ export default function ProductionPage() {
         );
       })()}
 
-      {/* Outsource Vendor Modal */}
+      {/* Outsource Supplier Modal */}
       {isOutsourceModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOutsourceModalOpen(false)} />
@@ -1761,7 +1762,7 @@ export default function ProductionPage() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Vendor Assigned</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">Supplier Assigned</p>
                 <p className="text-sm font-semibold text-foreground">Global Trims & Co.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">

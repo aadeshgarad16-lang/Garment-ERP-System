@@ -294,7 +294,7 @@
     "high": "उच्च",
     "critical": "चिंताजनक",
     "pending": "प्रलंबित",
-    "vendorAssigned": "विक्रेता नियुक्त",
+    "supplierAssigned": "विक्रेता नियुक्त",
     "ordered": "आदेश दिलेला",
     "awaitingDelivery": "वितरणाची प्रतीक्षा",
     "reservationAllocation": "आरक्षण आणि वाटप",

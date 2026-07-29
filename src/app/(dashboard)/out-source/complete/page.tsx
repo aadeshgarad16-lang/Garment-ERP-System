@@ -14,19 +14,19 @@ import { useRouter } from 'next/navigation';
 export default function CompleteOutsourcedTracking() {
   const router = useRouter();
 
-  const availableVendors = [
+  const availableSuppliers = [
     { id: 'v1', name: 'TechApparel Inc.', initials: 'TA', status: 'Verified Partner', address: '124 Industrial Park Rd.\nGarment District, NY 10001', phone: '+1 (555) 019-2834', email: 'contact@techapparel.co' },
-    { id: 'v2', name: 'Global Stitches Ltd.', initials: 'GS', status: 'Premium Vendor', address: '45 Fabric Way', phone: '+1 (555) 123-4567', email: 'hello@globalstitches.com' },
+    { id: 'v2', name: 'Global Stitches Ltd.', initials: 'GS', status: 'Premium Supplier', address: '45 Fabric Way', phone: '+1 (555) 123-4567', email: 'hello@globalstitches.com' },
     { id: 'v3', name: 'Metro Garments', initials: 'MG', status: 'Standard Partner', address: '89 Fashion Ave', phone: '+1 (555) 987-6543', email: 'info@metrogarments.com' },
   ];
 
-  const [selectedVendors, setSelectedVendors] = useState<string[]>(['v1']);
-  const [vendorAllocations, setVendorAllocations] = useState<Record<string, number>>({
+  const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>(['v1']);
+  const [supplierAllocations, setSupplierAllocations] = useState<Record<string, number>>({
     'v1': 1500
   });
 
-  const toggleVendor = (vid: string) => {
-    setSelectedVendors(prev => {
+  const toggleSupplier = (vid: string) => {
+    setSelectedSuppliers(prev => {
       if (prev.includes(vid)) {
         return prev.filter(v => v !== vid);
       }
@@ -35,7 +35,7 @@ export default function CompleteOutsourcedTracking() {
   };
 
   const updateAllocation = (vid: string, qty: number) => {
-    setVendorAllocations(prev => ({ ...prev, [vid]: qty }));
+    setSupplierAllocations(prev => ({ ...prev, [vid]: qty }));
   };
 
   // Mock data for the tables
@@ -59,7 +59,7 @@ export default function CompleteOutsourcedTracking() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Order Summary: Complete Outsourcing</h1>
-          <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">Review the assigned outsource vendor details, product quantities, and allocated materials.</p>
+          <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm">Review the assigned outsource supplier details, product quantities, and allocated materials.</p>
         </div>
       </div>
 
@@ -111,47 +111,47 @@ export default function CompleteOutsourcedTracking() {
 
         </div>
 
-        {/* Right Column: Vendor Details */}
+        {/* Right Column: Supplier Details */}
         <div className="space-y-6 lg:col-span-4">
           <div className="bg-white dark:bg-background rounded-2xl border border-slate-200 dark:border-border p-6 shadow-sm sticky top-6">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
               <Building2 className="text-blue-600" size={20} />
-              Vendor Allocation
+              Supplier Allocation
             </h2>
             
             <div className="space-y-6">
               <div className="space-y-3">
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Select Vendors:</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Select Suppliers:</p>
                 <div className="flex flex-col gap-2">
-                  {availableVendors.map(vendor => (
-                    <label key={vendor.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1a1a1a] cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-neutral-800">
+                  {availableSuppliers.map(supplier => (
+                    <label key={supplier.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1a1a1a] cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-neutral-800">
                       <input 
                         type="checkbox" 
-                        checked={selectedVendors.includes(vendor.id)}
-                        onChange={() => toggleVendor(vendor.id)}
+                        checked={selectedSuppliers.includes(supplier.id)}
+                        onChange={() => toggleSupplier(supplier.id)}
                         className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 dark:border-border dark:bg-[#202020]"
                       />
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{vendor.name}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{supplier.name}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              {selectedVendors.length > 0 && (
+              {selectedSuppliers.length > 0 && (
                 <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-border">
                   <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Assigned Capacities:</p>
-                  {selectedVendors.map(vid => {
-                    const vendor = availableVendors.find(v => v.id === vid);
-                    if (!vendor) return null;
+                  {selectedSuppliers.map(vid => {
+                    const supplier = availableSuppliers.find(v => v.id === vid);
+                    if (!supplier) return null;
                     return (
                       <div key={vid} className="bg-slate-50 dark:bg-card rounded-xl p-4 border border-slate-100 dark:border-border space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                            {vendor.initials}
+                            {supplier.initials}
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">{vendor.name}</h4>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{vendor.status}</p>
+                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">{supplier.name}</h4>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{supplier.status}</p>
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-2">
@@ -159,7 +159,7 @@ export default function CompleteOutsourcedTracking() {
                           <input 
                             type="number"
                             min="0"
-                            value={vendorAllocations[vid] || ''}
+                            value={supplierAllocations[vid] || ''}
                             onChange={(e) => updateAllocation(vid, parseInt(e.target.value) || 0)}
                             className="w-24 text-right bg-white dark:bg-background border border-slate-200 dark:border-border rounded px-2 py-1 text-sm font-bold text-slate-800 dark:text-slate-100"
                           />

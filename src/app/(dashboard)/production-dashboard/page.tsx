@@ -90,7 +90,7 @@ export default function ProductionDashboardPage() {
 
   const productionAlerts = useMemo(() => {
     return activeProductionOrders.filter(o => {
-       return (o as any).delayDays > 0 || o.status === 'Failed' || (o.productionStages?.some(s => s.status === 'Failed' || s.status === 'Rework Required'));
+       return (o as any).delayDays > 0 || (o.status as string) === 'Failed' || (o.productionStages?.some((s: any) => s.status === 'Failed' || s.status === 'Rework Required'));
     }).length;
   }, [activeProductionOrders]);
 

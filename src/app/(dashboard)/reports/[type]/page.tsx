@@ -46,7 +46,7 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         else if (type === 'inventory-alerts') endpoint = '/api/reports/inventory-alerts';
         
         if (!endpoint) {
-          if (isMounted) setDataToRender(null);
+          if (isMounted) setDataToRender([]);
           return;
         }
         

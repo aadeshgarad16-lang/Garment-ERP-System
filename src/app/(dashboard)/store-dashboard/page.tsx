@@ -211,7 +211,7 @@ export default function StoreDashboardPage() {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
                     itemStyle={{ color: '#60A5FA' }}
-                    formatter={(value: number) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
+                    formatter={(value: any) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
                   />
                   <Area 
                     type="monotone" 
@@ -249,7 +249,7 @@ export default function StoreDashboardPage() {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
                     itemStyle={{ color: '#fff' }}
-                    formatter={(value: number) => [`${value}%`, 'Share']}
+                    formatter={(value: any) => [`${value}%`, 'Share']}
                   />
                 </PieChart>
               </ResponsiveContainer>

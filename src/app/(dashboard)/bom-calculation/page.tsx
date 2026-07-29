@@ -391,16 +391,20 @@ export default function BOMCalculationView() {
 
       const gType = spec?.itemDescription || 'Shirt';
 
+      const payload = {
+        category: gType,
+        sleeveType: sType.includes('half') ? 'half_sleeve' : 'full_sleeve',
+        sizes: parsedSizes,
+        orderQty: specProdReq,
+        wastageMargin: wastage
+      };
+      
+      console.log("[BOM Debug] fetchForSpec payload:", payload);
+
       const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: gType,
-          sleeveType: sType.includes('half') ? 'half_sleeve' : 'full_sleeve',
-          sizes: parsedSizes,
-          orderQty: specProdReq,
-          wastageMargin: wastage
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       return { data, sType };
@@ -419,16 +423,20 @@ export default function BOMCalculationView() {
           const promises = activeSpecs.map((spec: any, index: number) => fetchForSpec(spec, index, BACKEND_URL));
           results = await Promise.all(promises);
         } else {
+          const payload = {
+            category: garmentType,
+            sleeveType: sleeveType.includes('half') ? 'half_sleeve' : 'full_sleeve',
+            sizes: JSON.parse(sizesDependency),
+            orderQty: totalProductionRequired,
+            wastageMargin: wastage
+          };
+          
+          console.log("[BOM Debug] fetchBOM payload:", payload);
+
           const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              category: garmentType,
-              sleeveType: sleeveType.includes('half') ? 'half_sleeve' : 'full_sleeve',
-              sizes: JSON.parse(sizesDependency),
-              orderQty: totalProductionRequired,
-              wastageMargin: wastage
-            })
+            body: JSON.stringify(payload)
           });
           const data = await res.json();
           results = [{ data, sType: sleeveType }];
@@ -634,7 +642,7 @@ export default function BOMCalculationView() {
         available: m.available,
         shortage: m.missing,
         unit: m.unit,
-        supplier: 'Auto Assigned Vendor',
+        supplier: 'Auto Assigned Supplier',
         cost: m.missing * (m.category === 'Fabric' ? 5 : 0.5),
         priority: 'Critical',
         status: 'Pending Procurement'

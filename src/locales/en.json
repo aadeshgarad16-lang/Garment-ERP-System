@@ -304,7 +304,7 @@
     "high": "High",
     "critical": "Critical",
     "pending": "Pending",
-    "vendorAssigned": "Vendor Assigned",
+    "supplierAssigned": "Supplier Assigned",
     "ordered": "Ordered",
     "awaitingDelivery": "Awaiting Delivery",
     "reservationAllocation": "Reservation & Allocation",

@@ -35,6 +35,7 @@ interface GarmentSpec {
   outsourceType?: "Complete Outsource" | "Service Outsource";
   deliveryAddress?: string;
   deliveryPin?: string;
+  sleeveType?: string;
 }
 
 interface DeliveryAddress {
@@ -346,7 +347,6 @@ function GarmentSpecsContent() {
   const [masterGarments, setMasterGarments] = useState<any[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [sleeveType, setSleeveType] = useState('');
   const [categories, setCategories] = useState<string[]>(['Shirts', 'T-Shirts', 'Pants', 'Blazer']);
 
   useEffect(() => {
@@ -914,13 +914,13 @@ function GarmentSpecsContent() {
     const payload = {
       po_number: currentPoNumber,
       poDate: new Date().toISOString(),
-      sleeve_type: sleeveType,
+      sleeve_type: specs[0]?.sleeveType || "",
       specifications: specs.map(s => ({
         ...s,
         required_qty: s.quantity,
         available_qty: s.stockAvailable,
         item_description: s.itemDescription,
-        sleeve_type: sleeveType
+        sleeve_type: s.sleeveType || ""
       })),
       deliveryAddresses,
       detailedAllocations,
@@ -1146,35 +1146,42 @@ function GarmentSpecsContent() {
                         <select
                           value={spec.category || ""}
                           onChange={(e) => {
-                            updateRow(spec.id, "category", e.target.value);
-                            setSelectedCategory(e.target.value);
-                            if (!e.target.value?.toLowerCase().includes('shirt') || e.target.value?.toLowerCase().includes('t-shirt')) {
-                              setSleeveType("");
+                            const val = e.target.value;
+                            updateRow(spec.id, "category", val);
+                            setSelectedCategory(val);
+                            
+                            const catLower = val.toLowerCase();
+                            let newSleeve = "";
+                            
+                            if (catLower.includes('shirt') && !catLower.includes('t-shirt')) {
+                              newSleeve = ""; // Manual selection allowed
+                            } else if (catLower.includes('pant') || catLower.includes('jacket') || catLower.includes('salwar') || catLower.includes('dupatta') || catLower.includes('boiler suit')) {
+                              newSleeve = "full_sleeve";
+                            } else if (catLower.includes('t-shirt') || catLower.includes('kurta')) {
+                              newSleeve = "half_sleeve";
                             }
+                            
+                            updateRow(spec.id, "sleeveType", newSleeve);
                           }}
-                          className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm ${(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'pr-[135px]' : ''}`}
+                          className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm pr-[110px]`}
                         >
                           <option value="">Select...</option>
                           {categories.map((cat, idx) => (
                             <option key={idx} value={cat}>{cat}</option>
                           ))}
                         </select>
-                        {(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) && (
-                          <div className="absolute inset-y-0 right-8 flex items-center">
-                            <select
-                               value={sleeveType || ""}
-                               autoFocus
-                               onChange={(e) => {
-                                 setSleeveType(e.target.value);
-                               }}
-                               className="h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[120px] text-ellipsis overflow-hidden"
-                            >
-                               <option value="" disabled hidden>Select Sleeve</option>
-                               <option value="full_sleeve">Full Sleeve</option>
-                               <option value="half_sleeve">Half Sleeve</option>
-                            </select>
-                          </div>
-                        )}
+                        <div className="absolute inset-y-0 right-2 flex items-center">
+                          <select
+                             value={spec.sleeveType || ""}
+                             onChange={(e) => updateRow(spec.id, "sleeveType", e.target.value)}
+                             disabled={!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt'))}
+                             className={`h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[100px] text-ellipsis overflow-hidden ${!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                             <option value="" disabled hidden>Select Sleeve</option>
+                             <option value="full_sleeve">Full Sleeve</option>
+                             <option value="half_sleeve">Half Sleeve</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -1262,7 +1269,7 @@ function GarmentSpecsContent() {
                              if (e.target.value === "Outsource") {
                                updateRow(spec.id, "outsourceType", "Complete Outsource");
                              } else {
-                               updateRow(spec.id, "outsourceType", undefined);
+                               updateRow(spec.id, "outsourceType", "");
                              }
                           }}
                           className={`w-full ${INPUT_STYLE} h-[44px] text-sm shadow-sm ${spec.serviceType === 'Outsource' ? 'pr-[135px]' : ''}`}
