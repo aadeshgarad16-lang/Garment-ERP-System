@@ -3096,57 +3096,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [requestedItems, setRequestedItems] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const res = await fetch('/api/procurement-requests?status=PENDING');
-        if (res.ok) {
-          const result = await res.json();
-          if (result.success) {
-            const reqMap: Record<string, boolean> = {};
-            result.data.forEach((r: any) => {
-              if (r.sku) reqMap[r.sku] = true;
-            });
-            setRequestedItems(reqMap);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch existing requests", err);
-      }
-    };
-    fetchRequests();
-  }, []);
-
-  const handleRaiseRequest = async (item: any) => {
-    try {
-      const available = Number(item.available_qty ?? item.available ?? 0);
-      const required = Number(item.min_required ?? item.min_required_qty ?? item.minimumRequired ?? 0);
-      const shortageQty = Math.max(0, required - available);
-      const sku = item.hsn_code || item.code || item.sku || `SKU-${item.id || item.material_id}`;
-
-      const res = await fetch('/api/procurement-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sku,
-          name: item.name || item.material_name,
-          category: item.type || 'Article',
-          currentStock: available,
-          minRequired: required,
-          shortageQty: shortageQty,
-          status: 'PENDING'
-        })
-      });
-
-      if (res.ok) {
-        setRequestedItems(prev => ({ ...prev, [sku]: true }));
-      }
-    } catch (error) {
-      console.error("Failed to raise request:", error);
-    }
-  };
 
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
@@ -3213,7 +3163,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
               <th className="px-4 py-3 font-medium text-center">Available</th>
               <th className="px-4 py-3 font-medium text-center">Min Required</th>
               <th className="px-4 py-3 font-medium text-center">Unit Price</th>
-              <th className="px-4 py-3 font-medium text-center">Procurement</th>
+
               <th className="px-4 py-3 font-medium text-center rounded-tr-lg">Actions</th>
             </tr>
           </thead>
@@ -3245,24 +3195,7 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
                   <td className="px-4 py-3 text-center font-medium">{item.available_qty}</td>
                   <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
                   <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
-                  <td className="px-4 py-3 text-center">
-                    {isShortage ? (
-                      requestedItems[sku] ? (
-                        <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-md text-xs font-semibold whitespace-nowrap">
-                          Requested
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleRaiseRequest(item)}
-                          className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-md text-xs font-semibold hover:bg-red-100 transition-colors whitespace-nowrap"
-                        >
-                          Raise Request
-                        </button>
-                      )
-                    ) : (
-                      <span className="text-neutral-400 font-medium">-</span>
-                    )}
-                  </td>
+
                   <td className="px-4 py-3 text-center">
                     {userRole === 'Super Admin' && (
                       <button

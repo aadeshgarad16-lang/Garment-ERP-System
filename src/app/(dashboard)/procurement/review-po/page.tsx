@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Package, Truck, Building2, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import WorkflowIndicator from '@/components/WorkflowIndicator';
+import ProcurementStepper from '@/components/ProcurementStepper';
 
 interface ReviewItem {
   id: string;
@@ -173,7 +173,7 @@ export default function ReviewPurchaseOrdersPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6 font-sans pb-12 pt-6">
-      <WorkflowIndicator currentStep="Procurement" />
+      <ProcurementStepper />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">

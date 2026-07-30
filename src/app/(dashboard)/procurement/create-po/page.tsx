@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, ArrowLeft, FileText, CheckCircle2, Trash2, Download, X, ChevronDown, Building2, Calculator, Info, Package, List } from 'lucide-react';
-import WorkflowIndicator from '@/components/WorkflowIndicator';
+import ProcurementStepper from '@/components/ProcurementStepper';
 import { useTranslation } from '@/hooks/useTranslation';
 import jsPDF from 'jspdf';
 import { generateOfficialPurchaseOrderPDF } from '@/utils/pdfGenerator';
@@ -603,7 +603,7 @@ PAN: ABCDE1234F`;
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
-      <WorkflowIndicator currentStep="Procurement" />
+      <ProcurementStepper />
 
       {/* Header Section */}
       <div className="flex items-center gap-3">
