@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     if (format === 'pdf') {
       const isFinishedGoods = data.length > 0 && 'production' in data[0];
 
-      return new Promise((resolve, reject) => {
+      return new Promise<NextResponse>((resolve, reject) => {
         const doc = new PDFDocument({ margin: 30, layout: 'landscape' });
         const chunks: Buffer[] = [];
 

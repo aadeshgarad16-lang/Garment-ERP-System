@@ -75,7 +75,7 @@ const navItems = [
     module: 'Procurement',
     children: [
       { tKey: 'procurementDashboard', label: 'Procurement Dashboard', href: '/procurement', module: 'Procurement' },
-      { tKey: 'createPurchaseRequest', label: 'Create Purchase Request', href: '/procurement/create', module: 'Procurement' }
+      { tKey: 'createPurchaseRequest', label: 'Create Purchase Request', href: '/procurement/create-po', module: 'Procurement' }
     ]
   },
   { 
@@ -87,8 +87,9 @@ const navItems = [
       { tKey: 'storeDashboard', label: 'Store Dashboard', href: '/store-dashboard', module: 'Store' },
       { tKey: 'article', label: 'Article', href: '/store?tab=raw', module: 'Store' },
       { tKey: 'preStitched', label: 'Finished Goods', href: '/store?tab=pre', module: 'Store' },
-      { tKey: 'materialList', label: 'Material List', href: '/store?tab=list', module: 'Store' },
+      { tKey: 'materialList', label: 'Material Master', href: '/store?tab=list', module: 'Store' },
       { tKey: 'stockOverview', label: 'Stock Overview', href: '/store?tab=overview', module: 'Store' },
+      { tKey: 'orders', label: 'Orders', href: '/store?tab=orders', icon: Package, module: 'Store' },
       { tKey: 'storeReports', label: 'Reports', href: '/reports/store', icon: BarChart3, module: 'Store' }
     ]
   },
@@ -105,7 +106,7 @@ const navItems = [
     ]
   },
   { tKey: 'qualityPacking', label: 'Quality & Packing', href: '/quality-packing', icon: ShieldCheck, module: 'Quality & Packing' },
-  { tKey: 'logistics', label: 'Logistics', href: '/logistics', icon: Map, module: 'Logistics' },
+  { tKey: 'dispatchManagement', label: 'Dispatch Management', href: '/dispatch-management', icon: Map, module: 'Logistics' },
   { tKey: 'accounts', label: 'Accounts', href: '/accounts', icon: PieChart, module: 'Accounts' },
   { tKey: 'manageUser', label: 'Manage User', href: '/manage-user', icon: User, module: 'Manage User' },
   { tKey: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'Settings' },

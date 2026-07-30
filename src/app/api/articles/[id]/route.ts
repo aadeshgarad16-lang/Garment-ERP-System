@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     // Soft delete logic: UPDATE articles SET is_archived = true WHERE id = id
     

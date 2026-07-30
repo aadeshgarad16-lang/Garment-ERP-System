@@ -1,26 +1,67 @@
 import { NextResponse } from 'next/server';
+import db from '@/lib/db';
+
+export async function GET() {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        id, 
+        company_name as companyName, 
+        contact_person as contactPerson, 
+        email_address as emailAddress, 
+        phone_mobile as phone, 
+        registered_address as registeredAddress, 
+        gstin_tax_id as gstId, 
+        payment_terms as paymentTerms 
+      FROM supplier_Info
+      ORDER BY created_at DESC
+    `);
+    
+    // Convert int IDs to string so frontend matching (which expects string IDs) doesn't break
+    const formattedRows = (rows as any[]).map(r => ({ ...r, id: String(r.id) }));
+    return NextResponse.json(formattedRows);
+  } catch (error) {
+    console.error("Failed to fetch suppliers:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch suppliers" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Simulate database insertion delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const [result] = await db.query(
+      `INSERT INTO supplier_Info (
+        company_name, 
+        contact_person, 
+        phone_mobile, 
+        email_address, 
+        registered_address, 
+        gstin_tax_id, 
+        payment_terms
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        body.companyName || body.name || 'Unknown Supplier',
+        body.contactPerson || null,
+        body.phone || null,
+        body.email || null,
+        body.address || null,
+        body.gstin || null,
+        body.paymentTerms || 'Net 30 Days'
+      ]
+    );
 
-    // Generate a mock ID
-    const newId = `v${Math.floor(Math.random() * 1000) + 10}`;
-    
+    const newId = String((result as any).insertId);
+
     const newSupplier = {
       id: newId,
-      name: body.companyName || "Unknown Supplier",
+      companyName: body.companyName || body.name || 'Unknown Supplier',
       contactPerson: body.contactPerson,
       phone: body.phone,
-      email: body.email,
-      address: body.address,
+      emailAddress: body.email,
+      registeredAddress: body.address,
       gstId: body.gstin,
-      paymentTerms: body.paymentTerms,
-      rawMaterials: body.rawMaterials || [],
-      finishedGoods: body.finishedGoods || []
+      paymentTerms: body.paymentTerms
     };
 
     return NextResponse.json({

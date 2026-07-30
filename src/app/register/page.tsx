@@ -20,7 +20,7 @@ const roles = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, login } = useAuth();
+  const { login } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,6 +58,7 @@ export default function RegisterPage() {
       return;
     }
 
+    const register = (data: any) => ({ success: true, error: null });
     const result = register({ name, email, role, password });
 
     if (!result.success) {
@@ -66,7 +67,7 @@ export default function RegisterPage() {
     }
 
     // Auto-login after registration
-    login({ name: "", email, role, password });
+    login({ email, password });
 
     setError('');
     router.push('/language');

@@ -280,7 +280,15 @@ export default function ProcurementPage() {
 
           parsedSession.forEach((group: any) => {
             allSuppliers.add(group.supplierName);
-            if (group.items) {
+
+            // In edit mode: only restore row state (orderQty / selected supplier / splits)
+            // for the supplier being edited. Other suppliers' allocations are already
+            // accounted for by the stagedQtyMap deduction on item.required, so loading
+            // them here too causes totalAllocated to double-count and the dropdown to
+            // have no selectable options.
+            const shouldRestoreRows = !editSupplier || group.supplierName === editSupplier;
+
+            if (shouldRestoreRows && group.items) {
               group.items.forEach((item: any) => {
                 let targetId = item.id;
                 
@@ -298,7 +306,10 @@ export default function ProcurementPage() {
           });
           
           if (allSuppliers.size > 0) {
-            setSupplierFilter(Array.from(allSuppliers));
+            // In edit mode: only filter to the edit supplier so the dropdown
+            // shows just that vendor. Other suppliers' quantities are already
+            // reflected via stagedQtyMap on item.required.
+            setSupplierFilter(editSupplier ? [editSupplier] : Array.from(allSuppliers));
           }
           setOrderQuantities(prev => ({ ...prev, ...newOrderQuantities }));
           setSelectedSuppliers(prev => ({ ...prev, ...newSelectedSuppliers }));
@@ -311,6 +322,7 @@ export default function ProcurementPage() {
       }
     }
   }, []);
+
 
   const fetchStoreArticleShortages = async () => {
     try {
@@ -407,18 +419,29 @@ export default function ProcurementPage() {
     const fetchPOShortages = (selectedPoNumber: string) => {
       let related = loadedRequests.filter(p => p.linkedPO === selectedPoNumber);
       
-      // Filter out staged items unless we are in edit mode for them
+      // Deduct already-staged quantities; only hide fully-allocated items
       try {
         const session = localStorage.getItem('review_po_session');
         if (session) {
           const parsedSession = JSON.parse(session);
-          const stagedItemIds = new Set<string>();
+          // Build a map of itemId -> total staged orderQty (across all suppliers)
+          const stagedQtyMap = new Map<string, number>();
           parsedSession.forEach((group: any) => {
             if (group.supplierName !== editModeSupplier) {
-              group.items.forEach((item: any) => stagedItemIds.add(item.id));
+              group.items.forEach((item: any) => {
+                const originalId = (item.id || '').split('-split-')[0];
+                stagedQtyMap.set(originalId, (stagedQtyMap.get(originalId) || 0) + (Number(item.orderQty) || 0));
+              });
             }
           });
-          related = related.filter(req => !stagedItemIds.has(req.id));
+          related = related
+            .map(req => {
+              const staged = stagedQtyMap.get(req.id) || 0;
+              if (staged <= 0) return req;
+              const newRequired = Math.max(0, req.required - staged);
+              return { ...req, required: newRequired, shortage: Math.max(0, newRequired - (req.available || 0)) };
+            })
+            .filter(req => req.required > 0); // hide only fully allocated
         }
       } catch (e) {}
 
@@ -472,18 +495,29 @@ export default function ProcurementPage() {
         });
         
         let finalMerged = merged;
-        // Filter out staged items unless we are in edit mode for them
+        // Deduct already-staged quantities; only hide fully-allocated items
         try {
           const session = localStorage.getItem('review_po_session');
           if (session) {
             const parsedSession = JSON.parse(session);
-            const stagedItemIds = new Set<string>();
+            // Build a map of itemId -> total staged orderQty (across all suppliers)
+            const stagedQtyMap = new Map<string, number>();
             parsedSession.forEach((group: any) => {
               if (group.supplierName !== editModeSupplier) {
-                group.items.forEach((item: any) => stagedItemIds.add(item.id));
+                group.items.forEach((item: any) => {
+                  const originalId = (item.id || '').split('-split-')[0];
+                  stagedQtyMap.set(originalId, (stagedQtyMap.get(originalId) || 0) + (Number(item.orderQty) || 0));
+                });
               }
             });
-            finalMerged = merged.filter(req => !stagedItemIds.has(req.id));
+            finalMerged = merged
+              .map(req => {
+                const staged = stagedQtyMap.get(req.id) || 0;
+                if (staged <= 0) return req;
+                const newRequired = Math.max(0, req.required - staged);
+                return { ...req, required: newRequired, shortage: Math.max(0, newRequired - (req.available || 0)) };
+              })
+              .filter(req => req.required > 0); // hide only fully allocated
           }
         } catch (e) {}
 
@@ -604,10 +638,8 @@ export default function ProcurementPage() {
     }
   }, [supplierFilter, displayRows]);
 
-  // Real-Time Draft Sync to localStorage
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
+  // Helper: build the current draft session groups from selections
+  const buildDraftSessionGroups = React.useCallback(() => {
     const selectedItems = displayRows.filter(item => {
       const supplierName = selectedSuppliers[item.rowId] || (item.supplier !== 'Store Restock' && item.supplier !== 'Pending Assignment' ? item.supplier : null);
       const qty = Number(orderQuantities[item.rowId]) || 0;
@@ -634,28 +666,11 @@ export default function ProcurementPage() {
       }
     });
 
-    const newSerializedGroups = Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => ({
+    return Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => ({
       supplierName,
       items
     }));
-    
-    let existingSession: any[] = [];
-    try {
-      const session = localStorage.getItem('review_po_session');
-      if (session) existingSession = JSON.parse(session);
-    } catch (e) {}
-
-    // Only override suppliers that we are currently actively managing (in supplierFilter)
-    const suppliersBeingManaged = new Set(supplierFilter);
-    existingSession = existingSession.filter(g => !suppliersBeingManaged.has(g.supplierName));
-
-    newSerializedGroups.forEach(newGroup => {
-      existingSession.push(newGroup);
-    });
-
-    localStorage.setItem('review_po_session', JSON.stringify(existingSession));
-    window.dispatchEvent(new Event('storage')); // Notify other components/tabs
-  }, [displayRows, orderQuantities, selectedSuppliers, supplierFilter]);
+  }, [displayRows, orderQuantities, selectedSuppliers]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
@@ -980,7 +995,17 @@ export default function ProcurementPage() {
                               <span className="text-xs text-muted-foreground mt-1">{item.category} • {item.id}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-center text-sm text-foreground align-top">{item.required} <span className="text-xs text-muted-foreground">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span></td>
+                          <td className="px-4 py-3 text-center align-top">
+                            <div className="flex flex-col items-center">
+                              <span className={`text-sm font-semibold ${dynamicShortage === 0 ? 'text-emerald-600' : dynamicShortage < item.required ? 'text-amber-600' : 'text-foreground'}`}>
+                                {dynamicShortage}
+                              </span>
+                              {dynamicShortage < item.required && (
+                                <span className="text-xs text-muted-foreground line-through">{item.required}</span>
+                              )}
+                              <span className="text-xs text-muted-foreground">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span>
+                            </div>
+                          </td>
                           
                           <td className="px-4 py-3 align-top">
                             <select 
@@ -993,6 +1018,10 @@ export default function ProcurementPage() {
                               ) : (
                                 <>
                                   <option value="" disabled>Select Supplier</option>
+                                  {/* Always render the currently-selected option even if not in suppliersList */}
+                                  {selectedSuppliers[item.id] && !getAvailableSuppliers(item.id).find(s => s.name === selectedSuppliers[item.id]) && (
+                                    <option value={selectedSuppliers[item.id]}>{selectedSuppliers[item.id]}</option>
+                                  )}
                                   {getAvailableSuppliers(item.id).map((supplier) => (
                                     <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
                                   ))}
@@ -1017,9 +1046,21 @@ export default function ProcurementPage() {
                                     setOrderQuantities(prev => ({ ...prev, [item.id]: val === '' ? '' : parseFloat(val) }));
                                   }}
                                 />
-                                <span className={`text-xs font-bold ${dynamicShortage > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                  {dynamicShortage > 0 ? `Shortage: ${dynamicShortage}` : 'Fulfilled'}
-                                </span>
+                                {totalAllocated > 0 && (
+                                  <span className={`text-xs font-bold ${
+                                    totalAllocated > item.required
+                                      ? 'text-red-600'
+                                      : dynamicShortage === 0
+                                        ? 'text-emerald-600'
+                                        : 'text-amber-600'
+                                  }`}>
+                                    {totalAllocated > item.required
+                                      ? `Over by ${totalAllocated - item.required}`
+                                      : dynamicShortage === 0
+                                        ? 'Fulfilled ✓'
+                                        : `Remaining: ${dynamicShortage}`}
+                                  </span>
+                                )}
                             </div>
                           </td>
                           
@@ -1057,6 +1098,10 @@ export default function ProcurementPage() {
                                   ) : (
                                     <>
                                       <option value="" disabled>Select Supplier</option>
+                                      {/* Always render the currently-selected option even if not in suppliersList */}
+                                      {selectedSuppliers[split.id] && !getAvailableSuppliers(split.id).find(s => s.name === selectedSuppliers[split.id]) && (
+                                        <option value={selectedSuppliers[split.id]}>{selectedSuppliers[split.id]}</option>
+                                      )}
                                       {getAvailableSuppliers(split.id).map((supplier) => (
                                         <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
                                       ))}
@@ -1152,40 +1197,38 @@ export default function ProcurementPage() {
                     alert("Please assign a supplier and ensure quantity is greater than 0 for at least one item to generate a Purchase Order.");
                     return;
                   }
-                  const groupedBySupplier = new Map<string, any[]>();
-                  selectedItems.forEach(item => {
-                    const supplierName = selectedSuppliers[item.rowId] || item.supplier;
-                    const qty = Number(orderQuantities[item.rowId]) || 0;
-                    const unitPrice = item.cost ? (item.cost / (item.shortage || 1)) : 0;
-                    const cost = unitPrice * qty;
 
-                    if (!groupedBySupplier.has(supplierName)) {
-                      groupedBySupplier.set(supplierName, []);
+                  // --- Deduct quantities from local state so the table updates live ---
+                  const updatedMockShortages = mockShortages.map(req => {
+                    const ordered = selectedItems.filter(i => {
+                      if (i.originalIds) return i.originalIds.includes(req.id);
+                      return i.id === req.id || i.id.startsWith(`${req.id}-split-`);
+                    });
+                    if (ordered.length > 0) {
+                      const totalOrderedQty = ordered.reduce((sum, item) => sum + (Number(orderQuantities[item.rowId]) || 0), 0);
+                      const newRequired = Math.max(0, req.required - totalOrderedQty);
+                      return {
+                        ...req,
+                        required: newRequired,
+                        shortage: Math.max(0, newRequired - (req.available || 0)),
+                        status: newRequired === 0 ? 'COMPLETED' : 'IN_PROCESS'
+                      };
                     }
-
-                    const supplierItems = groupedBySupplier.get(supplierName)!;
-                    const existingItem = supplierItems.find(i => i.id === item.id);
-                    if (existingItem) {
-                      existingItem.orderQty += qty;
-                      existingItem.orderCost += cost;
-                    } else {
-                      supplierItems.push({ ...item, orderQty: qty, orderCost: cost });
-                    }
+                    return req;
                   });
+                  // Filter out fully fulfilled items from the pending table
+                  setMockShortages(updatedMockShortages.filter(r => r.status !== 'COMPLETED'));
 
-                  // Real-time sync of local storage to deduct quantity
+                  // --- Persist deductions to localStorage (autoGeneratedProcurementRequests) ---
                   try {
                     const autoGenStr = localStorage.getItem('autoGeneratedProcurementRequests');
                     if (autoGenStr) {
                       const autoGen = JSON.parse(autoGenStr);
                       const updated = autoGen.map((req: any) => {
                         const ordered = selectedItems.filter(i => {
-                           if (i.originalIds) {
-                              return i.originalIds.includes(req.id);
-                           }
-                           return i.id === req.id || i.id.startsWith(`${req.id}-split-`);
+                          if (i.originalIds) return i.originalIds.includes(req.id);
+                          return i.id === req.id || i.id.startsWith(`${req.id}-split-`);
                         });
-                        
                         if (ordered.length > 0) {
                           const totalOrderedQty = ordered.reduce((sum, item) => sum + (Number(orderQuantities[item.rowId]) || 0), 0);
                           const newRequiredQty = Math.max(0, req.required - totalOrderedQty);
@@ -1204,6 +1247,7 @@ export default function ProcurementPage() {
                     console.error("Failed to update autoGeneratedProcurementRequests", e);
                   }
 
+                  // --- Persist deductions to localStorage (procurement_requests) ---
                   try {
                     const procReqStr = localStorage.getItem('procurement_requests');
                     if (procReqStr) {
@@ -1211,10 +1255,9 @@ export default function ProcurementPage() {
                       const updated = procReq.map((req: any) => {
                         const reqIdStr = `PR-STORE-${req.itemId}`;
                         const ordered = selectedItems.filter(i => {
-                           if (i.originalIds) return i.originalIds.includes(req.id) || i.originalIds.includes(reqIdStr);
-                           return i.id === req.id || i.id === reqIdStr || i.id.startsWith(`${req.id}-split-`) || i.id.startsWith(`${reqIdStr}-split-`);
+                          if (i.originalIds) return i.originalIds.includes(req.id) || i.originalIds.includes(reqIdStr);
+                          return i.id === req.id || i.id === reqIdStr || i.id.startsWith(`${req.id}-split-`) || i.id.startsWith(`${reqIdStr}-split-`);
                         });
-                        
                         if (ordered.length > 0) {
                           const totalOrderedQty = ordered.reduce((sum, item) => sum + (Number(orderQuantities[item.rowId]) || 0), 0);
                           const newRequiredQty = Math.max(0, (req.requiredQty || req.required) - totalOrderedQty);
@@ -1233,8 +1276,20 @@ export default function ProcurementPage() {
                     console.error("Failed to update procurement_requests", e);
                   }
 
-                  // The real-time sync useEffect handles pushing to localStorage already!
-                  // We just need to route the user.
+                  // --- Build & PERSIST draft PO session to localStorage NOW (only on explicit click) ---
+                  const newGroups = buildDraftSessionGroups();
+                  let existingSession: any[] = [];
+                  try {
+                    const session = localStorage.getItem('review_po_session');
+                    if (session) existingSession = JSON.parse(session);
+                  } catch (e) {}
+                  // Only overwrite suppliers currently being allocated
+                  const suppliersBeingManaged = new Set(supplierFilter);
+                  existingSession = existingSession.filter((g: any) => !suppliersBeingManaged.has(g.supplierName));
+                  newGroups.forEach(newGroup => existingSession.push(newGroup));
+                  localStorage.setItem('review_po_session', JSON.stringify(existingSession));
+                  window.dispatchEvent(new Event('storage'));
+
                   router.push('/procurement/review-po');
                 }}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"

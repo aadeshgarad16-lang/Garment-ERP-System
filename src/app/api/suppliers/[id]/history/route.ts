@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const MOCK_SUPPLIERS = [
-  { id: "v1", name: "Apex Textiles Ltd" },
-  { id: "v2", name: "Global Threads & Yarns" },
-  { id: "v3", name: "Supreme Trims Co." },
-  { id: "v4", name: "Vardhman Yarns" },
-  { id: "v5", name: "Reliable Buttons & Zippers" }
-];
+import db from '@/lib/db';
 
 export async function GET(
   request: Request,
@@ -15,26 +8,36 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Find supplier from mock data or use generic
-    let supplierName = "Unknown Supplier";
-    const foundSupplier = MOCK_SUPPLIERS.find(s => s.id === id || s.name.toLowerCase().includes(id.toLowerCase()));
-    
-    if (foundSupplier) {
-      supplierName = foundSupplier.name;
-    } else {
-      // If passing name directly in ID for mock purposes
-      supplierName = decodeURIComponent(id);
-    }
+    const [rows] = await db.query(
+      `SELECT 
+        id, 
+        company_name as companyName, 
+        contact_person as contactPerson, 
+        email_address as emailAddress, 
+        phone_mobile as phone, 
+        registered_address as registeredAddress, 
+        gstin_tax_id as gstId, 
+        payment_terms as paymentTerms 
+      FROM supplier_Info WHERE id = ?`,
+      [id]
+    );
 
-    // Generate mock general info
+    const supplierRows = rows as any[];
+    if (supplierRows.length === 0) {
+      return NextResponse.json({ success: false, error: "Supplier not found" }, { status: 404 });
+    }
+    
+    const dbSupplier = supplierRows[0];
+
+    // Map DB fields to general info expected by frontend
     const generalInfo = {
-      businessName: supplierName,
-      contactPerson: "Rajesh Kumar",
-      email: `contact@${supplierName.replace(/\s+/g, '').toLowerCase()}.com`,
-      phone: "+91 98765 43210",
-      address: "123 Industrial Area, Phase II, Mumbai, Maharashtra 400001",
-      gstId: "27AABCT" + Math.floor(1000 + Math.random() * 9000) + "J1Z5",
-      paymentTerms: "Net 30 Days"
+      businessName: dbSupplier.companyName,
+      contactPerson: dbSupplier.contactPerson || "N/A",
+      email: dbSupplier.emailAddress || `contact@${dbSupplier.companyName.replace(/\s+/g, '').toLowerCase()}.com`,
+      phone: dbSupplier.phone || "N/A",
+      address: dbSupplier.registeredAddress || "N/A",
+      gstId: dbSupplier.gstId || "N/A",
+      paymentTerms: dbSupplier.paymentTerms || "Net 30 Days"
     };
 
     // Generate mock history based on the supplier name to make it look realistic
