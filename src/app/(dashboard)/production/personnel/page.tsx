@@ -4,33 +4,108 @@ import React, { useState } from 'react';
 import { User, X, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-const initialPersonnel: any[] = [];
+export interface ProductionPerson {
+  id: string;
+  name: string;
+  assignedStage: string;
+  activePoBatch: string;
+  ratePerDay: number;
+  dailyTargetWork: number;
+  totalAllocated: number;
+}
+
+const initialPersonnel: ProductionPerson[] = [];
 
 export default function PersonnelOverviewPage() {
   const router = useRouter();
   const [personnelList, setPersonnelList] = useState(initialPersonnel);
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Form State
-  const [personName, setPersonName] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [assignedStage, setAssignedStage] = useState('Cutting');
+  const [formData, setFormData] = useState({
+    name: '',
+    phoneDigits: '',
+    stage: 'Cutting',
+    ratePerDay: '',
+    dailyTarget: ''
+  });
+  const [contactError, setContactError] = useState('');
+
+  React.useEffect(() => {
+    const fetchPersons = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:5000/api/v1/production/persons');
+        const resData = await res.json();
+        console.log('Fetched production persons:', resData);
+        
+        let personsArray = [];
+        if (resData && Array.isArray(resData.data)) {
+          personsArray = resData.data;
+        } else if (Array.isArray(resData)) {
+          personsArray = resData;
+        } else if (resData && resData.data && Array.isArray(resData.data.data)) {
+          personsArray = resData.data.data;
+        }
+        
+        const mappedPersons: ProductionPerson[] = personsArray.map((p: any) => ({
+           id: p.id || p.person_id || Math.random().toString(),
+           name: p.person_name || p.name || 'Unknown',
+           assignedStage: p.production_stage || p.assignedStage || p.activeStage || 'Unassigned',
+           activePoBatch: p.active_po_batch || p.activePoBatch || p.poBatch || 'None',
+           ratePerDay: Number(p.rate_per_day || p.ratePerDay || 0),
+           dailyTargetWork: Number(p.daily_target_pcs || p.dailyTargetWork || p.dailyTarget || 0),
+           totalAllocated: Number(p.total_allocated || p.totalAllocated || p.allocatedQty || 0)
+        }));
+
+        setPersonnelList(mappedPersons);
+      } catch (error) {
+        console.error('Failed to fetch production persons:', error);
+      }
+    };
+    fetchPersons();
+  }, []);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Strip out everything except digits entered after +91
+    const rawDigits = e.target.value.replace(/\D/g, '');
+
+    // Remove leading '91' if the user accidentally pastes it
+    const cleanDigits = rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
+
+    // Limit to exactly 10 digits
+    if (cleanDigits.length <= 10) {
+      setFormData(prev => ({ ...prev, phoneDigits: cleanDigits }));
+      if (contactError) setContactError('');
+    }
+  };
 
   const handleSavePersonnel = () => {
-    if (!personName) return;
-    
+    if (!formData.name) return;
+
+    if (formData.phoneDigits.length !== 10) {
+      setContactError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
     setPersonnelList([...personnelList, {
-      name: personName,
-      contact: contactNumber || `+1 (555) 019-${2000 + personnelList.length}`,
-      activeStage: assignedStage.toUpperCase(),
-      poBatch: 'PO-2026-002',
-      allocatedQty: 0
+      id: Math.random().toString(),
+      name: formData.name,
+      assignedStage: formData.stage.toUpperCase(),
+      activePoBatch: 'PO-2026-002',
+      ratePerDay: Number(formData.ratePerDay),
+      dailyTargetWork: Number(formData.dailyTarget),
+      totalAllocated: 0
     }]);
-    
+
     // Reset and close
-    setPersonName('');
-    setContactNumber('');
-    setAssignedStage('Cutting');
+    setFormData({
+      name: '',
+      phoneDigits: '',
+      stage: 'Cutting',
+      ratePerDay: '',
+      dailyTarget: ''
+    });
+    setContactError('');
     setIsOpen(false);
   };
 
@@ -42,7 +117,7 @@ export default function PersonnelOverviewPage() {
           <User className="h-7 w-7 text-indigo-500" />
           Active Production Persons Overview
         </h2>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -59,45 +134,61 @@ export default function PersonnelOverviewPage() {
           </button>
         </div>
       </div>
-      
+
       {personnelList.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {personnelList.map((person, i) => (
-            <div key={i} className="bg-card border border-neutral-100 dark:border-border rounded-2xl shadow-sm p-5 flex flex-col gap-5">
+          {personnelList.map((person: ProductionPerson, i) => {
+            const estDays = person.dailyTargetWork > 0 ? Math.ceil(person.totalAllocated / person.dailyTargetWork) : 0;
+            const personIdStr = String(person.id || '');
+            return (
+            <div key={personIdStr || i} className="bg-card border border-neutral-100 dark:border-border rounded-2xl shadow-sm p-5 flex flex-col gap-5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-base shadow-inner">
-                  {person.name.substring(0, 2).toUpperCase()}
+                  {(person.name || 'U').substring(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-card-foreground">{person.name}</h3>
                   <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                    {person.contact}
+                    ID: {personIdStr.substring(0, 8)}
                   </p>
                 </div>
               </div>
               <div className="bg-neutral-50 dark:bg-card/50 rounded-xl p-4 space-y-3 border border-neutral-100 dark:border-border flex-1">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Assigned Stage</span>
-                  <span className="px-2 py-0.5 bg-blue-50 dark:bg-card/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded uppercase tracking-wider">{person.activeStage}</span>
+                  <span className="px-2 py-0.5 bg-blue-50 dark:bg-card/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded uppercase tracking-wider">{person.assignedStage}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Active PO Batch</span>
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{person.poBatch}</span>
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{person.activePoBatch}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Rate Per Day</span>
+                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">₹{person.ratePerDay}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Est. Completion</span>
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{estDays} days</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-border pt-3 mt-3">
+                  <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Daily Target Work</span>
+                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">{person.dailyTargetWork} pcs</span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Total Allocated</span>
-                  <span className="text-lg font-black text-blue-600 dark:text-blue-400">{person.allocatedQty.toLocaleString()}</span>
+                  <span className="text-sm font-black text-purple-600 dark:text-purple-400">{person.totalAllocated} pcs</span>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="w-full border-2 border-dashed border-neutral-300 dark:border-border rounded-xl p-10 flex flex-col items-center justify-center text-center bg-neutral-50/50 dark:bg-card/20">
           <div className="p-4 bg-card rounded-full shadow-sm mb-4 border border-neutral-100 dark:border-border">
             <User className="h-8 w-8 text-neutral-400" />
           </div>
-          <p className="text-card-foreground font-bold text-lg mb-1">No personnel deployed on the floor</p>
+          <p className="text-card-foreground font-bold text-lg mb-1">No persons deployed on the floor</p>
           <p className="text-sm text-muted-foreground max-w-sm">Click '+ Add Person' to assign workers.</p>
         </div>
       )}
@@ -105,49 +196,53 @@ export default function PersonnelOverviewPage() {
       {/* Personnel Creation Modal Dialog */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
             onClick={() => setIsOpen(false)}
           />
           <div className="relative bg-card rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-5 border-b border-border">
-              <h3 className="text-lg font-bold text-foreground">Add New Personnel</h3>
-              <button 
+              <h3 className="text-lg font-bold text-foreground">Add New Person</h3>
+              <button
                 onClick={() => setIsOpen(false)}
                 className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Person Name</label>
-                <input 
-                  type="text" 
-                  value={personName}
-                  onChange={(e) => setPersonName(e.target.value)}
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Enter employee name"
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Contact Number</label>
-                <input 
-                  type="tel" 
-                  value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
                 />
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Contact Number</label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-neutral-500 dark:text-slate-400 font-medium text-sm">+91</span>
+                  <input
+                    type="tel"
+                    value={formData.phoneDigits}
+                    onChange={handlePhoneChange}
+                    placeholder="98765 43210"
+                    className={`pl-10 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-shadow bg-transparent ${contactError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-neutral-300 dark:border-border focus:ring-indigo-500 focus:border-indigo-500'}`}
+                  />
+                </div>
+                {contactError && <p className="text-red-500 text-xs mt-1">{contactError}</p>}
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Assign Production Stage</label>
-                <select 
-                  value={assignedStage}
-                  onChange={(e) => setAssignedStage(e.target.value)}
+                <select
+                  value={formData.stage}
+                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent text-neutral-700 dark:text-neutral-200"
                 >
                   <option value="Cutting">Cutting</option>
@@ -155,22 +250,46 @@ export default function PersonnelOverviewPage() {
                   <option value="Fusing">Fusing</option>
                   <option value="Kaj Button">Kaj Button</option>
                   <option value="Finishing">Finishing</option>
+                  <option value="Packing">Packing</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Rate Per Day (₹)</label>
+                  <input
+                    type="number"
+                    value={formData.ratePerDay}
+                    onChange={(e) => setFormData({ ...formData, ratePerDay: e.target.value })}
+                    placeholder="e.g. 500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Daily Target (pcs/day)</label>
+                  <input
+                    type="number"
+                    value={formData.dailyTarget}
+                    onChange={(e) => setFormData({ ...formData, dailyTarget: e.target.value })}
+                    placeholder="e.g. 100"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 p-5 border-t border-border bg-neutral-50 dark:bg-card/50">
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-neutral-300"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleSavePersonnel}
                 className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-colors"
               >
-                Save Personnel
+                Save Person
               </button>
             </div>
           </div>

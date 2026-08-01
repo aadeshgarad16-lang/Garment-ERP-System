@@ -95,7 +95,7 @@ export default function DashboardHomePage({
   productionStages
 }: DashboardHomePageProps) {
   const { t } = useLanguage();
-  
+
   const [statsData, setStatsData] = useState<any>(initialStatsData || {
     totalOrders: 0,
     activeProduction: 0,
@@ -103,7 +103,7 @@ export default function DashboardHomePage({
     inventoryAlerts: 0
   });
   const [recentOrders, setRecentOrders] = useState<any[]>(initialRecentOrders);
-  
+
   // Fetch live dashboard data from backend
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -111,7 +111,7 @@ export default function DashboardHomePage({
         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
         const res = await fetch(`${BACKEND_URL}/api/dashboard/summary`);
         if (!res.ok) throw new Error(`Server status ${res.status}`);
-        
+
         const data = await res.json();
         if (data.success) {
           setStatsData(data.statsData);
@@ -306,8 +306,8 @@ export default function DashboardHomePage({
           if (stat.tKey === 'inventoryAlerts') variant = 'red';
 
           const trendObj = stat.change ? {
-             value: stat.change,
-             isPositive: stat.change.includes('+') // Assuming trend positive if it has '+'
+            value: stat.change,
+            isPositive: stat.change.includes('+') // Assuming trend positive if it has '+'
           } : undefined;
 
           return (

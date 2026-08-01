@@ -211,36 +211,53 @@ function StoreOrdersModule() {
   const [selectedGrnPo, setSelectedGrnPo] = useState<any>(null);
   const [grnReceivedQty, setGrnReceivedQty] = useState<number>(0);
 
-  // Sync with localStorage
+  // Fetch from database
   useEffect(() => {
-    const loadSharedOrders = () => {
-      const stored = localStorage.getItem('sharedPurchaseOrders');
-      let parsed = null;
+    const fetchLiveOrders = async () => {
       try {
-        if (stored) parsed = JSON.parse(stored);
-      } catch (e) {}
-
-      // Force inject mock data if PO-1003 is missing (handles stale cache)
-      if (!parsed || !parsed.some((o: any) => o.id === 'PO-1003')) {
-        const defaultPOs = [
-          { id: 'PO-1001', supplier: 'Acme Corp', items: 3, total: 15000, date: '2023-10-15', status: 'In Process', expectedDelivery: '2023-11-01', receivedQty: 0, grnNumbers: [], receivingDates: [] },
-          { id: 'PO-1002', supplier: 'Global Textiles', items: 5, total: 45000, date: '2023-10-16', status: 'In Process', expectedDelivery: '2023-10-25', receivedQty: 0, grnNumbers: [], receivingDates: [] },
-          { id: 'PO-0998', supplier: 'Supreme Trims', items: 2, total: 5000, date: '2023-10-01', status: 'Completed / Received', deliveredOn: '2023-10-20', receivedQty: 2, grnNumbers: ["GRN-0998"], receivingDates: ["2023-10-20"] },
-          { id: 'PO-1003', supplier: 'Delta Logistics', items: 4, total: 20000, date: '2026-07-20', status: 'In Transit', expectedDelivery: '2026-07-28', receivedQty: 0, grnNumbers: [], receivingDates: [] },
-          { id: 'PO-1004', supplier: 'Fast Freight', items: 12, total: 60000, date: '2026-07-22', status: 'Awaiting Dispatch', expectedDelivery: '2026-07-29', receivedQty: 0, grnNumbers: [], receivingDates: [] },
-          { id: 'PO-1005', supplier: 'Alert Solutions', items: 6, total: 12000, date: '2026-07-15', status: 'Delayed', expectedDelivery: '2026-07-25', receivedQty: 0, grnNumbers: [], receivingDates: [] }
-        ];
-        parsed = defaultPOs;
-        localStorage.setItem('sharedPurchaseOrders', JSON.stringify(defaultPOs));
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const res = await fetch(`${BACKEND_URL}/procurement/view`, {
+          headers: { 'X-API-Key': 'sasons_read_only_key_2026_abc' }
+        });
+        
+        if (res.ok) {
+          const rawData = await res.json();
+          // Group by po_number
+          const grouped: { [key: string]: any } = {};
+          rawData.forEach((row: any) => {
+            const po = row.po_number;
+            if (!grouped[po]) {
+              grouped[po] = {
+                id: po,
+                supplier: row.supplier_name || 'Unknown',
+                items: 0,
+                total: 0,
+                date: row.expected_delivery_date || new Date().toISOString().split('T')[0],
+                status: row.status === 'IN PROCESS' ? 'In Process' : (row.status === 'DELIVERED' ? 'Completed / Received' : row.status),
+                expectedDelivery: row.expected_delivery_date,
+                receivedQty: 0,
+                grnNumbers: [],
+                receivingDates: [],
+                details: []
+              };
+            }
+            grouped[po].items += 1;
+            grouped[po].details.push(row);
+          });
+          
+          const parsed = Object.values(grouped);
+          setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
+          setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
+          setIssueOrders(parsed.filter((o: any) => o.status.includes('Action Required') || o.status.includes('Delayed')));
+        }
+      } catch (e) {
+        console.error("Failed to fetch live orders", e);
       }
-
-      setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
-      setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
-      setIssueOrders(parsed.filter((o: any) => o.status.includes('Action Required') || o.status.includes('Delayed')));
     };
-    loadSharedOrders();
-
-    const handleStorage = () => loadSharedOrders();
+    
+    fetchLiveOrders();
+    
+    const handleStorage = () => fetchLiveOrders();
     window.addEventListener('storage', handleStorage);
     window.addEventListener('orders-updated', handleStorage);
     return () => {

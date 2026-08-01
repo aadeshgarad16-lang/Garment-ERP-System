@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Truck,
   Clock,
@@ -41,13 +41,7 @@ import { generateProcurementPDF } from '@/utils/pdfGenerator';
 
 const initialMockShortages: any[] = [];
 
-const MOCK_SUPPLIERS = [
-  { id: "v1", name: "Apex Textiles Ltd" },
-  { id: "v2", name: "Global Threads & Yarns" },
-  { id: "v3", name: "Supreme Trims Co." },
-  { id: "v4", name: "Vardhman Yarns" },
-  { id: "v5", name: "Reliable Buttons & Zippers" }
-];
+
 
 
 const timelineSteps = [
@@ -103,7 +97,9 @@ export default function ProcurementPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [supplierFilter, setSupplierFilter] = useState<string[]>([]);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-  const [suppliersList, setSuppliersList] = useState(MOCK_SUPPLIERS);
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
+  const [selectedSupplierFilter, setSelectedSupplierFilter] = useState<any>(null);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   const [selectedSuppliers, setSelectedSuppliers] = useState<Record<string, string>>({});
 
   const [mockShortages, setMockShortages] = useState<any[]>([]);
@@ -142,7 +138,7 @@ export default function ProcurementPage() {
       if (storedAllocated) {
         try {
           setAllocatedItems(JSON.parse(storedAllocated));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const stored = localStorage.getItem('sharedPurchaseOrders');
@@ -152,7 +148,7 @@ export default function ProcurementPage() {
           setInProcessPOs(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received'));
           setCompletedPOs(parsed.filter((o: any) => o.status === 'Completed / Received'));
           setHistoryPOs(parsed);
-        } catch (e) {}
+        } catch (e) { }
       }
     };
     loadSharedOrders();
@@ -269,13 +265,13 @@ export default function ProcurementPage() {
       if (currentPO) {
         setPoInput(currentPO);
       }
-      
+
       const editSupplier = params.get('supplier');
       try {
         const session = localStorage.getItem('review_po_session');
         if (session) {
           const parsedSession = JSON.parse(session);
-          
+
           const newOrderQuantities: Record<string, number | string> = {};
           const newSelectedSuppliers: Record<string, string> = {};
           const newArticleSplits: { id: string, parentId: string }[] = [];
@@ -296,20 +292,20 @@ export default function ProcurementPage() {
             if (shouldRestoreRows && group.items) {
               group.items.forEach((item: any) => {
                 let targetId = item.id;
-                
+
                 if (seenParents.has(item.id)) {
                   targetId = `${item.id}-split-${Date.now()}-${Math.random().toString(36).substring(7)}`;
                   newArticleSplits.push({ id: targetId, parentId: item.id });
                 } else {
                   seenParents.add(item.id);
                 }
-                
+
                 newOrderQuantities[targetId] = item.orderQty;
                 newSelectedSuppliers[targetId] = group.supplierName;
               });
             }
           });
-          
+
           if (allSuppliers.size > 0) {
             // In edit mode: only filter to the edit supplier so the dropdown
             // shows just that vendor. Other suppliers' quantities are already
@@ -320,7 +316,7 @@ export default function ProcurementPage() {
           setSelectedSuppliers(prev => ({ ...prev, ...newSelectedSuppliers }));
           setArticleSplits(prev => [...prev, ...newArticleSplits]);
         }
-      } catch(e) {}
+      } catch (e) { }
 
       if (editSupplier) {
         setEditModeSupplier(editSupplier);
@@ -328,7 +324,54 @@ export default function ProcurementPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        console.log("Fetching suppliers from API...");
+        const res = await fetch('http://127.0.0.1:5000/api/suppliers');
+        
+        if (!res.ok) {
+          console.error(`Backend returned status ${res.status}`);
+          setSuppliersList([]);
+          setSuppliers([]);
+          return;
+        }
 
+        const data = await res.json();
+        console.log("RAW SUPPLIERS DATA FROM BACKEND:", data);
+
+        let rawArray: any[] = [];
+        // Safely extract array regardless of top-level key format
+        if (Array.isArray(data)) {
+          rawArray = data;
+        } else if (data && Array.isArray(data.suppliers)) {
+          rawArray = data.suppliers;
+        } else if (data && Array.isArray(data.data)) {
+          rawArray = data.data;
+        } else {
+          console.error("Unrecognized data format:", data);
+          setSuppliersList([]);
+          setSuppliers([]);
+          return;
+        }
+
+        // Map to ensure 'name' exists for the lower table and other components
+        const mappedData = rawArray.map((s: any) => ({
+          ...s,
+          name: s.name || s.supplier_name || s.company_name || 'Unnamed Supplier'
+        }));
+
+        setSuppliersList(mappedData);
+        setSuppliers(mappedData);
+      } catch (err) {
+        console.error("Failed to connect to supplier endpoint:", err);
+        setSuppliersList([]);
+        setSuppliers([]);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
   const fetchStoreArticleShortages = async () => {
     try {
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
@@ -340,11 +383,20 @@ export default function ProcurementPage() {
       });
       const data = await res.json();
       if (data && Array.isArray(data.data)) {
+        if (data.suppliers) {
+          setSuppliersList(data.suppliers);
+        }
         const activeData = data.data;
         return activeData
           .filter((item: any) => {
             const deficit = Number(item.deficit ?? 0);
             const status = String(item.status || '');
+            const itemName = (item.article_name || item.name || '').toLowerCase();
+            const hsn = item.hsn_code || '';
+
+            if (itemName.includes('metal button') || hsn === '960621') {
+              return false;
+            }
 
             const hasShortage = deficit > 0 && status.toUpperCase() !== 'FULFILLED';
             return hasShortage;
@@ -378,12 +430,12 @@ export default function ProcurementPage() {
 
             const supplierNames = supplierArray.map(supp => {
               const strSupp = String(supp).trim();
-              const matchedSupplier = MOCK_SUPPLIERS.find(v => String(v.id) === strSupp || v.name.toLowerCase() === strSupp.toLowerCase());
+              const matchedSupplier = (data.suppliers || []).find((v: any) => String(v.id) === strSupp || String(v.name).toLowerCase() === strSupp.toLowerCase());
               return matchedSupplier ? matchedSupplier.name : strSupp;
             });
 
             return {
-              id: `PR-STORE-${item.id}`,
+              id: `PR-STORE-${item.type}-${item.id}`,
               storeId: item.id,
               itemType: item.type === 'Garment' ? 'Stock Good' : 'Material',
               material: materialStr,
@@ -419,7 +471,7 @@ export default function ProcurementPage() {
 
     const fetchPOShortages = (selectedPoNumber: string) => {
       let related = loadedRequests.filter(p => p.linkedPO === selectedPoNumber);
-      
+
       // Deduct already-staged quantities; only hide fully-allocated items
       try {
         const session = localStorage.getItem('review_po_session');
@@ -444,7 +496,7 @@ export default function ProcurementPage() {
             })
             .filter(req => req.required > 0); // hide only fully allocated
         }
-      } catch (e) {}
+      } catch (e) { }
 
       setMockShortages(related);
 
@@ -494,7 +546,7 @@ export default function ProcurementPage() {
             });
           }
         });
-        
+
         let finalMerged = merged;
         // Deduct already-staged quantities; only hide fully-allocated items
         try {
@@ -520,16 +572,16 @@ export default function ProcurementPage() {
               })
               .filter(req => (req.shortage ?? req.required) > 0 && req.status !== 'COMPLETED'); // hide only fully allocated
           }
-        } catch (e) {}
+        } catch (e) { }
 
         const strictlyFiltered = finalMerged.filter(req => (req.shortage ?? req.required) > 0 && String(req.status).toUpperCase() !== 'FULFILLED');
 
         setOrderQuantities(prev => {
           const updated = { ...prev };
           strictlyFiltered.forEach(item => {
-             if (updated[item.id] === undefined) {
-                 updated[item.id] = item.shortage;
-             }
+            if (updated[item.id] === undefined) {
+              updated[item.id] = 0;
+            }
           });
           return updated;
         });
@@ -542,6 +594,9 @@ export default function ProcurementPage() {
   }, [poInput, editModeSupplier]);
   const activeRequests = React.useMemo(() => {
     return mockShortages.filter(item => {
+      const isMetalButtons = String(item.material).toLowerCase().includes('metal button') || String(item.material).includes('960621');
+      if (isMetalButtons) return false;
+
       const remaining = item.shortage ?? item.required ?? item.deficit ?? 0;
       const isFulfilled = String(item.status).toUpperCase() === 'FULFILLED' || String(item.status).toUpperCase() === 'COMPLETED' || item.isFulfilled === true;
       return remaining > 0 && !isFulfilled;
@@ -600,16 +655,20 @@ export default function ProcurementPage() {
   }, [activeRequests]);
 
   const filteredShortages = React.useMemo(() => {
-    return deduplicatedShortages.filter(item => {
+    return Array.from(deduplicatedShortages.values()).filter(item => {
+      const isMetalButtons = String(item.material).toLowerCase().includes('metal button') || String(item.material).includes('960621');
+      if (isMetalButtons) return false;
+
       const matchesSearch = item.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
       const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
+      const matchesSupplier = supplierFilter.length === 0 || supplierFilter.some(filterStr => item.allSuppliers?.includes(filterStr));
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && matchesSupplier;
     });
-  }, [deduplicatedShortages, searchTerm, statusFilter, priorityFilter]);
+  }, [deduplicatedShortages, searchTerm, statusFilter, priorityFilter, supplierFilter]);
 
   const displayRows = React.useMemo(() => {
     const rows: any[] = [];
@@ -685,11 +744,17 @@ export default function ProcurementPage() {
       }
     });
 
-    return Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => ({
-      supplierName,
-      items
-    }));
-  }, [displayRows, orderQuantities, selectedSuppliers]);
+    return Array.from(groupedBySupplier.entries()).map(([supplierName, items]) => {
+      const supplierObj = suppliersList.find(s => s.name === supplierName) || null;
+      return {
+        supplierName,
+        supplierObj,
+        items
+      };
+    });
+  }, [displayRows, orderQuantities, selectedSuppliers, suppliersList]);
+
+  console.log("Suppliers array in component:", suppliers);
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
@@ -701,7 +766,7 @@ export default function ProcurementPage() {
                 <h3 className="text-lg font-bold text-foreground">Purchase Order Details</h3>
                 <p className="text-sm text-muted-foreground">{viewPoDetails.id} • {viewPoDetails.supplier}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setViewPoDetails(null)}
                 className="text-neutral-400 hover:text-foreground transition-colors"
               >
@@ -710,7 +775,7 @@ export default function ProcurementPage() {
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-3 bg-muted/30 rounded-lg border border-border">
@@ -731,7 +796,7 @@ export default function ProcurementPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="px-6 py-4 border-t border-border bg-neutral-50/50 dark:bg-card/30 flex justify-end">
               <button
                 onClick={() => setViewPoDetails(null)}
@@ -761,7 +826,7 @@ export default function ProcurementPage() {
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => {
               setEditModeSupplier(null);
               setSupplierFilter([]);
@@ -907,55 +972,56 @@ export default function ProcurementPage() {
                   </div>
 
                   {isSupplierDropdownOpen && (
-                    <div className="absolute z-10 mt-1 right-0 w-full sm:w-64 bg-card border border-border rounded-lg shadow-lg max-h-72 flex flex-col">
-                      <div className="p-2 border-b border-border sticky top-0 bg-card z-10">
-                        <div className="relative">
-                          <Search className="h-3.5 w-3.5 text-neutral-400 absolute left-2 top-2.5" />
-                          <input
-                            type="text"
-                            placeholder="Search suppliers..."
-                            className="w-full pl-7 pr-2 py-1.5 text-sm border border-border rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-background"
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              const search = e.target.value.toLowerCase();
-                              // Filter is handled inline below
-                              e.target.setAttribute('data-search', search);
-                            }}
-                            id="supplier-search-input"
-                          />
-                        </div>
-                      </div>
-                      <div className="p-2 space-y-1 overflow-y-auto">
-                        {suppliersList
-                          .filter(s => {
-                            const searchEl = document.getElementById('supplier-search-input') as HTMLInputElement;
-                            const search = (searchEl?.getAttribute('data-search') || '').toLowerCase();
-                            return s.name.toLowerCase().includes(search);
-                          })
-                          .map((supplier) => (
-                          <label key={supplier.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              className="rounded border-border text-indigo-600 focus:ring-indigo-500 bg-card cursor-pointer h-4 w-4"
-                              checked={supplierFilter.includes(supplier.name)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSupplierFilter(prev => [...prev, supplier.name]);
-                                } else {
-                                  setSupplierFilter(prev => prev.filter(v => v !== supplier.name));
-                                }
-                              }}
-                            />
-                            <span className="text-sm text-foreground">{supplier.name}</span>
-                          </label>
-                        ))}
-                        {supplierFilter.length > 0 && (
-                          <button
-                            onClick={() => setSupplierFilter([])}
-                            className="w-full text-center text-xs text-indigo-600 font-semibold p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md mt-2 transition-colors"
-                          >
-                            Clear Selection
-                          </button>
+                    <div className="absolute right-0 mt-2 w-64 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl z-50 p-2 flex flex-col gap-2">
+                      
+                      {/* Search Input */}
+                      <input 
+                        type="text" 
+                        placeholder="Search suppliers..." 
+                        value={supplierSearchTerm}
+                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                      />
+
+                      {/* Explicit Scrollable Supplier List - THIS WAS MISSING */}
+                      <div className="max-h-48 overflow-y-auto flex flex-col gap-1 pr-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSupplierFilter(null);
+                            setIsSupplierDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded transition-colors"
+                        >
+                          All Suppliers
+                        </button>
+
+                        {suppliersList && suppliersList.length > 0 ? (
+                          suppliersList
+                            .filter((s) => {
+                              const sName = s.name || s.supplier_name || s.company_name || '';
+                              return sName.toLowerCase().includes((supplierSearchTerm || '').toLowerCase());
+                            })
+                            .map((sup) => {
+                              const displayName = sup.name || sup.supplier_name || sup.company_name || 'Unnamed';
+                              return (
+                                <button
+                                  key={sup.id || displayName}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSupplierFilter(sup);
+                                    setIsSupplierDropdownOpen(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs text-white hover:bg-slate-800 rounded transition-colors flex items-center justify-between"
+                                >
+                                  <span>{displayName}</span>
+                                </button>
+                              );
+                            })
+                        ) : (
+                          <div className="px-3 py-2 text-xs text-slate-400 italic">
+                            {suppliersList ? 'No suppliers match search' : 'Loading suppliers...'}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -981,10 +1047,10 @@ export default function ProcurementPage() {
                 {filteredShortages.length > 0 ? (
                   filteredShortages.map((item) => {
                     const splits = articleSplits.filter(s => s.parentId === item.id);
-                    const totalRows = splits.length > 0 ? splits.length + 2 : 1; 
+                    const totalRows = splits.length > 0 ? splits.length + 2 : 1;
 
                     const allRowIds = [item.id, ...splits.map(s => s.id)];
-                    
+
                     const getAvailableSuppliers = (currentRowId: string) => {
                       const selectedSupplierNames = allRowIds
                         .filter(id => id !== currentRowId)
@@ -995,7 +1061,7 @@ export default function ProcurementPage() {
                           return '';
                         })
                         .filter(Boolean);
-                        
+
                       return suppliersList.filter(
                         v => supplierFilter.includes(v.name) && !selectedSupplierNames.includes(v.name)
                       );
@@ -1004,7 +1070,7 @@ export default function ProcurementPage() {
                     const isMaxSplitsReached = supplierFilter.length > 0 && getAvailableSuppliers('new-split-check').length === 0;
 
                     const totalAllocated = allRowIds.reduce((sum, id) => sum + (Number(orderQuantities[id]) || 0), 0);
-                    const dynamicShortage = Math.max(0, item.required - totalAllocated);
+                    const dynamicShortage = Math.max(0, (item.shortage ?? item.required) - totalAllocated);
 
                     return (
                       <React.Fragment key={item.id}>
@@ -1014,37 +1080,37 @@ export default function ProcurementPage() {
                               <span className={`text-sm font-medium ${dynamicShortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-foreground'}`}>{item.material}</span>
                               <span className="text-xs text-muted-foreground mt-1">
                                 {item.itemType ? (
-                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mr-2 ${item.itemType === 'Stock Good' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {item.itemType}
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mr-2 ${item.itemType === 'Stock Good' || item.itemType === 'FINISHED GOODS' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {item.itemType === 'Stock Good' || item.itemType === 'STOCK_GOOD' || item.itemType === 'STOCK GOOD' ? 'FINISHED GOODS' : item.itemType === 'Material' || item.itemType === 'MATERIAL' ? 'ARTICLE' : item.itemType}
                                   </span>
                                 ) : null}
-                                {item.category} • {item.id}
+                                {item.category} • {item.id.split(',')[0]}
                               </span>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center align-top border-r border-border/50" rowSpan={totalRows}>
                             <div className="flex flex-col items-center justify-center h-full">
-                               <div className="text-sm font-semibold">{item.available} {item.unit}</div>
-                               <div className="text-[10px] text-muted-foreground uppercase">Available</div>
-                               <div className="w-8 border-b border-border my-1"></div>
-                               <div className="text-sm font-medium">{item.required} {item.unit}</div>
-                               <div className="text-[10px] text-muted-foreground uppercase">Min Required</div>
+                              <div className="text-sm font-semibold">{item.available} {item.unit}</div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Available</div>
+                              <div className="w-8 border-b border-border my-1"></div>
+                              <div className="text-sm font-medium">{item.required} {item.unit}</div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Min Required</div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center align-top">
                             <div className="flex flex-col items-center justify-center h-full">
-                              <span className={`text-sm font-bold ${dynamicShortage === 0 ? 'text-emerald-600' : dynamicShortage < item.shortage ? 'text-amber-600' : 'text-red-600'}`}>
+                              <span className={`text-sm font-bold ${totalAllocated > 0 ? (dynamicShortage === 0 ? 'text-emerald-600' : 'text-amber-600') : 'text-red-600'}`}>
                                 {dynamicShortage}
                               </span>
-                              {dynamicShortage < item.shortage && (
+                              {totalAllocated > 0 && dynamicShortage < item.shortage && (
                                 <span className="text-xs text-muted-foreground line-through">{item.shortage}</span>
                               )}
                               <span className="text-xs text-muted-foreground">{item.unit === 'meters' ? (t('dashboard.stockAlerts.footer.metersRemaining') || 'meters') : item.unit === 'spools' ? (t('dashboard.stockAlerts.footer.spoolsRemaining') || 'spools') : (t('dashboard.stockAlerts.footer.unitsRemaining') || 'units')}</span>
                             </div>
                           </td>
-                          
+
                           <td className="px-4 py-3 align-top">
-                            <select 
+                            <select
                               className="block w-full py-1.5 pl-3 pr-8 border border-border rounded-lg sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
                               value={selectedSuppliers[item.id] || (item.supplier === 'Store Restock' || item.supplier === 'Pending Assignment' ? '' : item.supplier)}
                               onChange={(e) => setSelectedSuppliers(prev => ({ ...prev, [item.id]: e.target.value }))}
@@ -1071,49 +1137,48 @@ export default function ProcurementPage() {
 
                           <td className="px-4 py-3 text-center align-top">
                             <div className="flex flex-col items-center justify-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
-                                  value={orderQuantities[item.id] !== undefined ? orderQuantities[item.id] : ''}
-                                  placeholder="0"
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setOrderQuantities(prev => ({ ...prev, [item.id]: val === '' ? '' : parseFloat(val) }));
-                                  }}
-                                />
-                                {totalAllocated > 0 && (
-                                  <span className={`text-xs font-bold ${
-                                    totalAllocated > item.required
-                                      ? 'text-red-600'
-                                      : dynamicShortage === 0
-                                        ? 'text-emerald-600'
-                                        : 'text-amber-600'
+                              <input
+                                type="number"
+                                min="0"
+                                className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
+                                value={orderQuantities[item.id] !== undefined ? orderQuantities[item.id] : ''}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setOrderQuantities(prev => ({ ...prev, [item.id]: val === '' ? '' : parseFloat(val) }));
+                                }}
+                              />
+                              {totalAllocated > 0 && (
+                                <span className={`text-xs font-bold ${totalAllocated > item.required
+                                  ? 'text-red-600'
+                                  : dynamicShortage === 0
+                                    ? 'text-emerald-600'
+                                    : 'text-amber-600'
                                   }`}>
-                                    {totalAllocated > item.required
-                                      ? `Over by ${totalAllocated - item.required}`
-                                      : dynamicShortage === 0
-                                        ? 'Fulfilled ✓'
-                                        : `Remaining: ${dynamicShortage}`}
-                                  </span>
-                                )}
+                                  {totalAllocated > item.required
+                                    ? `Over by ${totalAllocated - item.required}`
+                                    : dynamicShortage === 0
+                                      ? 'Fulfilled ✓'
+                                      : `Remaining: ${dynamicShortage}`}
+                                </span>
+                              )}
                             </div>
                           </td>
-                          
+
                           <td className="px-4 py-3 text-center align-top">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                  onClick={() => {
-                                    if (isMaxSplitsReached) return;
-                                    const newId = `${item.id}-split-${Date.now()}`;
-                                    setArticleSplits(prev => [...prev, { id: newId, parentId: item.id }]);
-                                    setOrderQuantities(prev => ({ ...prev, [newId]: 0 }));
-                                  }}
-                                  disabled={isMaxSplitsReached}
-                                  className={`p-1.5 rounded-md transition-colors ${isMaxSplitsReached ? 'text-neutral-300 cursor-not-allowed' : 'text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                                  title={isMaxSplitsReached ? "All selected suppliers allocated" : "Split Allocation"}
-                                >
-                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7l-4 4m4-4l4 4m0 6l4-4m-4 4l-4-4" /></svg>
+                                onClick={() => {
+                                  if (isMaxSplitsReached) return;
+                                  const newId = `${item.id}-split-${Date.now()}`;
+                                  setArticleSplits(prev => [...prev, { id: newId, parentId: item.id }]);
+                                  setOrderQuantities(prev => ({ ...prev, [newId]: 0 }));
+                                }}
+                                disabled={isMaxSplitsReached}
+                                className={`p-1.5 rounded-md transition-colors ${isMaxSplitsReached ? 'text-neutral-300 cursor-not-allowed' : 'text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                title={isMaxSplitsReached ? "All selected suppliers allocated" : "Split Allocation"}
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7l-4 4m4-4l4 4m0 6l4-4m-4 4l-4-4" /></svg>
                               </button>
                             </div>
                           </td>
@@ -1122,49 +1187,49 @@ export default function ProcurementPage() {
                         {splits.map(split => (
                           <tr key={split.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ease-in-out">
                             <td className="px-4 py-3 text-center text-sm text-muted-foreground align-top">-</td>
-                            
+
                             <td className="px-4 py-3 align-top">
-                              <select 
+                              <select
                                 className="block w-full py-1.5 pl-3 pr-8 border border-border rounded-lg sm:text-sm text-foreground appearance-none bg-card cursor-pointer"
                                 value={selectedSuppliers[split.id] || ''}
                                 onChange={(e) => setSelectedSuppliers(prev => ({ ...prev, [split.id]: e.target.value }))}
                               >
                                 {supplierFilter.length === 0 ? (
-                                    <option value="" disabled>Select Suppliers above first</option>
-                                  ) : (
-                                    <>
-                                      <option value="" disabled>Select Supplier</option>
-                                      {/* Always render the currently-selected option even if not in suppliersList */}
-                                      {selectedSuppliers[split.id] && !getAvailableSuppliers(split.id).find(s => s.name === selectedSuppliers[split.id]) && (
-                                        <option value={selectedSuppliers[split.id]}>{selectedSuppliers[split.id]}</option>
-                                      )}
-                                      {getAvailableSuppliers(split.id).map((supplier) => (
-                                        <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
-                                      ))}
-                                      {getAvailableSuppliers(split.id).length === 0 && !selectedSuppliers[split.id] && (
-                                        <option value="" disabled>All selected suppliers allocated</option>
-                                      )}
-                                    </>
-                                  )}
+                                  <option value="" disabled>Select Suppliers above first</option>
+                                ) : (
+                                  <>
+                                    <option value="" disabled>Select Supplier</option>
+                                    {/* Always render the currently-selected option even if not in suppliersList */}
+                                    {selectedSuppliers[split.id] && !getAvailableSuppliers(split.id).find(s => s.name === selectedSuppliers[split.id]) && (
+                                      <option value={selectedSuppliers[split.id]}>{selectedSuppliers[split.id]}</option>
+                                    )}
+                                    {getAvailableSuppliers(split.id).map((supplier) => (
+                                      <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
+                                    ))}
+                                    {getAvailableSuppliers(split.id).length === 0 && !selectedSuppliers[split.id] && (
+                                      <option value="" disabled>All selected suppliers allocated</option>
+                                    )}
+                                  </>
+                                )}
                               </select>
                             </td>
 
                             <td className="px-4 py-3 text-center align-top">
                               <div className="flex flex-col items-center justify-center">
                                 <input
-                                type="number"
-                                min="0"
-                                className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
-                                value={orderQuantities[split.id] !== undefined ? orderQuantities[split.id] : ''}
-                                placeholder="0"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setOrderQuantities(prev => ({ ...prev, [split.id]: val === '' ? '' : parseFloat(val) }));
-                                }}
-                              />
+                                  type="number"
+                                  min="0"
+                                  className="w-20 px-2 py-1 text-sm border border-border rounded focus:ring-indigo-500 focus:border-indigo-500 bg-card"
+                                  value={orderQuantities[split.id] !== undefined ? orderQuantities[split.id] : ''}
+                                  placeholder="0"
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setOrderQuantities(prev => ({ ...prev, [split.id]: val === '' ? '' : parseFloat(val) }));
+                                  }}
+                                />
                               </div>
                             </td>
-                            
+
 
                             <td className="px-4 py-3 text-center align-top">
                               <div className="flex items-center justify-center gap-2">
@@ -1181,15 +1246,15 @@ export default function ProcurementPage() {
                             </td>
                           </tr>
                         ))}
-                        
+
                         {splits.length > 0 && (
                           <tr className="bg-indigo-50/50 dark:bg-indigo-900/10 font-medium">
                             <td className="px-4 py-2 border-t border-border"></td>
                             <td className="px-4 py-2 border-t border-border"></td>
                             <td className="px-4 py-2 text-right text-xs uppercase text-indigo-600/80 dark:text-indigo-400 border-t border-border">Total Combined Qty:</td>
                             <td className="px-4 py-2 text-center font-bold text-indigo-700 dark:text-indigo-300 border-t border-border">
-                              { (Number(orderQuantities[item.id]) || 0) + 
-                                splits.reduce((sum, s) => sum + (Number(orderQuantities[s.id]) || 0), 0) }
+                              {(Number(orderQuantities[item.id]) || 0) +
+                                splits.reduce((sum, s) => sum + (Number(orderQuantities[s.id]) || 0), 0)}
                             </td>
                             <td colSpan={1} className="px-4 py-2 border-t border-border"></td>
                           </tr>
@@ -1280,7 +1345,7 @@ export default function ProcurementPage() {
                       });
                       localStorage.setItem('autoGeneratedProcurementRequests', JSON.stringify(updated));
                     }
-                  } catch(e) {
+                  } catch (e) {
                     console.error("Failed to update autoGeneratedProcurementRequests", e);
                   }
 
@@ -1309,7 +1374,7 @@ export default function ProcurementPage() {
                       });
                       localStorage.setItem('procurement_requests', JSON.stringify(updated));
                     }
-                  } catch(e) {
+                  } catch (e) {
                     console.error("Failed to update procurement_requests", e);
                   }
 
@@ -1319,7 +1384,7 @@ export default function ProcurementPage() {
                   try {
                     const session = localStorage.getItem('review_po_session');
                     if (session) existingSession = JSON.parse(session);
-                  } catch (e) {}
+                  } catch (e) { }
                   // Only overwrite suppliers currently being allocated
                   const suppliersBeingManaged = new Set(supplierFilter);
                   existingSession = existingSession.filter((g: any) => !suppliersBeingManaged.has(g.supplierName));
@@ -1425,9 +1490,9 @@ export default function ProcurementPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 flex items-center justify-center gap-2">
-                       <button onClick={() => generateProcurementPDF(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Download PDF">
-                          <Download className="h-4 w-4" />
-                       </button>
+                      <button onClick={() => generateProcurementPDF(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Download PDF">
+                        <Download className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1471,8 +1536,8 @@ export default function ProcurementPage() {
                     <td className="px-6 py-4">{po.items}</td>
                     <td className="px-6 py-4">₹{po.total.toLocaleString()}</td>
                     <td className="px-6 py-4 flex items-center justify-center gap-2">
-                      <button 
-                        className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" 
+                      <button
+                        className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                         title="View Details"
                         onClick={() => setViewPoDetails(po)}
                       >

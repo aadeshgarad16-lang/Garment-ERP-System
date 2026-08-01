@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { formatDateDisplay } from '@/utils/dateUtils';
 import { Edit, Eye, List, X, ExternalLink, Calendar, DollarSign, Package, ArrowLeft } from 'lucide-react';
 import { getAllOrdersAPI, Order } from '@/lib/api';
+import { navigateToStage } from '@/utils/navigation';
 
 const allSteps = [
   'Order Initiation',
@@ -99,7 +100,7 @@ export default function OrderListPage() {
     if (step === 'Order Initiation') {
       router.push(`${urlPath}?resumeId=${selectedOrder.id}`);
     } else {
-      router.push(`${urlPath}?poNumber=${encodeURIComponent(selectedOrder.poNumber || '')}&customerName=${encodeURIComponent(selectedOrder.customerName || '')}`);
+      navigateToStage(router, urlPath, selectedOrder.poNumber || '');
     }
   };
 

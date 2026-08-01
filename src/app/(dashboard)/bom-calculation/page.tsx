@@ -154,6 +154,7 @@ export default function BOMCalculationView() {
 
   const [wastage, setWastage] = useState(5);
   const [editableMaterials, setEditableMaterials] = useState<any[]>([]);
+  const [summary, setSummary] = useState({ total_fabric: 0, allied_materials: 0, est_cost: 0 });
   const [sizePerPieceOverrides, setSizePerPieceOverrides] = useState<Record<string, Record<string, number>>>({});
   const [sizeUnitPriceOverrides, setSizeUnitPriceOverrides] = useState<Record<string, Record<string, number>>>({});
   const [sizeLaborCostOverrides, setSizeLaborCostOverrides] = useState<Record<string, Record<string, number>>>({});
@@ -410,133 +411,28 @@ export default function BOMCalculationView() {
       return { data, sType };
     };
 
-    const fetchBOM = async () => {
-      if (!selectedPONumber || (!isTotalBomMode && selectedSizes.length === 0)) {
-        setEditableMaterials([]);
-        return;
-      }
-
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+    const fetchBOMCalculations = async (po: string, w: number) => {
+      if (!po) return;
       try {
-        let results = [];
-        if (isTotalBomMode) {
-          const promises = activeSpecs.map((spec: any, index: number) => fetchForSpec(spec, index, BACKEND_URL));
-          results = await Promise.all(promises);
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/api/bom/calculate?po_number=${encodeURIComponent(po)}&wastage=${w}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setEditableMaterials(data.materials || []);
+          setSummary(data.summary || { total_fabric: 0, allied_materials: 0, est_cost: 0 });
         } else {
-          const payload = {
-            category: garmentType,
-            sleeveType: sleeveType.includes('half') ? 'half_sleeve' : 'full_sleeve',
-            sizes: JSON.parse(sizesDependency),
-            orderQty: totalProductionRequired,
-            wastageMargin: wastage
-          };
-          
-          console.log("[BOM Debug] fetchBOM payload:", payload);
-
-          const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          results = [{ data, sType: sleeveType }];
+          setEditableMaterials([]);
+          setSummary({ total_fabric: 0, allied_materials: 0, est_cost: 0 });
         }
-
-        const mergedMap = new Map();
-
-        results.forEach((result) => {
-          if (result.data.success && result.data.materials) {
-            result.data.materials.forEach((m: any) => {
-              const displayName = m.material_name || m.materialName || m.name || m.material || 'Material';
-              
-              if (result.sType.toLowerCase().includes('half') && displayName.toLowerCase().includes('cuff')) {
-                return;
-              }
-
-              let modifiedSizes = m.sizes || [];
-              let modifiedTotalQty = m.totalRequired;
-
-              if (modifiedSizes && modifiedSizes.length > 0) {
-                modifiedSizes = modifiedSizes.map((s: any) => {
-                  const rawVal = s.perPieceQty || s.perPiece || m.perPiece || 0;
-                  const strVal = String(rawVal).replace(/[^\d.]/g, '');
-                  let parsedVal = parseFloat(strVal);
-                  if (isNaN(parsedVal)) parsedVal = 0;
-                  return {
-                    ...s,
-                    perPieceQty: parsedVal
-                  };
-                });
-              } else if (modifiedTotalQty) {
-                const strVal = String(modifiedTotalQty).replace(/[^\d.]/g, '');
-                let parsedVal = parseFloat(strVal);
-                if (isNaN(parsedVal)) parsedVal = 0;
-                modifiedTotalQty = parsedVal;
-              }
-
-              if (!mergedMap.has(displayName)) {
-                mergedMap.set(displayName, {
-                  name: displayName,
-                  category: displayName.toLowerCase().includes('fabric') ? 'Fabric' : 'Allied',
-                  unit: m.unit,
-                  available: m.availableQty || 0,
-                  totalQty: modifiedTotalQty || 0,
-                  perUnitPrice: m.unitPrice || 0,
-                  missing: m.shortage || 0,
-                  sizes: modifiedSizes
-                    .filter((s: any) => Number(s.perPieceQty ?? s.perPiece ?? m.perPiece ?? 0) > 0)
-                    .map((s: any) => ({ ...s }))
-                });
-              } else {
-                const existing = mergedMap.get(displayName);
-                existing.totalQty += (modifiedTotalQty || 0);
-                existing.missing += (m.shortage || 0);
-                
-                // Merge sizes
-                modifiedSizes.forEach((s: any) => {
-                   const sPerPiece = Number(s.perPieceQty ?? s.perPiece ?? m.perPiece ?? 0);
-                   const actualQtyS = Number(s.orderQty ?? s.quantity ?? s.garmentQty ?? 0);
-                   
-                   // Only count this size if the garment actually uses the material (rate > 0)
-                   if (sPerPiece > 0) {
-                       const exSize = existing.sizes.find((ex: any) => ex.size === s.size);
-                       if (exSize) {
-                          const actualQtyEx = Number(exSize.orderQty ?? exSize.quantity ?? exSize.garmentQty ?? 0);
-                          
-                          exSize.orderQty = actualQtyEx + actualQtyS;
-                          exSize.quantity = exSize.orderQty;
-                          exSize.garmentQty = exSize.orderQty;
-                          
-                          // Maintain the standard base consumption rate, never average it.
-                          if (!exSize.perPieceQty || exSize.perPieceQty === 0) {
-                             exSize.perPieceQty = sPerPiece;
-                             exSize.perPiece = sPerPiece;
-                          }
-                       } else {
-                          existing.sizes.push({ ...s });
-                       }
-                   }
-                });
-              }
-            });
-          }
-        });
-
-        let finalMats = Array.from(mergedMap.values()).map((m: any, i: number) => ({
-          ...m,
-          id: `mat-${i}`,
-          status: m.missing > 0 ? 'Procurement Required' : 'Available',
-        }));
-
-        setEditableMaterials(getActiveBOMItems(finalMats));
       } catch (err) {
-        console.error("Error fetching BOM:", err);
+        console.error("Failed to load BOM calculations:", err);
       }
     };
 
-    fetchBOM();
+    fetchBOMCalculations(selectedPONumber, wastage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [garmentType, selectedPONumber, sizesDependency, sleeveType, totalProductionRequired, wastage, isTotalBomMode]);
+  }, [selectedPONumber, wastage]);
 
   const calculatedMaterials = editableMaterials;
 
@@ -583,53 +479,9 @@ export default function BOMCalculationView() {
     })
   )));
 
-  const summaryMetrics = React.useMemo(() => {
-    let totalFabric = 0;
-    let totalAllied = 0;
-    let estimatedCost = 0;
-
-    editableMaterials.forEach((item) => {
-      const isFabric = item.category === 'Fabric' || item.name.toLowerCase().includes('fabric');
-
-      const sizeRows = item.sizes?.map((sr: any) => {
-        const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
-        const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
-        const baseReq = actualQty * currentPerPiece;
-        const wastageAmount = isFabric ? baseReq * (wastage / 100) : 0;
-        const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
-        const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
-        const sizeFinalPrice = sizeTotalQty * currentPerUnitPrice;
-
-        return { sizeTotalQty, sizeFinalPrice };
-      }) || [];
-
-      const hasSizeBreakdown = sizeRows.length > 0;
-
-      const rawCombinedTotalQty = hasSizeBreakdown
-        ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
-        : safeNumber(item.totalQty);
-
-      const combinedTotalQty = parseFloat(rawCombinedTotalQty.toFixed(2));
-
-      const combinedFinalPrice = hasSizeBreakdown
-        ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
-        : (combinedTotalQty * safeNumber(item.perUnitPrice));
-
-      if (item.category === 'Fabric' || item.name.toLowerCase() === 'fabric') {
-        totalFabric += combinedTotalQty;
-      } else {
-        totalAllied += combinedTotalQty;
-      }
-
-      // Optionally keeping laborCostPerUnit if it was expected, but aligning with the table's final price per the prompt:
-      // "Sum the finalPrice column across ALL material rows"
-      estimatedCost += combinedFinalPrice;
-    });
-
-    return { totalFabric, totalAllied, estimatedCost };
-  }, [editableMaterials, sizePerPieceOverrides, sizeUnitPriceOverrides, wastage]);
-
-  const { totalFabric, totalAllied, estimatedCost } = summaryMetrics;
+  const totalFabric = summary.total_fabric || 0;
+  const totalAllied = summary.allied_materials || 0;
+  const estimatedCost = summary.est_cost || 0;
   const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
 
   useEffect(() => {

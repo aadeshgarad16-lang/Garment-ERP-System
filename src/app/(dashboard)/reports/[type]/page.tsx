@@ -40,9 +40,9 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
       setIsLoading(true);
       try {
         let endpoint = '';
-        if (type === 'total-orders') endpoint = '/api/reports/orders';
+        if (type === 'total-orders') endpoint = '/api/reports/total-orders';
         else if (type === 'active-production') endpoint = '/api/reports/active-production';
-        else if (type === 'pending-procurement') endpoint = '/api/reports/procurement';
+        else if (type === 'pending-procurement') endpoint = '/api/reports/pending-procurement';
         else if (type === 'inventory-alerts') endpoint = '/api/reports/inventory-alerts';
         
         if (!endpoint) {
@@ -65,17 +65,21 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
         
         if (isMounted && result) {
           if (type === 'total-orders') {
-            setDataToRender(result.orders || []);
-            setReportStats(result.stats || { pending: 0, inProduction: 0, cutting: 0, delivered: 0 });
+            setDataToRender(result.records || result.orders || []);
+            setReportStats(result.summary || result.stats || { pending: 0, inProduction: 0, cutting: 0, delivered: 0 });
           } else if (type === 'inventory-alerts') {
-            setDataToRender(result.alerts || []);
+            setDataToRender(result.records || result.alerts || []);
+            if (result.summary) setReportStats(result.summary);
           } else if (type === 'active-production') {
-            setDataToRender(result.production || []);
+            setDataToRender(result.records || result.production || []);
+            if (result.summary) setReportStats(result.summary);
           } else if (type === 'pending-procurement') {
-            setDataToRender(result.procurement || []);
+            setDataToRender(result.records || result.procurement || []);
+            if (result.summary) setReportStats(result.summary);
           } else {
             // Fallback handling if response is already an array list
-            setDataToRender(Array.isArray(result) ? result : []);
+            setDataToRender(Array.isArray(result) ? result : (result.records || []));
+            if (result.summary) setReportStats(result.summary);
           }
         }
       } catch (err) {
@@ -141,27 +145,27 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
       let searchable = '';
 
       if (type === 'total-orders') {
-        entity = item.customer;
-        status = item.status;
-        searchable = `${item.id} ${item.customer}`.toLowerCase();
+        entity = item.customer || 'Unknown';
+        status = item.status || 'Active';
+        searchable = `${item.id || item.poNumber || item.po_number || ''} ${entity}`.toLowerCase();
         eLabel = 'Customer';
         sLabel = 'Status';
       } else if (type === 'active-production') {
-        entity = item.style;
-        status = item.stage;
-        searchable = `${item.poNumber} ${item.style}`.toLowerCase();
+        entity = item.style || item.garmentStyle || item.garment_style || 'Unknown';
+        status = item.stage || item.currentStage || item.current_stage || 'Unknown';
+        searchable = `${item.poNumber || item.po_number || ''} ${entity}`.toLowerCase();
         eLabel = 'Style';
         sLabel = 'Stage';
       } else if (type === 'pending-procurement') {
-        entity = item.supplier;
-        status = item.status;
-        searchable = `${item.poNumber} ${item.material} ${item.supplier}`.toLowerCase();
+        entity = item.supplier || 'Unknown';
+        status = item.status || 'Pending';
+        searchable = `${item.poNumber || item.po_number || ''} ${item.material || item.materialName || item.material_name || ''} ${entity}`.toLowerCase();
         eLabel = 'Supplier';
         sLabel = 'Status';
       } else if (type === 'inventory-alerts') {
-        entity = item.name;
-        status = item.status;
-        searchable = `${item.materialId} ${item.name}`.toLowerCase();
+        entity = item.name || item.materialName || item.material_name || 'Unknown';
+        status = item.status || item.alertLevel || item.alert_level || 'Critical';
+        searchable = `${item.materialId || item.material_id || ''} ${entity}`.toLowerCase();
         eLabel = 'Material';
         sLabel = 'Alert Level';
       }
@@ -191,59 +195,68 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
   }, [dataToRender, searchTerm, entityFilter, statusFilter, type]);
 
   const renderTableRow = (item: any, idx: number) => {
+    const rowKey = item.id ? `report-row-${item.id}-${idx}` : `report-row-${idx}`;
+
     if (type === 'total-orders') {
+      const poNum = item.poNumber || item.po_number || item.id || `PO-${idx + 1}`;
+      const totalVal = item.totalValue || item.total_value || item.amount ? `₹${Number(item.totalValue || item.total_value || item.amount).toLocaleString('en-IN')}` : '₹0.00';
       return (
-        <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
+        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
           <td className="px-4 py-3 text-[13px] font-medium text-foreground">
-            <Link href={`/orders/${item.id}`} className="text-blue-600 hover:underline">{item.id}</Link>
+            <Link href={`/orders/${item.id || poNum}`} className="text-blue-600 hover:underline">{poNum}</Link>
           </td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.customer}</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.items} units</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.poDate}</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.deliveryDate}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.customer || '-'}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.items || '-'} units</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.poDate || item.po_date || '-'}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.deliveryDate || item.delivery_date || '-'}</td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-800`}>
-              {item.status}
+              {item.status || 'Active'}
             </span>
           </td>
-          <td className="px-4 py-3 text-[13px] font-medium text-foreground text-right">{item.amount}</td>
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground text-right">{totalVal}</td>
         </tr>
       );
     }
 
     if (type === 'active-production') {
+      const poNum = item.poNumber || item.po_number || `PO-${idx + 1}`;
+      const style = item.style || item.garmentStyle || item.garment_style || '-';
       return (
-        <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.poNumber}</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.style}</td>
+        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{poNum}</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{style}</td>
           <td className="px-4 py-3">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-              {item.stage}
+              {item.stage || item.currentStage || item.current_stage || '-'}
             </span>
           </td>
-          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.qty} pcs</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.startDate}</td>
+          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.qty || item.quantity || 0} pcs</td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.startDate || item.start_date || '-'}</td>
           <td className="px-4 py-3 text-[13px] text-muted-foreground flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-neutral-400" />
-            {item.expectedCompletion}
+            {item.expectedCompletion || item.expected_completion || '-'}
           </td>
         </tr>
       );
     }
 
     if (type === 'pending-procurement') {
+      const poNum = item.poNumber || item.po_number || `PO-${idx + 1}`;
+      const mat = item.material || item.materialName || item.material_name || '-';
+      const reqQty = item.requiredQty || item.required_qty || 0;
       return (
-        <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.poNumber}</td>
-          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{item.material}</td>
-          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.requiredQty} <span className="font-normal text-xs text-neutral-500">{item.unit}</span></td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.supplier}</td>
+        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{poNum}</td>
+          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{mat}</td>
+          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{reqQty} <span className="font-normal text-xs text-neutral-500">{item.unit || ''}</span></td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.supplier || '-'}</td>
           <td className="px-4 py-3">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Delayed' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
                 item.status === 'Ordered' ? 'bg-blue-100 text-blue-800 dark:bg-card/40 dark:text-blue-300' :
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
               }`}>
-              {item.status}
+              {item.status || 'Pending'}
             </span>
           </td>
         </tr>
@@ -251,18 +264,24 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     }
 
     if (type === 'inventory-alerts') {
+      const matId = item.materialId || item.material_id || `MAT-${idx + 1}`;
+      const matName = item.name || item.materialName || item.material_name || 'Material';
+      const currStock = item.currentStock ?? item.current_stock ?? 0;
+      const minThresh = item.threshold ?? item.minThreshold ?? item.min_threshold ?? 100;
+      const alertLvl = item.status || item.alertLevel || item.alert_level || 'Critical';
+      
       return (
-        <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{item.materialId}</td>
-          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{item.name}</td>
-          <td className="px-4 py-3 text-[13px] font-bold text-red-600">{item.currentStock} <span className="font-normal text-xs text-neutral-500">{item.unit}</span></td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.threshold} <span className="text-xs">{item.unit}</span></td>
+        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
+          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{matId}</td>
+          <td className="px-4 py-3 text-[13px] font-semibold text-card-foreground">{matName}</td>
+          <td className="px-4 py-3 text-[13px] font-bold text-red-600">{currStock} <span className="font-normal text-xs text-neutral-500">{item.unit || ''}</span></td>
+          <td className="px-4 py-3 text-[13px] text-muted-foreground">{minThresh} <span className="text-xs">{item.unit || ''}</span></td>
           <td className="px-4 py-3">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Critical' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${alertLvl === 'Critical' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
                 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
               }`}>
-              {item.status === 'Critical' && <AlertCircle className="h-3 w-3" />}
-              {item.status}
+              {alertLvl === 'Critical' && <AlertCircle className="h-3 w-3" />}
+              {alertLvl}
             </span>
           </td>
         </tr>

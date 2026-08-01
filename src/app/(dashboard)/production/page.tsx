@@ -69,22 +69,54 @@ export default function ProductionPage() {
     { id: 'material', name: 'Material', description: 'Material inspection & allocation', icon: PackageSearch, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '' },
     {
       id: 'cutting', name: 'Cutting', description: 'Fabric cutting as per pattern', icon: Scissors, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
-      tasks: [
-        { id: 't1', assignee: 'Jamal', materialAllocatedName: 'Sky Blue Fabric', targetQty: 500, startTime: '09:00', endTime: '', status: 'In Progress' },
-        { id: 't2', assignee: 'Jamal', materialAllocatedName: 'Navy Buttons', targetQty: 200, startTime: '', endTime: '', status: 'Pending' },
-        { id: 't3', assignee: 'Christie', materialAllocatedName: 'Sky Blue Fabric', targetQty: 500, startTime: '08:00', endTime: '12:00', status: 'Completed' }
-      ]
+      tasks: []
     },
     {
       id: 'stitching', name: 'Stitching', description: 'Sewing and assembling pieces', icon: Layers, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
-      tasks: [
-        { id: 't4', assignee: 'Christie', materialAllocatedName: 'Sky Blue Fabric', targetQty: 1000, startTime: '', endTime: '', status: 'Pending' }
-      ]
+      tasks: []
     },
     { id: 'fusing', name: 'Fusing', description: 'Apply fusible interlining', icon: Activity, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
     { id: 'kaj-button', name: 'Kaj Button', description: 'Button hole & button attachment', icon: AlignEndHorizontal, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
     { id: 'finishing', name: 'Finishing', description: 'Final touches & pressing', icon: PackageCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
   ]);
+
+  const [activeStage, setActiveStage] = useState('Cutting');
+  const [stagesList, setStagesList] = useState<any[]>([]);
+  const [personnelList, setPersonnelList] = useState<any[]>([]);
+  const [tasksList, setTasksList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch dynamic data from the backend to replace dummy data
+    const fetchProductionData = async () => {
+      setLoading(true);
+      try {
+        const [stagesRes, tasksRes, personnelRes] = await Promise.all([
+          fetch('http://127.0.0.1:5000/api/v1/production/stages').catch(() => null),
+          fetch('http://127.0.0.1:5000/api/v1/production/tasks').catch(() => null),
+          fetch('http://127.0.0.1:5000/api/v1/production/persons').catch(() => null)
+        ]);
+        
+        if (stagesRes?.ok) {
+          const stagesData = await stagesRes.json();
+          setStagesList(stagesData.data || stagesData);
+        }
+        if (tasksRes?.ok) {
+          const tasksData = await tasksRes.json();
+          setTasksList(tasksData.data || tasksData);
+        }
+        if (personnelRes?.ok) {
+          const personnelData = await personnelRes.json();
+          setPersonnelList(personnelData.data || personnelData);
+        }
+      } catch (err) {
+        console.error("Failed to fetch live production data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProductionData();
+  }, []);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -320,78 +352,7 @@ export default function ProductionPage() {
     }
   };
 
-  const mockPOs = [
-    {
-      poNumber: "PO-2026-002",
-      garments: [
-        {
-          type: "Shirt", targetQty: 1000, cutting: 1000, stitching: 200, fusing: 25, kajButton: 100, finishing: 500,
-          specs: "Color: Sky Blue, Collar: Navy Blue Tipping, Fabric Type: Cotton-Poly Blend",
-          sizeGrid: "S: 200, M: 400, L: 300, XL: 100 | Total: 1000",
-          materials: ["Sky Blue Fabric: 1800m Issued", "Navy Buttons: 8400pcs Issued", "Thread: 15 Cones Issued"]
-        },
-        {
-          type: "Pant", targetQty: 1000, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
-          specs: "Color: Navy Blue, Style: Flat Front, Fabric Type: Poly-Viscose",
-          sizeGrid: "W30: 200, W32: 400, W34: 300, W36: 100 | Total: 1000",
-          materials: ["Navy Fabric: 1500m Issued", "Zippers: 1000pcs Issued", "Hook & Eye: 1000pcs Issued"]
-        }
-      ]
-    },
-    {
-      poNumber: "PO-2026-003",
-      garments: [
-        {
-          type: "Blazer", targetQty: 50, cutting: 50, stitching: 20, fusing: 50, kajButton: 0, finishing: 0,
-          specs: "Color: Charcoal Grey, Lining: Maroon Silk, Fabric: Wool Blend",
-          sizeGrid: "38R: 10, 40R: 20, 42R: 15, 44R: 5 | Total: 50",
-          materials: ["Charcoal Wool: 100m Issued", "Maroon Silk: 60m Issued", "Shoulder Pads: 50 Pairs"]
-        },
-        {
-          type: "Coat", targetQty: 10, cutting: 10, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
-          specs: "Color: Camel, Style: Double Breasted, Fabric: Cashmere",
-          sizeGrid: "M: 5, L: 5 | Total: 10",
-          materials: ["Camel Cashmere: 35m Issued", "Horn Buttons: 60pcs Issued"]
-        }
-      ]
-    },
-    {
-      poNumber: "PO-2026-005",
-      garments: [
-        {
-          type: "Uniform Shirt", targetQty: 1200, cutting: 1200, stitching: 850, fusing: 850, kajButton: 600, finishing: 400,
-          specs: "Color: White, Sleeve: Short, Fabric: Poplin",
-          sizeGrid: "S: 300, M: 500, L: 300, XL: 100 | Total: 1200",
-          materials: ["White Poplin: 2200m Issued", "Buttons: 8400pcs Issued"]
-        },
-        {
-          type: "Uniform Pant", targetQty: 1200, cutting: 1200, stitching: 1100, fusing: 1100, kajButton: 1050, finishing: 900,
-          specs: "Color: Black, Fit: Regular, Fabric: Twill",
-          sizeGrid: "W30: 300, W32: 500, W34: 300, W36: 100 | Total: 1200",
-          materials: ["Black Twill: 1800m Issued", "Zippers: 1200pcs Issued"]
-        }
-      ]
-    },
-    {
-      poNumber: "PO-2026-008",
-      garments: [
-        {
-          type: "Premium Suit", targetQty: 30, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
-          specs: "Color: Midnight Blue, Lapel: Peak, Fabric: Italian Wool",
-          sizeGrid: "38R: 5, 40R: 15, 42R: 10 | Total: 30",
-          materials: ["Italian Wool: 120m Issued", "Bemberg Lining: 80m Issued"]
-        },
-        {
-          type: "Vest", targetQty: 30, cutting: 0, stitching: 0, fusing: 0, kajButton: 0, finishing: 0,
-          specs: "Color: Midnight Blue, Back: Silk, Fabric: Italian Wool",
-          sizeGrid: "S: 5, M: 15, L: 10 | Total: 30",
-          materials: ["Italian Wool: 30m Issued", "Silk Backing: 30m Issued"]
-        }
-      ]
-    }
-  ];
-
-  const currentPoGarments = mockPOs.find(m => m.poNumber === poNumber)?.garments || [];
+  const currentPoGarments = currentOrder?.garments || [];
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -475,41 +436,11 @@ export default function ProductionPage() {
   const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
   const [consumedMaterials, setConsumedMaterials] = useState<Record<string, number>>({});
 
-  const mockMaterials = [
-    {
-      id: 1,
-      materials_inventory: "Cotton Fabric [FAB-001]",
-      category: "Fabric",
-      required_qty: 1000,
-      available_qty: 1000,
-      shortage_qty: 0,
-      unit: "Meters",
-      status: "Allocated"
-    },
-    {
-      id: 2,
-      materials_inventory: "Buttons [BT-002]",
-      category: "Alid",
-      required_qty: 5000,
-      available_qty: 5000,
-      shortage_qty: 0,
-      unit: "Pcs",
-      status: "Allocated"
-    }
-  ];
-
-  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>(mockMaterials);
+  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
   const [expandedMaterialIds, setExpandedMaterialIds] = useState<Record<string, boolean>>({});
   const [allocationMap, setAllocationMap] = useState<Record<string, Record<string, any>>>({});
   const [materialGarmentTypes, setMaterialGarmentTypes] = useState<Record<string, string>>({});
-  const [productionPersonnel, setProductionPersonnel] = useState<{name: string}[]>([
-    { name: 'John Doe' },
-    { name: 'Jane Smith' },
-    { name: 'Jamal' },
-    { name: 'Christie' },
-    { name: 'Aadesh' },
-    { name: 'Sam' }
-  ]);
+  const [productionPersonnel, setProductionPersonnel] = useState<{name: string}[]>([]);
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/personnel`)
@@ -580,9 +511,6 @@ export default function ProductionPage() {
         }
 
         const sizesArray = Array.from(allSizes);
-        if (sizesArray.length === 0) {
-          ['32', '34', '36', '38', '40'].forEach(s => sizesArray.push(s));
-        }
 
         if (!allocationMap[mat.id] || Object.keys(allocationMap[mat.id]).join(',') !== sizesArray.join(',')) {
           hasChanges = true;
@@ -898,26 +826,33 @@ export default function ProductionPage() {
           );
         })}
         {/* Outsource Custom Card */}
-        <div
-          onClick={() => setIsOutsourceModalOpen(true)}
-          className="rounded-xl border border-border bg-card p-4 transition-all cursor-pointer hover:bg-muted"
-        >
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between">
-              <div className="p-2 rounded-lg text-teal-600 bg-teal-100/80 dark:bg-teal-900/40 dark:text-teal-400">
-                <PackageSearch className="h-5 w-5" />
+        {(() => {
+          const isOutsourceRequired = currentOrder?.has_outsource || currentOrder?.is_outsourced || false;
+          return (
+            <div 
+              className={`p-4 rounded-xl border transition-all ${
+                isOutsourceRequired 
+                  ? 'bg-slate-900 border-teal-500/50 text-white cursor-pointer hover:bg-slate-800' 
+                  : 'bg-slate-900/40 border-slate-800/50 text-slate-500 opacity-50 cursor-not-allowed'
+              }`}
+              onClick={() => isOutsourceRequired && setIsOutsourceModalOpen(true)}
+            >
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold text-sm">Outsource</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-semibold ${
+                  isOutsourceRequired ? 'bg-teal-500/20 text-teal-300' : 'bg-slate-800 text-slate-500'
+                }`}>
+                  {isOutsourceRequired ? 'Active' : 'Disabled'}
+                </span>
               </div>
-              <span className="bg-blue-100 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">Active</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-sm">Outsource</h3>
-              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">Manage external supplier allocations and transit tracking.</p>
-              <p className="text-xs font-medium text-muted-foreground">
-                500 units processing
+              <p className="text-xs text-slate-400 mt-2">
+                {isOutsourceRequired 
+                  ? 'Manage external supplier allocations and transit tracking.' 
+                  : 'No outsourced items in this PO.'}
               </p>
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {activeStageIdx !== null && ActiveIcon && (

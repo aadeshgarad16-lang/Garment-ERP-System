@@ -535,7 +535,7 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
     '', 'Total', '', '', '', '', '', poData.subtotal ? poData.subtotal.toFixed(2) : '0.00'
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: gridBottomY,
     head: [['Sl\nNo.', 'Description of Goods', 'Due on', 'Quantity', 'Rate', 'per', 'Disc. %', 'Amount']],
     body: tableData,
