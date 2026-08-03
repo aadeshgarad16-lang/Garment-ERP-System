@@ -1,4 +1,9 @@
 "use client";
+function safeSplit(value: any): string[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim().length > 0) return value.split(',');
+  return [];
+}
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,15 +28,15 @@ interface GarmentSpec {
   gender: string;
   itemDescription: string;
   hsnCode: string;
-  size: string;
-  color: string;
+  size: string | string[];
+  color: string | string[];
   pattern: string;
-  quantity: number;
+  quantity: number | "";
   stockAvailable: number;
-  unitPrice: number;
+  unitPrice: number | "";
   photoName: string | null;
   photoUrl?: string | null;
-  serviceType: "In House" | "Outsource" | "Both";
+  serviceType: "In House" | "Outsource" | "Both" | "";
   outsourceType?: "Complete Outsource" | "Service Outsource";
   deliveryAddress?: string;
   deliveryPin?: string;
@@ -50,9 +55,9 @@ interface DetailedAllocation {
   pinCode?: string;
   itemId: string;
   color?: string;
-  size: string;
+  size: string | string[];
   deliveryMethod?: string;
-  quantity: number;
+  quantity: number | "";
 }
 
 interface DraftOrder {
@@ -301,14 +306,14 @@ function GarmentSpecsContent() {
       gender: "",
       itemDescription: "",
       hsnCode: "",
-      size: "",
-      color: "",
+      size: [],
+      color: [],
       pattern: "",
-      quantity: 0,
+      quantity: "",
       stockAvailable: 0,
-      unitPrice: 0,
+      unitPrice: "",
       photoName: null,
-      serviceType: "In House",
+      serviceType: "",
     },
   ]);
 
@@ -482,7 +487,7 @@ function GarmentSpecsContent() {
       if (!Array.isArray(rawSpecs)) return [];
       return rawSpecs.map((s: any) => {
         console.log("Hydrated Item State:", s);
-        
+
         // Normalize Gender
         let rawGender = (s.gender || "").trim();
         if (rawGender.toLowerCase() === 'male' || rawGender.toLowerCase() === 'men') {
@@ -498,27 +503,24 @@ function GarmentSpecsContent() {
         else if (rawCategory.toLowerCase() === 'pant' || rawCategory.toLowerCase() === 'pants') rawCategory = 'Pants';
         else if (rawCategory.toLowerCase() === 'blazer' || rawCategory.toLowerCase() === 'blazers') rawCategory = 'Blazer';
 
-        // Extract correct item description
-        const itemDesc = s.item_description || s.itemDescription || s.item_name || s.item || "";
-
         return {
           ...s,
           id: s.id || generateId(),
           category: rawCategory,
           gender: rawGender,
-          itemDescription: itemDesc,
+          itemDescription: "", // MUST be empty string
           hsnCode: s.hsnCode || s.hsn_code || "",
-          size: s.size || "",
-          color: s.color || "",
-          pattern: (s.pattern && s.pattern !== itemDesc) ? s.pattern : "",
-          quantity: s.quantity || s.required_qty || 0,
-          stockAvailable: s.stock_available || s.stockAvailable || 0,
-          unitPrice: s.unit_price || s.unitPrice || 0,
-          serviceType: s.serviceType || s.production_type || s.productionType || "In House",
+          size: [], // MUST be empty array
+          color: [], // MUST be empty array
+          pattern: s.pattern || "",
+          quantity: "", // MUST be empty string
+          stockAvailable: s.stock_available ?? s.stockAvailable ?? 0,
+          unitPrice: "", // MUST be empty string
+          serviceType: "In House", // Pre-selected option
           outsourceType: s.outsourceType || s.outsource_type,
           deliveryAddress: s.deliveryAddress || s.delivery_address || "",
           deliveryPin: s.deliveryPin || s.delivery_pin || "",
-          photoName: s.photoName || s.photo_name || s.photo || null,
+          photoName: null,
           photoUrl: s.photoUrl || s.photo_url || s.photo || undefined,
         };
       });
@@ -547,7 +549,21 @@ function GarmentSpecsContent() {
       if (order.specs && Array.isArray(order.specs) && order.specs.length > 0) {
         setSpecs(parseGarmentSpecs(order.specs));
       } else {
-        setSpecs([{ id: generateId(), category: "", gender: "", itemDescription: "", hsnCode: "", size: "", color: "", pattern: "", quantity: 0, stockAvailable: 0, unitPrice: 0, photoName: null, serviceType: "In House" }]);
+        setSpecs([{
+        id: generateId(),
+        category: "",
+        gender: "",
+        itemDescription: "",
+        hsnCode: "",
+        size: [],
+        color: [],
+        pattern: "",
+        quantity: "",
+        stockAvailable: 0,
+        unitPrice: "",
+        photoName: null,
+        serviceType: ""
+      }]);
       }
 
       if (order.deliveryAddresses && order.deliveryAddresses.length > 0) {
@@ -563,7 +579,7 @@ function GarmentSpecsContent() {
         let addrIdx = 0;
 
         order.specs.forEach((s: GarmentSpec) => {
-          const sizes = s.size ? s.size.split(',').map((sz: string) => sz.trim()).filter(Boolean) : ['Standard'];
+          const sizes = s.size ? safeSplit(s?.size).map((sz: string) => sz.trim()).filter(Boolean) : ['Standard'];
           sizes.forEach((sz: string) => {
             // For single delivery: use the single address.
             // For multi delivery: cycle through PO's delivery addresses so
@@ -580,7 +596,7 @@ function GarmentSpecsContent() {
               addrIdx++;
             }
 
-            const colors = s.color ? s.color.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
+            const colors = s.color ? safeSplit(s?.color).map((c: string) => c.trim()).filter(Boolean) : [];
             const autoColor = colors.length === 1 ? colors[0] : "";
 
             parsedAllocations.push({
@@ -652,7 +668,7 @@ function GarmentSpecsContent() {
         }
 
         if (backendOrder.specs.length > 0) {
-          setSpecs(backendOrder.specs);
+          setSpecs(parseGarmentSpecs(backendOrder.specs));
         }
 
         // Pre-fill allocation rows with authoritative address from DB
@@ -710,12 +726,12 @@ function GarmentSpecsContent() {
       setDetailedAllocations((prev) => {
         const newAllocations: DetailedAllocation[] = [];
         specs.forEach((s) => {
-          const sizes = s.size ? s.size.split(",").map((sz) => sz.trim()).filter(Boolean) : ["Standard"];
+          const sizes = s.size ? safeSplit(s?.size).map((sz) => sz.trim()).filter(Boolean) : ["Standard"];
           sizes.forEach((sz) => {
             const existing = prev.find((a) => a.itemId === s.id && a.size === sz);
-            const colors = s.color ? s.color.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
+            const colors = s.color ? safeSplit(s?.color).map((c: string) => c.trim()).filter(Boolean) : [];
             const autoColor = colors.length === 1 ? colors[0] : "";
-            
+
             newAllocations.push({
               id: existing ? existing.id : generateId(),
               deliveryAddress: singleAddress,
@@ -748,14 +764,14 @@ function GarmentSpecsContent() {
         gender: "",
         itemDescription: "",
         hsnCode: "",
-        size: "",
-        color: "",
+        size: [],
+        color: [],
         pattern: "",
-        quantity: 0,
+        quantity: "",
         stockAvailable: 0,
-        unitPrice: 0,
+        unitPrice: "",
         photoName: null,
-        serviceType: "In House",
+        serviceType: "",
       },
     ]);
   };
@@ -811,7 +827,7 @@ function GarmentSpecsContent() {
         const hasEmptyAlloc = prev.some(a => a.itemId === spec.id && a.deliveryAddress === "");
         if (hasEmptyAlloc) return prev;
 
-        const colors = spec.color ? spec.color.split(",").map(c => c.trim()).filter(Boolean) : [];
+        const colors = spec.color ? safeSplit(spec?.color).map(c => c.trim()).filter(Boolean) : [];
         const autoColor = colors.length === 1 ? colors[0] : "";
 
         return [
@@ -959,20 +975,20 @@ function GarmentSpecsContent() {
           gender: "",
           itemDescription: "",
           hsnCode: "",
-          size: "",
-          color: "",
-          pattern: "",
-          quantity: 0,
-          stockAvailable: 0,
-          unitPrice: 0,
-          photoName: null,
-          serviceType: "In House",
+          size: [],
+        color: [],
+        pattern: "",
+        quantity: "",
+        stockAvailable: 0,
+        unitPrice: "",
+        photoName: null,
+        serviceType: "",
         }]);
         setDeliveryAddresses([{ id: "1", address: "", pinCode: "" }]);
         setDetailedAllocations([{ id: "1", deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
 
         setShowConfirmModal(false);
-        
+
         const allSpecsCompleteOutsource = specs.length > 0 && specs.every(s => s.serviceType === "Outsource" && s.outsourceType === "Complete Outsource");
         const anySpecBoth = specs.some(s => s.serviceType === "Both");
 
@@ -1039,14 +1055,14 @@ function GarmentSpecsContent() {
       gender: "",
       itemDescription: "",
       hsnCode: "",
-      size: "",
-      color: "",
-      pattern: "",
-      quantity: 0,
-      stockAvailable: 0,
-      unitPrice: 0,
-      photoName: null,
-      serviceType: "In House",
+      size: [],
+        color: [],
+        pattern: "",
+        quantity: "",
+        stockAvailable: 0,
+        unitPrice: "",
+        photoName: null,
+        serviceType: "",
     }]);
     setDeliveryAddresses([{ id: generateId(), address: "", pinCode: "" }]);
     setDetailedAllocations([{ id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
@@ -1149,10 +1165,10 @@ function GarmentSpecsContent() {
                             const val = e.target.value;
                             updateRow(spec.id, "category", val);
                             setSelectedCategory(val);
-                            
+
                             const catLower = val.toLowerCase();
                             let newSleeve = "";
-                            
+
                             if (catLower.includes('shirt') && !catLower.includes('t-shirt')) {
                               newSleeve = ""; // Manual selection allowed
                             } else if (catLower.includes('pant') || catLower.includes('jacket') || catLower.includes('salwar') || catLower.includes('dupatta') || catLower.includes('boiler suit')) {
@@ -1160,7 +1176,7 @@ function GarmentSpecsContent() {
                             } else if (catLower.includes('t-shirt') || catLower.includes('kurta')) {
                               newSleeve = "half_sleeve";
                             }
-                            
+
                             updateRow(spec.id, "sleeveType", newSleeve);
                           }}
                           className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm pr-[110px]`}
@@ -1172,14 +1188,14 @@ function GarmentSpecsContent() {
                         </select>
                         <div className="absolute inset-y-0 right-2 flex items-center">
                           <select
-                             value={spec.sleeveType || ""}
-                             onChange={(e) => updateRow(spec.id, "sleeveType", e.target.value)}
-                             disabled={!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt'))}
-                             className={`h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[100px] text-ellipsis overflow-hidden ${!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            value={spec.sleeveType || ""}
+                            onChange={(e) => updateRow(spec.id, "sleeveType", e.target.value)}
+                            disabled={!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt'))}
+                            className={`h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[100px] text-ellipsis overflow-hidden ${!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'opacity-70 cursor-not-allowed' : ''}`}
                           >
-                             <option value="" disabled hidden>Select Sleeve</option>
-                             <option value="full_sleeve">Full Sleeve</option>
-                             <option value="half_sleeve">Half Sleeve</option>
+                            <option value="" disabled hidden>Select Sleeve</option>
+                            <option value="full_sleeve">Full Sleeve</option>
+                            <option value="half_sleeve">Half Sleeve</option>
                           </select>
                         </div>
                       </div>
@@ -1202,7 +1218,7 @@ function GarmentSpecsContent() {
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Size (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={SIZE_OPTIONS}
-                        selectedValues={spec.size ? spec.size.split(',').map(s => s.trim()).filter(Boolean) : []}
+                        selectedValues={spec.size ? safeSplit(spec?.size).map(s => s.trim()).filter(Boolean) : []}
                         onChange={(values) => updateRow(spec.id, "size", values.join(', '))}
                         placeholder="Select Sizes"
                       />
@@ -1212,7 +1228,7 @@ function GarmentSpecsContent() {
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Color (Multi-Select) <span className="text-red-500">*</span></label>
                       <CustomMultiSelect
                         options={COLOR_OPTIONS}
-                        selectedValues={spec.color ? spec.color.split(',').map(c => c.trim()).filter(Boolean) : []}
+                        selectedValues={spec.color ? safeSplit(spec?.color).map(c => c.trim()).filter(Boolean) : []}
                         onChange={(values) => updateRow(spec.id, "color", values.join(', '))}
                         placeholder="Select Colors"
                         isColorMode
@@ -1236,41 +1252,35 @@ function GarmentSpecsContent() {
                     <div>
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Quantity <span className="text-red-500">*</span></label>
                       <input
-                        type="text"
-                        value={spec.quantity === 0 ? "" : spec.quantity}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9.]/g, "");
-                          updateRow(spec.id, "quantity", val ? Number(val) : 0);
-                        }}
+                        type="number"
+                        value={spec.quantity || ""}
+                        placeholder="100"
+                        onChange={(e) => updateRow(spec.id, "quantity", e.target.value)}
                         className={`${INPUT_STYLE} h-[44px] shadow-sm`}
-                        placeholder="0"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Unit Price <span className="text-red-500">*</span></label>
                       <input
-                        type="text"
-                        value={spec.unitPrice === 0 ? "" : spec.unitPrice}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9.]/g, "");
-                          updateRow(spec.id, "unitPrice", val ? Number(val) : 0);
-                        }}
-                        className={`${INPUT_STYLE} h-[44px] shadow-sm`}
+                        type="number"
+                        value={spec.unitPrice || ""}
                         placeholder="0.00"
+                        onChange={(e) => updateRow(spec.id, "unitPrice", e.target.value)}
+                        className={`${INPUT_STYLE} h-[44px] shadow-sm`}
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Service <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <select
-                          value={spec.serviceType || "In House"}
+                          value={spec.serviceType || ""}
                           onChange={(e) => {
-                             updateRow(spec.id, "serviceType", e.target.value);
-                             if (e.target.value === "Outsource") {
-                               updateRow(spec.id, "outsourceType", "Complete Outsource");
-                             } else {
-                               updateRow(spec.id, "outsourceType", "");
-                             }
+                            updateRow(spec.id, "serviceType", e.target.value);
+                            if (e.target.value === "Outsource") {
+                              updateRow(spec.id, "outsourceType", "Complete Outsource");
+                            } else {
+                              updateRow(spec.id, "outsourceType", "");
+                            }
                           }}
                           className={`w-full ${INPUT_STYLE} h-[44px] text-sm shadow-sm ${spec.serviceType === 'Outsource' ? 'pr-[135px]' : ''}`}
                         >
@@ -1281,12 +1291,12 @@ function GarmentSpecsContent() {
                         {spec.serviceType === "Outsource" && (
                           <div className="absolute inset-y-0 right-8 flex items-center">
                             <select
-                               value={spec.outsourceType || "Complete Outsource"}
-                               onChange={(e) => updateRow(spec.id, "outsourceType", e.target.value)}
-                               className="h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[120px] text-ellipsis overflow-hidden"
+                              value={spec.outsourceType || ""}
+                              onChange={(e) => updateRow(spec.id, "outsourceType", e.target.value)}
+                              className="h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[120px] text-ellipsis overflow-hidden"
                             >
-                               <option value="Complete Outsource">Complete Outsource</option>
-                               <option value="Service Outsource">Service Outsource</option>
+                              <option value="Complete Outsource">Complete Outsource</option>
+                              <option value="Service Outsource">Service Outsource</option>
                             </select>
                           </div>
                         )}
@@ -1371,7 +1381,7 @@ function GarmentSpecsContent() {
                           }
                         }}
                         className={`${INPUT_STYLE} min-h-[96px] resize-y py-3 shadow-sm`}
-                        placeholder="Type item description and press Enter..."
+                        placeholder="Garment specification"
                       />
                     </div>
                     <div>
@@ -1484,7 +1494,7 @@ function GarmentSpecsContent() {
                         {spec.itemDescription}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                        {spec.gender} • {spec.category} <br/>
+                        {spec.gender} • {spec.category} <br />
                         <span className="text-xs text-neutral-400">{spec.pattern}</span>
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
@@ -1492,7 +1502,7 @@ function GarmentSpecsContent() {
                         {spec.serviceType === 'Outsource' && spec.outsourceType && <div className="text-[10px] text-blue-500">{spec.outsourceType}</div>}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300 text-center">
-                        <div>Sz: {spec.size ? sortSizesAscending(spec.size.split(',').map(s => s.trim())).join(', ') : "-"}</div>
+                        <div>Sz: {spec.size ? sortSizesAscending(safeSplit(spec?.size).map(s => s.trim())).join(', ') : "-"}</div>
                         <div className="text-xs text-neutral-400">Clr: {spec.color || "-"}</div>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-foreground text-center">
@@ -1548,7 +1558,7 @@ function GarmentSpecsContent() {
                     e.target.value = "";
                   }}
                   className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card border-neutral-300 dark:border-border cursor-pointer shadow-sm transition-colors"
-                  defaultValue=""
+                  
                 >
                   <option value="" disabled>Address List...</option>
                   {customerAddresses.length === 0 ? (
@@ -1621,217 +1631,217 @@ function GarmentSpecsContent() {
                   });
 
                   return sortedAllocations.map((alloc, index) => {
-                  const targetItem = alloc.itemId ? specs.find((s) => s.id === alloc.itemId) : null;
-                  const targetQty = targetItem?.quantity || 0;
-                  const allocatedQty = alloc.itemId ? calculateAllocatedQty(alloc.itemId) : 0;
-                  const remainingQty = targetQty - allocatedQty;
-                  const isExceeding = alloc.itemId && remainingQty < 0;
-                  const isExact = alloc.itemId && remainingQty === 0;
+                    const targetItem = alloc.itemId ? specs.find((s) => s.id === alloc.itemId) : null;
+                    const targetQty = targetItem?.quantity || 0;
+                    const allocatedQty = alloc.itemId ? calculateAllocatedQty(alloc.itemId) : 0;
+                    const remainingQty = targetQty - allocatedQty;
+                    const isExceeding = alloc.itemId && remainingQty < 0;
+                    const isExact = alloc.itemId && remainingQty === 0;
 
-                  const rowQuery = alloc.deliveryAddress.trim().toLowerCase();
-                  const rowFilteredAddresses = rowQuery
-                    ? customerAddresses.filter(
-                      (addr) =>
-                        addr.address.toLowerCase().includes(rowQuery) ||
-                        addr.pinCode.includes(rowQuery)
-                    )
-                    : customerAddresses;
+                    const rowQuery = alloc.deliveryAddress.trim().toLowerCase();
+                    const rowFilteredAddresses = rowQuery
+                      ? customerAddresses.filter(
+                        (addr) =>
+                          addr.address.toLowerCase().includes(rowQuery) ||
+                          addr.pinCode.includes(rowQuery)
+                      )
+                      : customerAddresses;
 
-                  return (
-                    <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
-                      <td className="px-2 py-3 font-medium text-foreground text-center w-[70px]">
-                        {index + 1}.
-                      </td>
-                      <td className="px-2 py-3 align-top">
-                        <div className="relative">
-                          <textarea
-                            id={`address-input-${alloc.id}`}
-                            rows={2}
-                            value={deliveryType === "single" ? (singleAddress + (singlePin ? ` - PIN: ${singlePin}` : "")) : alloc.deliveryAddress}
-                            onChange={(e) => {
-                              updateAllocationRow(alloc.id, "deliveryAddress", e.target.value);
-                              if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
-                                setShowAddressDropdownRowId(alloc.id);
-                              }
-                            }}
-                            onFocus={() => {
-                              setActiveDropdownRow(alloc.id);
-                              if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
-                                setShowAddressDropdownRowId(alloc.id);
-                              }
-                            }}
-                            onBlur={() => {
-                              if (deliveryType === "multi") {
-                                handleRowAddressBlur(alloc.deliveryAddress);
-                              }
-                            }}
-                            readOnly={deliveryType === "single"}
-                            placeholder="Delivery Location & PIN"
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none text-xs ${deliveryType === "single"
-                              ? "bg-muted border-transparent text-muted-foreground cursor-not-allowed"
-                              : "bg-card border-border text-foreground"
-                              }`}
-                          />
-                          {deliveryType === "multi" && showAddressDropdownRowId === alloc.id && currentCustomerName !== "" && typeof document !== "undefined" && createPortal(
-                            <div
-                              ref={addressDropdownRef}
-                              style={{
-                                position: "fixed",
-                                top: `${dropdownCoords.top}px`,
-                                left: `${dropdownCoords.left}px`,
-                                width: `${dropdownCoords.width}px`,
-                                zIndex: 9999,
+                    return (
+                      <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
+                        <td className="px-2 py-3 font-medium text-foreground text-center w-[70px]">
+                          {index + 1}.
+                        </td>
+                        <td className="px-2 py-3 align-top">
+                          <div className="relative">
+                            <textarea
+                              id={`address-input-${alloc.id}`}
+                              rows={2}
+                              value={deliveryType === "single" ? (singleAddress + (singlePin ? ` - PIN: ${singlePin}` : "")) : alloc.deliveryAddress}
+                              onChange={(e) => {
+                                updateAllocationRow(alloc.id, "deliveryAddress", e.target.value);
+                                if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
+                                  setShowAddressDropdownRowId(alloc.id);
+                                }
                               }}
-                              className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
-                            >
-                              <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-card text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-border uppercase tracking-wider">
-                                Saved Addresses for {currentCustomerName}
-                              </div>
-                              {rowFilteredAddresses.length === 0 ? (
-                                <div className="px-3 py-2.5 text-[11px] text-muted-foreground text-center">
-                                  No matching saved addresses.
+                              onFocus={() => {
+                                setActiveDropdownRow(alloc.id);
+                                if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
+                                  setShowAddressDropdownRowId(alloc.id);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (deliveryType === "multi") {
+                                  handleRowAddressBlur(alloc.deliveryAddress);
+                                }
+                              }}
+                              readOnly={deliveryType === "single"}
+                              placeholder="Delivery Location & PIN"
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none text-xs ${deliveryType === "single"
+                                ? "bg-muted border-transparent text-muted-foreground cursor-not-allowed"
+                                : "bg-card border-border text-foreground"
+                                }`}
+                            />
+                            {deliveryType === "multi" && showAddressDropdownRowId === alloc.id && currentCustomerName !== "" && typeof document !== "undefined" && createPortal(
+                              <div
+                                ref={addressDropdownRef}
+                                style={{
+                                  position: "fixed",
+                                  top: `${dropdownCoords.top}px`,
+                                  left: `${dropdownCoords.left}px`,
+                                  width: `${dropdownCoords.width}px`,
+                                  zIndex: 9999,
+                                }}
+                                className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
+                              >
+                                <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-card text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-border uppercase tracking-wider">
+                                  Saved Addresses for {currentCustomerName}
                                 </div>
-                              ) : (
-                                <div className="divide-y divide-neutral-100 dark:divide-slate-800">
-                                  {rowFilteredAddresses.map((addr) => (
-                                    <div
-                                      key={addr.id}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault(); // Prevents blur event from firing
-                                        updateAllocationRow(alloc.id, "deliveryAddress", `${addr.address}${addr.pinCode ? ` - PIN: ${addr.pinCode}` : ""}`);
-                                        setShowAddressDropdownRowId(null);
-                                      }}
-                                      className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-700 dark:text-neutral-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer text-xs transition-colors flex items-start gap-2"
-                                    >
-                                      <MapPin className="h-3 w-3 mt-0.5 text-neutral-400 flex-shrink-0" />
-                                      <div className="flex-1">
-                                        <p className="font-medium leading-relaxed">{addr.address}</p>
-                                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">PIN: {addr.pinCode}</p>
+                                {rowFilteredAddresses.length === 0 ? (
+                                  <div className="px-3 py-2.5 text-[11px] text-muted-foreground text-center">
+                                    No matching saved addresses.
+                                  </div>
+                                ) : (
+                                  <div className="divide-y divide-neutral-100 dark:divide-slate-800">
+                                    {rowFilteredAddresses.map((addr) => (
+                                      <div
+                                        key={addr.id}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault(); // Prevents blur event from firing
+                                          updateAllocationRow(alloc.id, "deliveryAddress", `${addr.address}${addr.pinCode ? ` - PIN: ${addr.pinCode}` : ""}`);
+                                          setShowAddressDropdownRowId(null);
+                                        }}
+                                        className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-700 dark:text-neutral-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer text-xs transition-colors flex items-start gap-2"
+                                      >
+                                        <MapPin className="h-3 w-3 mt-0.5 text-neutral-400 flex-shrink-0" />
+                                        <div className="flex-1">
+                                          <p className="font-medium leading-relaxed">{addr.address}</p>
+                                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">PIN: {addr.pinCode}</p>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>,
-                            document.body
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="relative">
-                          <select
-                            value={alloc.itemId}
-                            onChange={(e) => updateAllocationRow(alloc.id, "itemId", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm bg-card border-border text-foreground"
-                          >
-                            <option value="">Select Item</option>
-                            {specs.filter((s) => s.category?.trim()).map((s) => (
-                              <option key={s.id} value={s.id}>{s.category}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>,
+                              document.body
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="relative">
-                          <select
-                            value={alloc.size}
-                            onChange={(e) => updateAllocationRow(alloc.id, "size", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
-                          >
-                            <option value="">Select Size</option>
-                            {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.size
-                              ? specs.find((s) => s.id === alloc.itemId)!.size.split(",").map((sz, i) => (
-                                <option key={i} value={sz.trim()}>
-                                  {sz.trim()}
-                                </option>
-                              ))
-                              : null}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="relative">
-                          <select
-                            value={alloc.color || ""}
-                            onChange={(e) => updateAllocationRow(alloc.id, "color", e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
-                          >
-                            <option value="">Select Color</option>
-                            {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.color
-                              ? specs.find((s) => s.id === alloc.itemId)!.color.split(",").map((c, i) => (
-                                <option key={i} value={c.trim()}>
-                                  {c.trim()}
-                                </option>
-                              ))
-                              : null}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                          </div>
-                        </div>
-                      </td>
-                      {deliveryType === "multi" && (
+                        </td>
                         <td className="px-2 py-3">
                           <div className="relative">
                             <select
-                              value={alloc.deliveryMethod || ""}
-                              onChange={(e) => updateAllocationRow(alloc.id, "deliveryMethod", e.target.value)}
-                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-foreground"
+                              value={alloc.itemId}
+                              onChange={(e) => updateAllocationRow(alloc.id, "itemId", e.target.value)}
+                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm bg-card border-border text-foreground"
                             >
-                              <option value="">Select Type</option>
-                              <option value="Door Delivery">Door Delivery</option>
-                              <option value="Godown Delivery">Godown Delivery</option>
+                              <option value="">Select Item</option>
+                              {specs.filter((s) => s.category?.trim()).map((s) => (
+                                <option key={s.id} value={s.id}>{s.category}</option>
+                              ))}
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
                               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
                             </div>
                           </div>
                         </td>
-                      )}
-                      <td className="px-2 py-3">
-                        <input
-                          type="text"
-                          value={alloc.quantity === 0 ? "" : alloc.quantity}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9.]/g, "");
-                            updateAllocationRow(alloc.id, "quantity", val ? Number(val) : 0);
-                          }}
-                          placeholder="0"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-card transition-shadow ${isExceeding ? "border-red-500 ring-1 ring-red-500" : isExact ? "border-green-500 ring-1 ring-green-500" : "border-border"}`}
-                        />
-                        {alloc.itemId && targetItem && (
-                          <div className="mt-1">
-                            <p className={`text-xs font-medium ${isExceeding ? "text-red-500" : isExact ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}>
-                              {isExceeding
-                                ? `Target: ${targetQty} (Exceeded by ${Math.abs(remainingQty)} units)`
-                                : isExact
-                                  ? `Target: ${targetQty} (0 Remaining) ✓`
-                                  : `Target: ${targetQty} (${remainingQty} Remaining)`}
-                            </p>
+                        <td className="px-2 py-3">
+                          <div className="relative">
+                            <select
+                              value={alloc.size}
+                              onChange={(e) => updateAllocationRow(alloc.id, "size", e.target.value)}
+                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
+                            >
+                              <option value="">Select Size</option>
+                              {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.size
+                                ? safeSplit(specs.find((s) => s.id === alloc.itemId)?.size).map((sz, i) => (
+                                  <option key={i} value={sz.trim()}>
+                                    {sz.trim()}
+                                  </option>
+                                ))
+                                : null}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                            </div>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-2 py-3 text-center">
+                        </td>
+                        <td className="px-2 py-3">
+                          <div className="relative">
+                            <select
+                              value={alloc.color || ""}
+                              onChange={(e) => updateAllocationRow(alloc.id, "color", e.target.value)}
+                              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-blue-600 dark:text-blue-400"
+                            >
+                              <option value="">Select Color</option>
+                              {alloc.itemId && specs.find((s) => s.id === alloc.itemId)?.color
+                                ? safeSplit(specs.find((s) => s.id === alloc.itemId)?.color).map((c, i) => (
+                                  <option key={i} value={c.trim()}>
+                                    {c.trim()}
+                                  </option>
+                                ))
+                                : null}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                            </div>
+                          </div>
+                        </td>
                         {deliveryType === "multi" && (
-                          <button
-                            type="button"
-                            onClick={() => removeAllocationRow(alloc.id)}
-                            className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mx-auto block"
-                            title="Delete Allocation"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <td className="px-2 py-3">
+                            <div className="relative">
+                              <select
+                                value={alloc.deliveryMethod || ""}
+                                onChange={(e) => updateAllocationRow(alloc.id, "deliveryMethod", e.target.value)}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring appearance-none transition-shadow pr-10 text-sm font-semibold bg-card border-border text-foreground"
+                              >
+                                <option value="">Select Type</option>
+                                <option value="Door Delivery">Door Delivery</option>
+                                <option value="Godown Delivery">Godown Delivery</option>
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                              </div>
+                            </div>
+                          </td>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
+                        <td className="px-2 py-3">
+                          <input
+                            type="text"
+                            value={alloc.quantity === 0 ? "" : alloc.quantity}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9.]/g, "");
+                              updateAllocationRow(alloc.id, "quantity", val ? Number(val) : 0);
+                            }}
+                            placeholder="0"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-card transition-shadow ${isExceeding ? "border-red-500 ring-1 ring-red-500" : isExact ? "border-green-500 ring-1 ring-green-500" : "border-border"}`}
+                          />
+                          {alloc.itemId && targetItem && (
+                            <div className="mt-1">
+                              <p className={`text-xs font-medium ${isExceeding ? "text-red-500" : isExact ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}>
+                                {isExceeding
+                                  ? `Target: ${targetQty} (Exceeded by ${Math.abs(remainingQty)} units)`
+                                  : isExact
+                                    ? `Target: ${targetQty} (0 Remaining) ✓`
+                                    : `Target: ${targetQty} (${remainingQty} Remaining)`}
+                              </p>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 py-3 text-center">
+                          {deliveryType === "multi" && (
+                            <button
+                              type="button"
+                              onClick={() => removeAllocationRow(alloc.id)}
+                              className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mx-auto block"
+                              title="Delete Allocation"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 })()
               )}
             </tbody>

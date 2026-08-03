@@ -215,12 +215,18 @@ function StockCalculationContent() {
         setStatusMessage(null);
         try {
           const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-          const res = await fetch(`${BACKEND_URL}/purchase_orders/details/${selectedPONumber}`, {
+          const res = await fetch(`${BACKEND_URL}/api/purchase-orders/${selectedPONumber}`, {
             headers: getAuthHeaders()
           });
-          if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+          
+          if (!res.ok) {
+            console.warn(`Server responded with status ${res.status}`);
+            setDetailedOrder(null);
+            return;
+          }
+          
           const data = await res.json();
-          if(data.success !== false) {
+          if (data.success !== false) {
              setDetailedOrder({
                ...selectedOrder,
                ...data,
@@ -235,10 +241,12 @@ function StockCalculationContent() {
                })) || []
              });
           } else {
-             throw new Error(data.message || "Failed to load order details");
+             console.warn(data.message || "Failed to load order details");
+             setDetailedOrder(null);
           }
         } catch (err) {
           console.error(err);
+          setDetailedOrder(null);
           setStatusMessage("Offline: Using fallback dashboard cache");
           // Fallback to local storage draft if endpoint fails
           const ordersStr = localStorage.getItem('savedOrders');
@@ -644,8 +652,8 @@ function StockCalculationContent() {
                     canAdvanceBOM ? (
                       <button
                         onClick={() => handleCalculateBOM('calculate-bom')}
-                        disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                        className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                        disabled={!selectedOrder}
+                        className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
                             ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                             : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
                           }`}
@@ -669,8 +677,8 @@ function StockCalculationContent() {
                       {(isFullyAvailable || isPartiallyAvailable) && (
                         <button
                           onClick={() => handleCalculateBOM(isServiceOutsource ? 'service-outsource' : 'quality-packing')}
-                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                          disabled={!selectedOrder}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
                               ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                               : 'bg-[#2563EB] text-white hover:bg-blue-700 active:transform active:scale-[0.99]'
                             }`}
@@ -684,8 +692,8 @@ function StockCalculationContent() {
                       {(isNotAvailableAtAll || isPartiallyAvailable) && (
                         <button
                           onClick={() => handleCalculateBOM('bom-calculation')}
-                          disabled={!selectedOrder || orderAnalysis.totalQuantity === 0}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder || orderAnalysis.totalQuantity === 0
+                          disabled={!selectedOrder}
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
                               ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                               : 'bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]'
                             }`}

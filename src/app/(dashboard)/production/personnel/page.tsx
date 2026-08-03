@@ -1,300 +1,1122 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { User, X, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Calculator,
+  FileText,
+  Settings,
+  Download,
+  Truck,
+  DollarSign,
+  Scissors,
+  Layers,
+  AlertCircle,
+  CheckCircle2,
+  AlertTriangle,
+  ShoppingCart,
+  Box,
+  ChevronDown,
+  ArrowRight
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/context/AuthContext';
+import { updateOrderAndLog } from '@/lib/logger';
+import { getActiveBOMItems } from '@/utils/bomUtils';
+import { useOrders } from '@/contexts/order-context';
+import { getAuthHeaders } from '@/lib/api';
+import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
-export interface ProductionPerson {
-  id: string;
-  name: string;
-  assignedStage: string;
-  activePoBatch: string;
-  ratePerDay: number;
-  dailyTargetWork: number;
-  totalAllocated: number;
-}
-
-const initialPersonnel: ProductionPerson[] = [];
-
-export default function PersonnelOverviewPage() {
-  const router = useRouter();
-  const [personnelList, setPersonnelList] = useState(initialPersonnel);
+function SearchableDropdown({
+  options,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  label,
+}: {
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+  label: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    name: '',
-    phoneDigits: '',
-    stage: 'Cutting',
-    ratePerDay: '',
-    dailyTarget: ''
-  });
-  const [contactError, setContactError] = useState('');
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
 
-  React.useEffect(() => {
-    const fetchPersons = async () => {
-      try {
-        const res = await fetch('http://127.0.0.1:5000/api/v1/production/persons');
-        const resData = await res.json();
-        console.log('Fetched production persons:', resData);
-        
-        let personsArray = [];
-        if (resData && Array.isArray(resData.data)) {
-          personsArray = resData.data;
-        } else if (Array.isArray(resData)) {
-          personsArray = resData;
-        } else if (resData && resData.data && Array.isArray(resData.data.data)) {
-          personsArray = resData.data.data;
-        }
-        
-        const mappedPersons: ProductionPerson[] = personsArray.map((p: any) => ({
-           id: p.id || p.person_id || Math.random().toString(),
-           name: p.person_name || p.name || 'Unknown',
-           assignedStage: p.production_stage || p.assignedStage || p.activeStage || 'Unassigned',
-           activePoBatch: p.active_po_batch || p.activePoBatch || p.poBatch || 'None',
-           ratePerDay: Number(p.rate_per_day || p.ratePerDay || 0),
-           dailyTargetWork: Number(p.daily_target_pcs || p.dailyTargetWork || p.dailyTarget || 0),
-           totalAllocated: Number(p.total_allocated || p.totalAllocated || p.allocatedQty || 0)
-        }));
-
-        setPersonnelList(mappedPersons);
-      } catch (error) {
-        console.error('Failed to fetch production persons:', error);
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch(value);
       }
-    };
-    fetchPersons();
-  }, []);
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Strip out everything except digits entered after +91
-    const rawDigits = e.target.value.replace(/\D/g, '');
-
-    // Remove leading '91' if the user accidentally pastes it
-    const cleanDigits = rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
-
-    // Limit to exactly 10 digits
-    if (cleanDigits.length <= 10) {
-      setFormData(prev => ({ ...prev, phoneDigits: cleanDigits }));
-      if (contactError) setContactError('');
     }
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [value]);
 
-  const handleSavePersonnel = () => {
-    if (!formData.name) return;
-
-    if (formData.phoneDigits.length !== 10) {
-      setContactError('Please enter a valid 10-digit mobile number.');
-      return;
+  const filteredOptions = React.useMemo(() => {
+    if (!search || search === value) {
+      return options;
     }
-
-    setPersonnelList([...personnelList, {
-      id: Math.random().toString(),
-      name: formData.name,
-      assignedStage: formData.stage.toUpperCase(),
-      activePoBatch: 'PO-2026-002',
-      ratePerDay: Number(formData.ratePerDay),
-      dailyTargetWork: Number(formData.dailyTarget),
-      totalAllocated: 0
-    }]);
-
-    // Reset and close
-    setFormData({
-      name: '',
-      phoneDigits: '',
-      stage: 'Cutting',
-      ratePerDay: '',
-      dailyTarget: ''
-    });
-    setContactError('');
-    setIsOpen(false);
-  };
+    return options.filter((opt) =>
+      opt.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search, value]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8 pt-6">
-      {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <User className="h-7 w-7 text-indigo-500" />
-          Active Production Persons Overview
-        </h2>
+    <div className="relative" ref={wrapperRef}>
+      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+            if (e.target.value === '') {
+              onChange('');
+            }
+          }}
+          onFocus={() => setIsOpen(true)}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="w-full h-[42px] px-3 py-2.5 pr-10 bg-card border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
+          <ChevronDown className="h-4 w-4" />
+        </div>
+      </div>
+      {isOpen && !disabled && (
+        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-card border border-border rounded-lg shadow-lg py-1">
+          {filteredOptions.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-neutral-500">No options found</li>
+          ) : (
+            filteredOptions.map((opt, idx) => (
+              <li
+                key={idx}
+                className="px-3 py-2 text-sm text-foreground hover:bg-indigo-50 dark:hover:bg-indigo-900/50 cursor-pointer"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(opt);
+                  setSearch(opt);
+                  setIsOpen(false);
+                }}
+              >
+                {opt}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1.5 px-4 py-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-neutral-100 dark:hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Back</span>
-          </button>
-          <button
-            onClick={() => setIsOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow-sm transition-colors"
-          >
-            + Add Person
-          </button>
+const mockMaterials = [
+  { id: 'denimFabric12oz', name: 'Denim Fabric (12oz)', category: 'Fabric', perPiece: 1.5, unit: 'meters', available: 800 },
+  { id: 'cottonFabric', name: 'Cotton Fabric (Premium)', category: 'Fabric', perPiece: 1.2, unit: 'meters', available: 1500 },
+  { id: 'silkFabric', name: 'Silk Fabric (Fine)', category: 'Fabric', perPiece: 2.0, unit: 'meters', available: 300 },
+  { id: 'heavyDutyThreadNavy', name: 'Heavy Duty Thread (Navy)', category: 'Thread', perPiece: 0.1, unit: 'meters', available: 120 },
+  { id: 'standardThreadWhite', name: 'Standard Thread (White)', category: 'Thread', perPiece: 0.1, unit: 'meters', available: 500 },
+  { id: 'metalZippers15cm', name: 'Metal Zippers 15cm', category: 'Zippers', perPiece: 1, unit: 'units', available: 45 },
+  { id: 'metalButtonsSilver', name: 'Metal Buttons (Silver)', category: 'Buttons', perPiece: 6, unit: 'units', available: 5000 },
+  { id: 'brandTagsWoven', name: 'Brand Tags (Woven)', category: 'Collar/Cuff', perPiece: 1, unit: 'units', available: 5000 },
+  { id: 'collarHooks', name: 'Collar Hooks', category: 'Hooks', perPiece: 2, unit: 'units', available: 3000 },
+];
+
+const safeNumber = (val: any) => {
+  const num = parseFloat(val);
+  return isNaN(num) ? 0 : num;
+};
+
+export default function BOMCalculationView() {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { user, isAuthorized } = useAuth();
+  const canAdvance = isAuthorized("Inventory Check");
+  const { orders } = useOrders();
+
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+  const [selectedPODate, setSelectedPODate] = useState<string>('');
+  const [selectedPONumber, setSelectedPONumber] = useState<string>('');
+  const [detailedOrder, setDetailedOrder] = useState<any>(null);
+
+  const [wastage, setWastage] = useState(5);
+  const [editableMaterials, setEditableMaterials] = useState<any[]>([]);
+  const [summary, setSummary] = useState({ total_fabric: 0, allied_materials: 0, est_cost: 0 });
+  const [sizePerPieceOverrides, setSizePerPieceOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sizeUnitPriceOverrides, setSizeUnitPriceOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sizeLaborCostOverrides, setSizeLaborCostOverrides] = useState<Record<string, Record<string, number>>>({});
+  const [sleeveType, setSleeveType] = useState<string>('');
+  const [selectedGarmentIndex, setSelectedGarmentIndex] = useState<number>(0);
+  const [isTotalBomMode, setIsTotalBomMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (selectedPONumber) {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      fetch(`${BACKEND_URL}/purchase_orders/details/${selectedPONumber}`, {
+        headers: getAuthHeaders()
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success !== false) {
+            console.log("Selected PO Full Payload:", data);
+            setDetailedOrder({
+              ...data,
+              poNumber: data.po_number || selectedPONumber,
+              specs: data.specs?.map((s: any) => ({
+                ...s,
+                itemDescription: s.item_description,
+                stockAvailable: s.stock_available,
+                useExistingStock: s.use_existing_stock,
+                stockStatus: s.stock_status
+              })) || []
+            });
+          }
+        })
+        .catch(console.error);
+    } else {
+      setDetailedOrder(null);
+    }
+  }, [selectedPONumber]);
+
+  useEffect(() => {
+    const ordersStr = localStorage.getItem('savedOrders');
+    let loadedOrders = [];
+    if (ordersStr) {
+      try {
+        loadedOrders = JSON.parse(ordersStr);
+      } catch (e) { }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const urlPoNumber = params.get('poNumber');
+
+    if (urlPoNumber) {
+      const targetKeywords = ['bom calculation'];
+      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
+      if (targetOrder) {
+        setSelectedCustomer(targetOrder.customerName || '');
+        setSelectedPODate(targetOrder.poDate || '');
+        setSelectedPONumber(targetOrder.poNumber || '');
+        setWastage(5);
+        return; // Prioritize URL param over draft
+      }
+    }
+
+    const draft = localStorage.getItem('bomCalculationDraft');
+    if (draft) {
+      try {
+        const data = JSON.parse(draft);
+        if (data.selectedCustomer) setSelectedCustomer(data.selectedCustomer);
+        if (data.selectedPODate) setSelectedPODate(data.selectedPODate);
+        if (data.selectedPONumber) setSelectedPONumber(data.selectedPONumber);
+        if (data.wastage !== undefined) setWastage(data.wastage);
+      } catch (e) { }
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 800);
+    if (orders && orders.length > 0) {
+      setIsLoaded(true);
+    }
+    return () => clearTimeout(timer);
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('bomCalculationDraft', JSON.stringify({ selectedCustomer, selectedPODate, selectedPONumber, wastage }));
+  }, [selectedCustomer, selectedPODate, selectedPONumber, wastage]);
+
+  const activeOrders = React.useMemo(() => {
+    const targetKeywords = ['bom calculation'];
+    return (orders || []).filter(o => isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
+  }, [orders]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    // If the currently selected PO is no longer active in this stage, reset the form.
+    if (selectedPONumber && !activeOrders.find(o => o.poNumber === selectedPONumber)) {
+      setSelectedCustomer('');
+      setSelectedPODate('');
+      setSelectedPONumber('');
+      setWastage(5);
+      localStorage.removeItem('bomCalculationDraft');
+    }
+  }, [activeOrders, selectedPONumber, isLoaded]);
+
+  const customers = Array.from(new Set(activeOrders.map(o => o.customerName))).filter(Boolean) as string[];
+  const dates = Array.from(new Set(activeOrders.filter(o => o.customerName === selectedCustomer).map(o => o.poDate))).filter(Boolean) as string[];
+
+  const filteredOrders = activeOrders.filter(o =>
+    o.customerName === selectedCustomer &&
+    (selectedPODate ? o.poDate === selectedPODate : true)
+  );
+
+  const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
+
+  const baseOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
+  const currentOrder = detailedOrder ? { ...baseOrder, ...detailedOrder } : baseOrder;
+  const activeSpecs = currentOrder ? (currentOrder.specs || []) : [];
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      let cleanedDate = dateString.endsWith('GM') ? dateString + 'T' : dateString;
+      const d = new Date(cleanedDate);
+      if (isNaN(d.getTime())) {
+        const parts = dateString.split(/[T ]/);
+        return parts.length > 3 ? `${parts[1]} ${parts[2]} ${parts[3]}` : parts[0];
+      }
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch {
+      return dateString.split(/[T ]/)[0];
+    }
+  };
+
+  const activeGarment = activeSpecs[selectedGarmentIndex] || activeSpecs[0];
+
+  const totalProductionRequired = isTotalBomMode
+    ? activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0)
+    : activeGarment
+      ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
+      : 0;
+
+  const garmentType = isTotalBomMode ? 'Total Order' : (activeGarment?.itemDescription || 'Shirt');
+
+  useEffect(() => {
+    if (currentOrder && activeGarment) {
+      console.log('--- PO OR GARMENT CHANGED ---');
+      console.log('Current Order Object:', currentOrder);
+      console.log('Active Garment:', activeGarment);
+
+      const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+      const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > selectedGarmentIndex ? garmentDetailsArray[selectedGarmentIndex] : garmentDetailsArray[0];
+
+      const sleeveValue =
+        activeGarment?.sleeveType ||
+        activeGarment?.sleeve_type ||
+        activeGarment?.sleeve ||
+        matchingGarmentDetail?.sleeveType ||
+        matchingGarmentDetail?.sleeve_type ||
+        matchingGarmentDetail?.sleeve ||
+        currentOrder?.garmentSpec?.sleeveType ||
+        currentOrder?.garmentSpec?.sleeve_type ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeve_type ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeveType ||
+        currentOrder?.items?.[selectedGarmentIndex]?.sleeve ||
+        currentOrder?.sleeveType ||
+        currentOrder?.sleeve_type ||
+        '';
+
+      console.log('Extracted Sleeve Value for selected garment:', sleeveValue);
+
+      if (sleeveValue.toLowerCase().includes('half')) {
+        setSleeveType('half_sleeve');
+      } else if (sleeveValue.toLowerCase().includes('full')) {
+        setSleeveType('full_sleeve');
+      } else {
+        setSleeveType('');
+      }
+    } else {
+      setSleeveType('');
+    }
+  }, [currentOrder, activeGarment, selectedGarmentIndex]);
+
+  const formatSleeveType = (s: string) => {
+    if (!s) return 'N/A';
+    return s.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+  const displaySleeveType = formatSleeveType(sleeveType);
+
+  const selectedSizes = React.useMemo(() => {
+    if (!activeGarment) return [];
+    let specSizes: string[] = [];
+    if (Array.isArray(activeGarment.size)) {
+      specSizes = activeGarment.size.map(String).map((x: string) => x.trim());
+    } else if (typeof activeGarment.size === 'string') {
+      specSizes = activeGarment.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+    } else if (activeGarment.size) {
+      specSizes = [String(activeGarment.size).trim()];
+    }
+
+    const prodReq = Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0));
+    const qtyPerSize = specSizes.length > 0 ? Math.ceil(prodReq / specSizes.length) : 0;
+
+    return specSizes.map((s: string) => ({ size: s, quantity: qtyPerSize }));
+  }, [activeGarment]);
+
+  const sizesDependency = JSON.stringify(selectedSizes);
+
+  useEffect(() => {
+    const fetchForSpec = async (spec: any, index: number, BACKEND_URL: string) => {
+      const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+      const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > index ? garmentDetailsArray[index] : garmentDetailsArray[0];
+
+      const sValue =
+        spec?.sleeveType || spec?.sleeve_type || spec?.sleeve ||
+        matchingGarmentDetail?.sleeveType || matchingGarmentDetail?.sleeve_type || matchingGarmentDetail?.sleeve ||
+        currentOrder?.garmentSpec?.sleeveType || currentOrder?.garmentSpec?.sleeve_type ||
+        currentOrder?.items?.[index]?.sleeve_type || currentOrder?.items?.[index]?.sleeveType || currentOrder?.items?.[index]?.sleeve ||
+        currentOrder?.sleeveType || currentOrder?.sleeve_type || '';
+      let sType = '';
+      if (sValue.toLowerCase().includes('half')) sType = 'half_sleeve';
+      else if (sValue.toLowerCase().includes('full')) sType = 'full_sleeve';
+
+      const specProdReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
+
+      let specSizesArr: string[] = [];
+      if (Array.isArray(spec.size)) {
+        specSizesArr = spec.size.map(String).map((x: string) => x.trim());
+      } else if (typeof spec.size === 'string') {
+        specSizesArr = spec.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+      } else if (spec.size) {
+        specSizesArr = [String(spec.size).trim()];
+      }
+      const qtyPerSize = specSizesArr.length > 0 ? Math.ceil(specProdReq / specSizesArr.length) : 0;
+      const parsedSizes = specSizesArr.map((s: string) => ({ size: s, quantity: qtyPerSize }));
+
+      const gType = spec?.itemDescription || 'Shirt';
+
+      const payload = {
+        category: gType,
+        sleeveType: sType.includes('half') ? 'half_sleeve' : 'full_sleeve',
+        sizes: parsedSizes,
+        orderQty: specProdReq,
+        wastageMargin: wastage
+      };
+
+      console.log("[BOM Debug] fetchForSpec payload:", payload);
+
+      const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      return { data, sType };
+    };
+
+    const fetchBOMCalculations = async (po: string, w: number) => {
+      if (!po) return;
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/api/bom/calculate?po_number=${encodeURIComponent(po)}&wastage=${w}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setEditableMaterials(data.materials || []);
+          setSummary(data.summary || { total_fabric: 0, allied_materials: 0, est_cost: 0 });
+        } else {
+          setEditableMaterials([]);
+          setSummary({ total_fabric: 0, allied_materials: 0, est_cost: 0 });
+        }
+      } catch (err) {
+        console.error("Failed to load BOM calculations:", err);
+      }
+    };
+
+    fetchBOMCalculations(selectedPONumber, wastage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPONumber, wastage]);
+
+  const calculatedMaterials = editableMaterials;
+
+  const updateMaterial = (id: string, field: string, value: any) => {
+    setEditableMaterials(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const updateSizePerPiece = (materialId: string, size: string, value: any) => {
+    setSizePerPieceOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const updateSizeUnitPrice = (materialId: string, size: string, value: any) => {
+    setSizeUnitPriceOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const updateSizeLaborCost = (materialId: string, size: string, value: any) => {
+    setSizeLaborCostOverrides(prev => ({
+      ...prev,
+      [materialId]: {
+        ...(prev[materialId] || {}),
+        [size]: Number(value)
+      }
+    }));
+  };
+
+  const uniqueSizes = sortSizesAscending(Array.from(new Set(
+    activeSpecs.flatMap((s: any) => {
+      if (Array.isArray(s.size)) return s.size.map(String).map((x: string) => x.trim());
+      if (typeof s.size === 'string') return s.size.split(',').map((x: string) => x.trim()).filter(Boolean);
+      if (s.size) return [String(s.size).trim()];
+      return [];
+    })
+  )));
+
+  const totalFabric = summary.total_fabric || 0;
+  const totalAllied = summary.allied_materials || 0;
+  const estimatedCost = summary.est_cost || 0;
+  const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
+
+  useEffect(() => {
+    if (totalProductionRequired > 0) {
+      const shortages = calculatedMaterials.filter(m => m.missing > 0).map(m => ({
+        id: `PR-${selectedPONumber}-${m.id}`,
+        material: m.name,
+        category: m.category,
+        required: m.finalQuantity,
+        available: m.available,
+        shortage: m.missing,
+        unit: m.unit,
+        supplier: 'Auto Assigned Supplier',
+        cost: m.missing * (m.category === 'Fabric' ? 5 : 0.5),
+        priority: 'Critical',
+        status: 'Pending Procurement'
+      }));
+      localStorage.setItem('autoGeneratedProcurementRequests', JSON.stringify(shortages));
+    } else {
+      localStorage.removeItem('autoGeneratedProcurementRequests');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalProductionRequired, selectedPONumber]);
+
+  return (
+    <div className="max-w-full mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
+      <WorkflowIndicator currentStep="BOM Calculation" />
+
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Calculator className="h-6 w-6 text-indigo-600" />
+            {t('bom.title')}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('bom.subtitle')}</p>
         </div>
       </div>
 
-      {personnelList.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {personnelList.map((person: ProductionPerson, i) => {
-            const estDays = person.dailyTargetWork > 0 ? Math.ceil(person.totalAllocated / person.dailyTargetWork) : 0;
-            const personIdStr = String(person.id || '');
-            return (
-            <div key={personIdStr || i} className="bg-card border border-neutral-100 dark:border-border rounded-2xl shadow-sm p-5 flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-base shadow-inner">
-                  {(person.name || 'U').substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-card-foreground">{person.name}</h3>
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                    ID: {personIdStr.substring(0, 8)}
-                  </p>
-                </div>
+      <div className="space-y-6">
+        {/* 1. BOM Summary Cards (Top) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Scissors className="h-4 w-4 text-blue-600" />
               </div>
-              <div className="bg-neutral-50 dark:bg-card/50 rounded-xl p-4 space-y-3 border border-neutral-100 dark:border-border flex-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Assigned Stage</span>
-                  <span className="px-2 py-0.5 bg-blue-50 dark:bg-card/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded uppercase tracking-wider">{person.assignedStage}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Active PO Batch</span>
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{person.activePoBatch}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Rate Per Day</span>
-                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">₹{person.ratePerDay}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Est. Completion</span>
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{estDays} days</span>
-                </div>
-                <div className="flex justify-between items-center border-t border-border pt-3 mt-3">
-                  <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Daily Target Work</span>
-                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">{person.dailyTargetWork} pcs</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Total Allocated</span>
-                  <span className="text-sm font-black text-purple-600 dark:text-purple-400">{person.totalAllocated} pcs</span>
-                </div>
-              </div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.fabric')}</p>
             </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="w-full border-2 border-dashed border-neutral-300 dark:border-border rounded-xl p-10 flex flex-col items-center justify-center text-center bg-neutral-50/50 dark:bg-card/20">
-          <div className="p-4 bg-card rounded-full shadow-sm mb-4 border border-neutral-100 dark:border-border">
-            <User className="h-8 w-8 text-neutral-400" />
+            <p className="text-xl font-bold text-foreground">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">meters</span></p>
           </div>
-          <p className="text-card-foreground font-bold text-lg mb-1">No persons deployed on the floor</p>
-          <p className="text-sm text-muted-foreground max-w-sm">Click '+ Add Person' to assign workers.</p>
-        </div>
-      )}
 
-      {/* Personnel Creation Modal Dialog */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="relative bg-card rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <h3 className="text-lg font-bold text-foreground">Add New Person</h3>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                <Layers className="h-4 w-4 text-indigo-600" />
+              </div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.allied')}</p>
             </div>
+            <p className="text-xl font-bold text-foreground">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">units</span></p>
+          </div>
 
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Person Name</label>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+              </div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.cost')}</p>
+            </div>
+            <p className="text-xl font-bold text-foreground">₹{estimatedCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+
+          <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                <Box className="h-4 w-4 text-amber-600" />
+              </div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.shortages')}</p>
+            </div>
+            <p className="text-xl font-bold text-foreground">{itemsToProcure} <span className="text-sm font-normal text-muted-foreground">{t('procurement.requestsHeader') || 'materials'}</span></p>
+          </div>
+        </div>
+
+        {/* 2. Order Configuration (Horizontal Full-Width) */}
+        <div className="bg-card rounded-xl shadow-sm border border-border">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30 rounded-t-xl">
+            <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              {t('bom.config')}
+            </h2>
+          </div>
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 items-end">
+            <div className="w-full">
+              <SearchableDropdown
+                label="Customer Name"
+                options={customers}
+                value={selectedCustomer}
+                placeholder="Select a Customer..."
+                onChange={(val) => {
+                  setSelectedCustomer(val);
+                  setSelectedPODate('');
+                  setSelectedPONumber('');
+                  setWastage(5);
+                }}
+              />
+            </div>
+            <div className="w-full">
+              <SearchableDropdown
+                label="PO Number"
+                options={poNumbers}
+                value={selectedPONumber}
+                placeholder="Select a PO Number..."
+                disabled={!selectedCustomer}
+                onChange={(val) => {
+                  const newOrder = filteredOrders.find(o => o.poNumber === val) || detailedOrder;
+                  console.log("Selected PO Object:", newOrder);
+                  setSelectedPONumber(val);
+                  setSelectedGarmentIndex(0);
+                  setWastage(5);
+                }}
+              />
+            </div>
+            <div className="w-full">
+              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed">
+                {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
+              </div>
+            </div>
+            <div className="w-full flex flex-col gap-1.5">
+              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">CATEGORY</label>
+              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed select-none">
+                {garmentType || 'N/A'}
+              </div>
+            </div>
+            <div className="w-full">
+              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+                {t('bom.wastage')}
+              </label>
+              <div className="flex items-center gap-2">
                 <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter employee name"
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={wastage}
+                  onChange={(e) => {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val)) val = 0;
+                    if (val > 20) val = 20;
+                    if (val < 0) val = 0;
+                    setWastage(val);
+                  }}
+                  className="w-full h-[42px] px-3 py-2.5 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 />
+                <span className="text-indigo-600 font-bold">%</span>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Contact Number</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-neutral-500 dark:text-slate-400 font-medium text-sm">+91</span>
-                  <input
-                    type="tel"
-                    value={formData.phoneDigits}
-                    onChange={handlePhoneChange}
-                    placeholder="98765 43210"
-                    className={`pl-10 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-shadow bg-transparent ${contactError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-neutral-300 dark:border-border focus:ring-indigo-500 focus:border-indigo-500'}`}
-                  />
-                </div>
-                {contactError && <p className="text-red-500 text-xs mt-1">{contactError}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Assign Production Stage</label>
-                <select
-                  value={formData.stage}
-                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent text-neutral-700 dark:text-neutral-200"
-                >
-                  <option value="Cutting">Cutting</option>
-                  <option value="Stitching">Stitching</option>
-                  <option value="Fusing">Fusing</option>
-                  <option value="Kaj Button">Kaj Button</option>
-                  <option value="Finishing">Finishing</option>
-                  <option value="Packing">Packing</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Rate Per Day (₹)</label>
-                  <input
-                    type="number"
-                    value={formData.ratePerDay}
-                    onChange={(e) => setFormData({ ...formData, ratePerDay: e.target.value })}
-                    placeholder="e.g. 500"
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Daily Target (pcs/day)</label>
-                  <input
-                    type="number"
-                    value={formData.dailyTarget}
-                    onChange={(e) => setFormData({ ...formData, dailyTarget: e.target.value })}
-                    placeholder="e.g. 100"
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-border bg-neutral-50 dark:bg-card/50">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-neutral-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSavePersonnel}
-                className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-colors"
-              >
-                Save Person
-              </button>
             </div>
           </div>
         </div>
-      )}
+
+        {/* 3. Garment Details */}
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              {t('bom.details')}
+            </h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsTotalBomMode(!isTotalBomMode)}
+                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-colors ${isTotalBomMode
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white dark:bg-card text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                  }`}
+              >
+                {isTotalBomMode ? 'View Individual BOM' : 'Total BOM Cal.'}
+              </button>
+              <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-100">
+                {t('bom.totalProd')}: {totalProductionRequired} pcs
+              </span>
+            </div>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {!selectedPONumber || !currentOrder ? (
+                <p className="text-sm text-neutral-500 py-2 col-span-full">Please select a PO number.</p>
+              ) : activeSpecs.length === 0 ? (
+                <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
+              ) : (
+                activeSpecs.map((spec: any, idx: number) => {
+                  const isSelected = !isTotalBomMode && selectedGarmentIndex === idx;
+
+                  const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
+                  const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > idx ? garmentDetailsArray[idx] : garmentDetailsArray[0];
+
+                  const sValue =
+                    spec?.sleeveType ||
+                    spec?.sleeve_type ||
+                    spec?.sleeve ||
+                    matchingGarmentDetail?.sleeveType ||
+                    matchingGarmentDetail?.sleeve_type ||
+                    matchingGarmentDetail?.sleeve ||
+                    currentOrder?.garmentSpec?.sleeveType ||
+                    currentOrder?.garmentSpec?.sleeve_type ||
+                    currentOrder?.items?.[idx]?.sleeve_type ||
+                    currentOrder?.items?.[idx]?.sleeveType ||
+                    currentOrder?.items?.[idx]?.sleeve ||
+                    currentOrder?.sleeveType ||
+                    currentOrder?.sleeve_type ||
+                    '';
+                  const formattedSleeve = sValue ? sValue.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'N/A';
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedGarmentIndex(idx)}
+                      className={`text-left transition-all p-3 rounded-lg border flex justify-between items-start ${isSelected
+                          ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-sm ring-1 ring-indigo-500'
+                          : 'bg-neutral-50 dark:bg-card/50 border-neutral-100 dark:border-border hover:border-indigo-300 dark:hover:border-indigo-700/50 hover:bg-neutral-100 dark:hover:bg-card/80'
+                        }`}
+                    >
+                      <div>
+                        <p className={`text-sm font-medium ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-foreground'}`}>
+                          {spec.itemDescription || '-'} - {spec.pattern || '-'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Size: {typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}
+                        </p>
+                        <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded border font-medium ${isSelected ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                          Sleeve: {formattedSleeve}
+                        </span>
+                      </div>
+                      <div className={`text-right pl-3 border-l ${isSelected ? 'border-indigo-200 dark:border-indigo-800' : 'border-neutral-200 dark:border-neutral-600'}`}>
+                        <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
+                        <p className={`text-sm font-bold ${isSelected ? 'text-indigo-700 dark:text-indigo-400' : 'text-foreground'}`}>
+                          {Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0))}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Procurement Trigger Panel (Only if shortages) */}
+        {itemsToProcure > 0 && (
+          <div className="bg-red-50 rounded-xl shadow-sm border border-red-200 overflow-hidden">
+            <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-card p-2 rounded-lg border border-red-200 flex-shrink-0">
+                  <ShoppingCart className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-800">{t('procurement.requestsHeader') || 'Procurement Needed'}</h3>
+                  <p className="text-xs text-red-600 mt-1">{itemsToProcure} {t('bom.shortages') || 'materials are short for this order.'}</p>
+                </div>
+              </div>
+              <button onClick={() => router.push('/procurement')} className="px-6 py-2.5 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 transition-colors font-medium text-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                <Truck className="h-4 w-4" />
+                {t('procurement.createRequest') || 'Trigger Procurement'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 4. Materials Calculation Table */}
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-card/30">
+            <h2 className="text-lg font-semibold text-card-foreground">{t('bom.materials')}</h2>
+          </div>
+
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="px-4 py-3.5 w-[20%] text-left font-semibold">Material Inventory</th>
+                  <th className="px-4 py-3.5 w-[14%] text-left font-semibold">Brand</th>
+                  <th className="px-4 py-3.5 w-[12%] text-left font-semibold">Selected Sizes</th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Piece Qty</th>
+                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Total Qty <span className="text-[9px] block text-neutral-400 lowercase">(inc. wastage)</span></th>
+                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Unit Price</th>
+                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Final Price</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                {editableMaterials && editableMaterials.length > 0 ? (
+                  editableMaterials.filter((item) => {
+                    const sizeRows = item.sizes?.map((sr: any) => {
+                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+                      const baseReq = actualQty * currentPerPiece;
+                      const isFabric = item.category === 'Fabric' || item.name.toLowerCase().includes('fabric');
+                      const wastageAmount = isFabric ? baseReq * (wastage / 100) : 0;
+                      return parseFloat((baseReq + wastageAmount).toFixed(2));
+                    }) || [];
+                    const hasSizeBreakdown = sizeRows.length > 0;
+                    const rawCombinedTotalQty = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, val: number) => sum + val, 0)
+                      : safeNumber(item.totalQty);
+                    return parseFloat(rawCombinedTotalQty.toFixed(2)) > 0;
+                  }).map((item, idx) => {
+                    const isShortage = item.missing > 0;
+
+                    const sizeRows = item.sizes?.map((sr: any) => {
+                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
+                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
+                      const baseReq = actualQty * currentPerPiece;
+                      const wastageAmount = baseReq * (wastage / 100);
+                      const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
+                      const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
+                      const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
+
+                      return {
+                        size: sr.size,
+                        volume: actualQty,
+                        perPieceQty: currentPerPiece,
+                        sizeTotalQty,
+                        sizeFinalPrice
+                      };
+                    }) || [];
+
+                    const hasSizeBreakdown = sizeRows.length > 0;
+
+                    const rawCombinedTotalQty = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
+                      : safeNumber(item.totalQty);
+
+                    const combinedTotalQty = parseFloat(rawCombinedTotalQty.toFixed(2));
+
+                    const combinedFinalPrice = hasSizeBreakdown
+                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
+                      : (combinedTotalQty * safeNumber(item.perUnitPrice));
+
+                    return (
+                      <React.Fragment key={idx}>
+                        {!hasSizeBreakdown ? (
+                          <tr className={isShortage ? "bg-red-50/50 dark:bg-red-900/10" : "bg-neutral-50/30 dark:bg-slate-800/20"}>
+                            <td className="px-4 py-3 text-left align-top">
+                              <div className="flex flex-col">
+                                <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
+                                    {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-left align-top">
+                              <select
+                                value={item.brand || ""}
+                                onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
+                              >
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                              </select>
+                              <select
+                                value={item.sizeRange || ""}
+                                onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                              >
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 text-left align-top pt-4">
+                              <span className="text-xs text-muted-foreground pl-2">-</span>
+                            </td>
+                            <td className="px-4 py-3 text-right align-top">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={item.perPiece}
+                                onChange={(e) => updateMaterial(item.id, 'perPiece', e.target.value)}
+                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-right align-top pt-4">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.totalQty}
+                                onChange={(e) => updateMaterial(item.id, 'totalQty', e.target.value)}
+                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm font-semibold transition-colors"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-right align-top">
+                              <div className="relative flex items-center">
+                                <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.perUnitPrice ?? ''}
+                                  onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
+                                  className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                />
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right align-top pt-4">
+                              <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </td>
+                          </tr>
+                        ) : (
+                          sizeRows.map((sr: any, sIdx: number) => (
+                            <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
+                              {sIdx === 0 && (
+                                <>
+                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
+                                    <div className="flex flex-col">
+                                      <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
+                                          {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
+                                    <select
+                                      value={item.brand || ""}
+                                      onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
+                                      className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
+                                    >
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
+                                    </select>
+                                    <select
+                                      value={item.sizeRange || ""}
+                                      onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
+                                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
+                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
+                                    </select>
+                                  </td>
+                                </>
+                              )}
+                              <td className="px-4 py-2 text-left pl-6">
+                                <div className="flex items-center gap-2">
+                                  <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 text-[10px] font-bold px-2 py-1 rounded">
+                                    {sr.size}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground font-semibold">
+                                    ({sr.volume || 0} pcs)
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={sizePerPieceOverrides[item.id]?.[sr.size] ?? sr.perPieceQty ?? item.perPiece ?? '0.00'}
+                                  onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
+                                  className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-right pt-4">
+                                <span className="text-sm font-semibold text-foreground pr-3">{isNaN(sr.sizeTotalQty) ? '0.00' : Number(sr.sizeTotalQty).toFixed(2)}</span>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <div className="relative flex items-center">
+                                  <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice ?? ''}
+                                    onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
+                                    className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right pt-4">
+                                <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                                  ₹{isNaN(sr.sizeFinalPrice) ? '0.00' : sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+
+                        {hasSizeBreakdown && (
+                          <tr className="bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-900/50">
+                            <td colSpan={4} className="px-4 py-2.5 text-right">
+                              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider pr-3">
+                                Total Combined Amount
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
+                                {isNaN(combinedTotalQty) ? '0.00' : Number(combinedTotalQty).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5"></td>
+                            <td className="px-4 py-2.5 text-right">
+                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
+                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No materials found for this garment in DB.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="bg-neutral-50 dark:bg-card px-4 py-3 border-t border-border text-xs text-muted-foreground flex justify-between">
+            <p>{t('bom.wastage') || 'Calculations include wastage margin.'}</p>
+            <p>{t('dashboard.recentOrders.headers.amount') || 'Last recalculated: Just now'}</p>
+          </div>
+        </div>
+
+        {/* 5. Action Buttons */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-border">
+          <div className="flex-1">
+            {totalProductionRequired === 0 && (
+              <p className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4" />
+                No BOM required. Order fulfilled using existing stock.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <button className="w-full sm:w-auto px-6 py-2.5 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2">
+              <Download className="h-4 w-4" />
+              {t('bom.export')}
+            </button>
+            {canAdvance ? (
+              <button
+                onClick={async () => {
+                  if (currentOrder) {
+                    try {
+                      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+                      const bomLines = editableMaterials.map(m => ({
+                        material_id: m.id,
+                        material_name: m.name,
+                        category: m.category,
+                        unit: m.unit,
+                        per_piece_qty: Number(m.perPiece || 0),
+                        final_qty: Number(m.totalQty || 0),
+                        brand: m.brand || '',
+                        unit_price: Number(m.perUnitPrice || 0),
+                        amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0))
+                      }));
+
+                      const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...getAuthHeaders(true)
+                        },
+                        body: JSON.stringify({
+                          poNumber: currentOrder.poNumber,
+                          bomLines: bomLines,
+                          wastagePct: wastage
+                        })
+                      });
+
+                      const data = await res.json();
+
+                      if (res.ok && data.success !== false) {
+                        window.dispatchEvent(new Event("orders-updated"));
+
+                        const targetPoNumber = currentOrder.poNumber;
+
+                        setSelectedCustomer('');
+                        setSelectedPODate('');
+                        setSelectedPONumber('');
+                        setWastage(5);
+                        localStorage.removeItem('bomCalculationDraft');
+
+                        window.history.replaceState(null, '', window.location.pathname);
+                        router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
+                      } else {
+                        alert(data.error || "Failed to process order");
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      alert("Network error. Please try again.");
+                    }
+                  }
+                }}
+                disabled={totalProductionRequired === 0}
+                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0
+                  ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+              >
+                {t('bom.checkInventory')}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="You do not have permission to access Inventory Check."
+                className="w-full sm:w-auto px-8 py-2.5 bg-muted text-neutral-400 cursor-not-allowed border border-border rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2"
+              >
+                Max Stage Reached
+              </button>
+            )}
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -28,6 +28,32 @@ import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
 import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
+interface SizeRow {
+  size: string;
+  perPieceQty: number | string;
+  totalQty: number;
+  perUnitPrice: string | number;
+  finalPrice: number;
+  orderQty: number;
+}
+
+interface MaterialGroup {
+  id: string;
+  materialName: string;
+  unit: string;
+  brand: string;
+  sizeType: string;
+  sizes: SizeRow[];
+  totalCombinedQty: number;
+  totalCombinedAmount: number;
+  category?: string;
+  fabric_width?: string;
+  selectedWidth?: string;
+  available_widths?: string[];
+  brandOptions?: string[];
+  selectedBrand?: string;
+}
+
 function SearchableDropdown({
   options,
   value,
@@ -293,8 +319,8 @@ export default function BOMCalculationView() {
   const totalProductionRequired = isTotalBomMode
     ? activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0)
     : activeGarment
-    ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
-    : 0;
+      ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
+      : 0;
 
   const garmentType = isTotalBomMode ? 'Total Order' : (activeGarment?.itemDescription || 'Shirt');
 
@@ -303,13 +329,13 @@ export default function BOMCalculationView() {
       console.log('--- PO OR GARMENT CHANGED ---');
       console.log('Current Order Object:', currentOrder);
       console.log('Active Garment:', activeGarment);
-      
+
       const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
       const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > selectedGarmentIndex ? garmentDetailsArray[selectedGarmentIndex] : garmentDetailsArray[0];
-      
-      const sleeveValue = 
-        activeGarment?.sleeveType || 
-        activeGarment?.sleeve_type || 
+
+      const sleeveValue =
+        activeGarment?.sleeveType ||
+        activeGarment?.sleeve_type ||
         activeGarment?.sleeve ||
         matchingGarmentDetail?.sleeveType ||
         matchingGarmentDetail?.sleeve_type ||
@@ -319,12 +345,12 @@ export default function BOMCalculationView() {
         currentOrder?.items?.[selectedGarmentIndex]?.sleeve_type ||
         currentOrder?.items?.[selectedGarmentIndex]?.sleeveType ||
         currentOrder?.items?.[selectedGarmentIndex]?.sleeve ||
-        currentOrder?.sleeveType || 
-        currentOrder?.sleeve_type || 
+        currentOrder?.sleeveType ||
+        currentOrder?.sleeve_type ||
         '';
-                        
+
       console.log('Extracted Sleeve Value for selected garment:', sleeveValue);
-      
+
       if (sleeveValue.toLowerCase().includes('half')) {
         setSleeveType('half_sleeve');
       } else if (sleeveValue.toLowerCase().includes('full')) {
@@ -366,8 +392,8 @@ export default function BOMCalculationView() {
     const fetchForSpec = async (spec: any, index: number, BACKEND_URL: string) => {
       const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
       const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > index ? garmentDetailsArray[index] : garmentDetailsArray[0];
-      
-      const sValue = 
+
+      const sValue =
         spec?.sleeveType || spec?.sleeve_type || spec?.sleeve ||
         matchingGarmentDetail?.sleeveType || matchingGarmentDetail?.sleeve_type || matchingGarmentDetail?.sleeve ||
         currentOrder?.garmentSpec?.sleeveType || currentOrder?.garmentSpec?.sleeve_type ||
@@ -378,7 +404,7 @@ export default function BOMCalculationView() {
       else if (sValue.toLowerCase().includes('full')) sType = 'full_sleeve';
 
       const specProdReq = Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0));
-      
+
       let specSizesArr: string[] = [];
       if (Array.isArray(spec.size)) {
         specSizesArr = spec.size.map(String).map((x: string) => x.trim());
@@ -399,7 +425,7 @@ export default function BOMCalculationView() {
         orderQty: specProdReq,
         wastageMargin: wastage
       };
-      
+
       console.log("[BOM Debug] fetchForSpec payload:", payload);
 
       const res = await fetch(`${BACKEND_URL}/api/bom/calculate-from-db`, {
@@ -411,63 +437,172 @@ export default function BOMCalculationView() {
       return { data, sType };
     };
 
-    const fetchBOMCalculations = async (po: string, w: number) => {
+    const fetchBOMCalculations = async (po: string) => {
       if (!po) return;
       try {
         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-        const res = await fetch(`${BACKEND_URL}/api/bom/calculate?po_number=${encodeURIComponent(po)}&wastage=${w}`);
+        const identifier = activeGarment?.itemDescription || activeGarment?.item_description || activeGarment?.garment_id || po;
+        const totalOrderQty = totalProductionRequired || 0;
+
+        const activePoSizes = selectedSizes.map((s: any) => s.size);
+
+        const res = await fetch(`${BACKEND_URL}/api/bom-calculations?category=${encodeURIComponent(identifier)}&sleeveType=${encodeURIComponent(sleeveType || '')}`);
         const data = await res.json();
 
         if (data.success) {
-          setEditableMaterials(data.materials || []);
-          setSummary(data.summary || { total_fabric: 0, allied_materials: 0, est_cost: 0 });
+          const rawItems = data.articles || data.materials || [];
+
+          const parseNumericQty = (val: any) => {
+            if (typeof val === 'number') return val;
+            if (!val) return '';
+            const cleaned = String(val).replace(/[^0-9.]/g, '');
+            return cleaned ? parseFloat(cleaned) : '';
+          };
+
+          const calculatedItems: MaterialGroup[] = rawItems.map((item: any) => {
+            const parsedPiece = parseNumericQty(item.per_piece_qty);
+            const perPiece = Number(parsedPiece) || 0;
+            const itemWastage = Number(item.wastage_margin) || wastage || 0;
+
+            const sizes: SizeRow[] = activePoSizes.map((sz: string) => {
+              const sizeObj = selectedSizes.find((s: any) => s.size === sz);
+              const qtyForThisSize = sizeObj ? sizeObj.quantity : 0;
+
+              const totalQty = (perPiece * qtyForThisSize) * (1 + itemWastage / 100);
+              const finalPrice = 0; // Prices blank by default
+
+              return {
+                size: sz,
+                perPieceQty: parsedPiece,
+                totalQty: Number(totalQty.toFixed(2)),
+                perUnitPrice: '', // Default blank
+                finalPrice: Number(finalPrice.toFixed(2)),
+                orderQty: qtyForThisSize
+              };
+            });
+
+            const totalCombinedQty = sizes.reduce((sum, s) => sum + s.totalQty, 0);
+            const totalCombinedAmount = sizes.reduce((sum, s) => sum + s.finalPrice, 0);
+
+            return {
+              id: item.id || item.material_inventory || item.article_name,
+              materialName: item.article_name || item.material_inventory,
+              unit: item.unit || (item.material_inventory?.toLowerCase().includes('thread') ? 'meters' : 'units'),
+              brand: item.brand || '',
+              selectedBrand: item.selectedBrand || item.brand || 'Standard',
+              brandOptions: item.brandOptions || [],
+              sizeType: 'Standard Size',
+              fabric_width: item.fabric_width || '',
+              selectedWidth: item.selectedWidth || item.fabric_width || '',
+              available_widths: item.available_widths || null,
+              sizes,
+              totalCombinedQty: Number(totalCombinedQty.toFixed(2)),
+              totalCombinedAmount: Number(totalCombinedAmount.toFixed(2)),
+              category: item.category || ''
+            };
+          });
+
+          setEditableMaterials(calculatedItems);
         } else {
           setEditableMaterials([]);
-          setSummary({ total_fabric: 0, allied_materials: 0, est_cost: 0 });
         }
       } catch (err) {
         console.error("Failed to load BOM calculations:", err);
+        setEditableMaterials([]);
       }
     };
 
-    fetchBOMCalculations(selectedPONumber, wastage);
+    fetchBOMCalculations(selectedPONumber);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPONumber, wastage]);
+  }, [selectedPONumber, selectedGarmentIndex, activeGarment?.itemDescription, activeGarment?.garment_id, sleeveType]);
+
+  // Recalculate totals dynamically if wastage changes
+  React.useEffect(() => {
+    setEditableMaterials(prev => prev.map(mat => {
+      const sizes = mat.sizes.map(sz => {
+        const numericQty = parseFloat(String(sz.perPieceQty)) || 0;
+        const numericPrice = parseFloat(String(sz.perUnitPrice)) || 0;
+
+        const newTotalQty = (numericQty * sz.orderQty) * (1 + (wastage || 0) / 100);
+        const newFinalPrice = newTotalQty * numericPrice;
+
+        return {
+          ...sz,
+          totalQty: Number(newTotalQty.toFixed(2)),
+          finalPrice: Number(newFinalPrice.toFixed(2))
+        };
+      });
+
+      return {
+        ...mat,
+        sizes,
+        totalCombinedQty: Number(sizes.reduce((sum, s) => sum + s.totalQty, 0).toFixed(2)),
+        totalCombinedAmount: Number(sizes.reduce((sum, s) => sum + s.finalPrice, 0).toFixed(2))
+      };
+    }));
+  }, [wastage]);
 
   const calculatedMaterials = editableMaterials;
 
-  const updateMaterial = (id: string, field: string, value: any) => {
-    setEditableMaterials(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  const updateMaterialField = (matIndex: number, field: string, value: any) => {
+    setEditableMaterials(prev => {
+      const next = [...prev];
+      next[matIndex] = { ...next[matIndex], [field]: value };
+      return next;
+    });
   };
 
-  const updateSizePerPiece = (materialId: string, size: string, value: any) => {
-    setSizePerPieceOverrides(prev => ({
-      ...prev,
-      [materialId]: {
-        ...(prev[materialId] || {}),
-        [size]: Number(value)
-      }
-    }));
+  const recalculateGroupTotals = (data: MaterialGroup[], groupIndex: number) => {
+    const group = data[groupIndex];
+    group.totalCombinedQty = Number(group.sizes.reduce((sum, s) => sum + (parseFloat(String(s.totalQty)) || 0), 0).toFixed(2));
+    group.totalCombinedAmount = Number(group.sizes.reduce((sum, s) => sum + (parseFloat(String(s.finalPrice)) || 0), 0).toFixed(2));
   };
 
-  const updateSizeUnitPrice = (materialId: string, size: string, value: any) => {
-    setSizeUnitPriceOverrides(prev => ({
-      ...prev,
-      [materialId]: {
-        ...(prev[materialId] || {}),
-        [size]: Number(value)
-      }
-    }));
+  const handlePerPieceQtyChange = (materialIndex: number, sizeIndex: number, newValue: string) => {
+    setEditableMaterials(prev => {
+      const updatedTable = [...prev];
+      const mat = { ...updatedTable[materialIndex] };
+      const sizes = [...mat.sizes];
+      const row = { ...sizes[sizeIndex] };
+
+      row.perPieceQty = newValue;
+
+      const numericQty = parseFloat(newValue) || 0;
+      const numericWastage = parseFloat(String(wastage)) || 0;
+      row.totalQty = Number(((numericQty * row.orderQty) * (1 + numericWastage / 100)).toFixed(2));
+
+      const numericPrice = parseFloat(String(row.perUnitPrice)) || 0;
+      row.finalPrice = Number((row.totalQty * numericPrice).toFixed(2));
+
+      sizes[sizeIndex] = row;
+      mat.sizes = sizes;
+      updatedTable[materialIndex] = mat;
+
+      recalculateGroupTotals(updatedTable, materialIndex);
+      return updatedTable;
+    });
   };
 
-  const updateSizeLaborCost = (materialId: string, size: string, value: any) => {
-    setSizeLaborCostOverrides(prev => ({
-      ...prev,
-      [materialId]: {
-        ...(prev[materialId] || {}),
-        [size]: Number(value)
-      }
-    }));
+  const handlePerUnitPriceChange = (materialIndex: number, sizeIndex: number, newValue: string) => {
+    setEditableMaterials(prev => {
+      const updatedTable = [...prev];
+      const mat = { ...updatedTable[materialIndex] };
+      const sizes = [...mat.sizes];
+      const row = { ...sizes[sizeIndex] };
+
+      row.perUnitPrice = newValue;
+
+      const numericPrice = parseFloat(newValue) || 0;
+      const numericTotalQty = parseFloat(String(row.totalQty)) || 0;
+      row.finalPrice = Number((numericTotalQty * numericPrice).toFixed(2));
+
+      sizes[sizeIndex] = row;
+      mat.sizes = sizes;
+      updatedTable[materialIndex] = mat;
+
+      recalculateGroupTotals(updatedTable, materialIndex);
+      return updatedTable;
+    });
   };
 
   const uniqueSizes = sortSizesAscending(Array.from(new Set(
@@ -479,9 +614,33 @@ export default function BOMCalculationView() {
     })
   )));
 
-  const totalFabric = summary.total_fabric || 0;
-  const totalAllied = summary.allied_materials || 0;
-  const estimatedCost = summary.est_cost || 0;
+  const totals = React.useMemo(() => {
+    let totalFabricMeters = 0;
+    let totalAlliedUnits = 0;
+    let grandTotalCost = 0;
+
+    editableMaterials.forEach((mat) => {
+      const isFabric = mat.materialName?.toLowerCase().includes('fabric');
+
+      mat.sizes.forEach((s: any) => {
+        const qty = parseFloat(String(s.totalQty)) || 0;
+        const price = parseFloat(String(s.finalPrice)) || 0;
+
+        if (isFabric) {
+          totalFabricMeters += qty;
+        } else {
+          totalAlliedUnits += qty;
+        }
+        grandTotalCost += price;
+      });
+    });
+
+    return {
+      totalFabric: totalFabricMeters.toFixed(1),
+      alliedMaterials: Math.round(totalAlliedUnits),
+      estCost: grandTotalCost.toFixed(2)
+    };
+  }, [editableMaterials]);
   const itemsToProcure = totalProductionRequired > 0 ? editableMaterials.filter(m => m.missing > 0).length : 0;
 
   useEffect(() => {
@@ -531,7 +690,7 @@ export default function BOMCalculationView() {
               </div>
               <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.fabric')}</p>
             </div>
-            <p className="text-xl font-bold text-foreground">{totalFabric.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">meters</span></p>
+            <p className="text-xl font-bold text-foreground">{totals.totalFabric} <span className="text-sm font-normal text-muted-foreground">meters</span></p>
           </div>
 
           <div className="bg-card rounded-xl shadow-sm border border-border p-4">
@@ -541,7 +700,7 @@ export default function BOMCalculationView() {
               </div>
               <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.allied')}</p>
             </div>
-            <p className="text-xl font-bold text-foreground">{totalAllied.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">units</span></p>
+            <p className="text-xl font-bold text-foreground">{totals.alliedMaterials} <span className="text-sm font-normal text-muted-foreground">units</span></p>
           </div>
 
           <div className="bg-card rounded-xl shadow-sm border border-border p-4">
@@ -551,7 +710,7 @@ export default function BOMCalculationView() {
               </div>
               <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.cost')}</p>
             </div>
-            <p className="text-xl font-bold text-foreground">₹{estimatedCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-xl font-bold text-foreground">₹{Number(totals.estCost).toLocaleString('en-IN')}</p>
           </div>
 
           <div className="bg-card rounded-xl shadow-sm border border-border p-4">
@@ -651,11 +810,10 @@ export default function BOMCalculationView() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsTotalBomMode(!isTotalBomMode)}
-                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-colors ${
-                  isTotalBomMode
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white dark:bg-card text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                }`}
+                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-colors ${isTotalBomMode
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white dark:bg-card text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                  }`}
               >
                 {isTotalBomMode ? 'View Individual BOM' : 'Total BOM Cal.'}
               </button>
@@ -673,13 +831,13 @@ export default function BOMCalculationView() {
               ) : (
                 activeSpecs.map((spec: any, idx: number) => {
                   const isSelected = !isTotalBomMode && selectedGarmentIndex === idx;
-                  
+
                   const garmentDetailsArray = currentOrder?.garmentDetails || currentOrder?.garment_details || [];
                   const matchingGarmentDetail = Array.isArray(garmentDetailsArray) && garmentDetailsArray.length > idx ? garmentDetailsArray[idx] : garmentDetailsArray[0];
-                  
-                  const sValue = 
-                    spec?.sleeveType || 
-                    spec?.sleeve_type || 
+
+                  const sValue =
+                    spec?.sleeveType ||
+                    spec?.sleeve_type ||
                     spec?.sleeve ||
                     matchingGarmentDetail?.sleeveType ||
                     matchingGarmentDetail?.sleeve_type ||
@@ -689,8 +847,8 @@ export default function BOMCalculationView() {
                     currentOrder?.items?.[idx]?.sleeve_type ||
                     currentOrder?.items?.[idx]?.sleeveType ||
                     currentOrder?.items?.[idx]?.sleeve ||
-                    currentOrder?.sleeveType || 
-                    currentOrder?.sleeve_type || 
+                    currentOrder?.sleeveType ||
+                    currentOrder?.sleeve_type ||
                     '';
                   const formattedSleeve = sValue ? sValue.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'N/A';
 
@@ -698,22 +856,26 @@ export default function BOMCalculationView() {
                     <button
                       key={idx}
                       onClick={() => setSelectedGarmentIndex(idx)}
-                      className={`text-left transition-all p-3 rounded-lg border flex justify-between items-start ${
-                        isSelected 
-                          ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-sm ring-1 ring-indigo-500' 
-                          : 'bg-neutral-50 dark:bg-card/50 border-neutral-100 dark:border-border hover:border-indigo-300 dark:hover:border-indigo-700/50 hover:bg-neutral-100 dark:hover:bg-card/80'
-                      }`}
+                      className={`text-left transition-all p-3 rounded-lg border flex justify-between items-start ${isSelected
+                        ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-500 shadow-sm ring-1 ring-indigo-500'
+                        : 'bg-neutral-50 dark:bg-card/50 border-neutral-100 dark:border-border hover:border-indigo-300 dark:hover:border-indigo-700/50 hover:bg-neutral-100 dark:hover:bg-card/80'
+                        }`}
                     >
                       <div>
                         <p className={`text-sm font-medium ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-foreground'}`}>
-                          {spec.itemDescription || '-'} - {spec.pattern || '-'}
+                          {spec.itemDescription || '-'}{spec.pattern && !((spec.itemDescription || '').toLowerCase().includes(spec.pattern.toLowerCase())) ? ` - ${spec.pattern}` : ''}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Size: {typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}
+                          Size: {typeof spec.size === 'string' ? sortSizesAscending(Array.from(new Set(spec.size.split(',').map((s: string) => s.trim()).filter(Boolean)))).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}
                         </p>
-                        <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded border font-medium ${isSelected ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
-                          Sleeve: {formattedSleeve}
-                        </span>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded border font-medium ${isSelected ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                            Sleeve: {formattedSleeve}
+                          </span>
+                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded border font-medium ${isSelected ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800' : 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                            Category: {spec.garment_category || spec.garment_type || spec.category || 'Shirt'}
+                          </span>
+                        </div>
                       </div>
                       <div className={`text-right pl-3 border-l ${isSelected ? 'border-indigo-200 dark:border-indigo-800' : 'border-neutral-200 dark:border-neutral-600'}`}>
                         <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
@@ -756,272 +918,152 @@ export default function BOMCalculationView() {
             <h2 className="text-lg font-semibold text-card-foreground">{t('bom.materials')}</h2>
           </div>
 
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse table-fixed">
-              <thead>
-                <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                  <th className="px-4 py-3.5 w-[20%] text-left font-semibold">Material Inventory</th>
-                  <th className="px-4 py-3.5 w-[14%] text-left font-semibold">Brand</th>
-                  <th className="px-4 py-3.5 w-[12%] text-left font-semibold">Selected Sizes</th>
-                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Piece Qty</th>
-                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Total Qty <span className="text-[9px] block text-neutral-400 lowercase">(inc. wastage)</span></th>
-                  <th className="px-4 py-3.5 w-[10%] text-right font-semibold">Per Unit Price</th>
-                  <th className="px-4 py-3.5 w-[12%] text-right font-semibold">Final Price</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                {editableMaterials && editableMaterials.length > 0 ? (
-                  editableMaterials.filter((item) => {
-                    const sizeRows = item.sizes?.map((sr: any) => {
-                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
-                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
-                      const baseReq = actualQty * currentPerPiece;
-                      const isFabric = item.category === 'Fabric' || item.name.toLowerCase().includes('fabric');
-                      const wastageAmount = isFabric ? baseReq * (wastage / 100) : 0;
-                      return parseFloat((baseReq + wastageAmount).toFixed(2));
-                    }) || [];
-                    const hasSizeBreakdown = sizeRows.length > 0;
-                    const rawCombinedTotalQty = hasSizeBreakdown
-                      ? sizeRows.reduce((sum: number, val: number) => sum + val, 0)
-                      : safeNumber(item.totalQty);
-                    return parseFloat(rawCombinedTotalQty.toFixed(2)) > 0;
-                  }).map((item, idx) => {
-                    const isShortage = item.missing > 0;
+          <div className="w-full bg-[#0d121f] border-t border-gray-800 overflow-hidden text-gray-200">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 px-6 py-3 bg-gray-950/80 border-b border-gray-800 text-[11px] font-semibold text-gray-400 tracking-wider uppercase">
+              <div className="col-span-3">Material Inventory</div>
+              <div className="col-span-2">Brand</div>
+              <div className="col-span-1 text-center">Selected Sizes</div>
+              <div className="col-span-2 text-center">Per Piece Qty</div>
+              <div className="col-span-2 text-center">Total Qty <span className="text-[9px] text-gray-500 lowercase">(inc. wastage)</span></div>
+              <div className="col-span-1 text-right">Per Unit Price</div>
+              <div className="col-span-1 text-right">Final Price</div>
+            </div>
 
-                    const sizeRows = item.sizes?.map((sr: any) => {
-                      const currentPerPiece = sizePerPieceOverrides[item.id]?.[sr.size] ?? safeNumber(sr.perPieceQty ?? sr.perPiece ?? item.perPiece);
-                      const actualQty = sr.orderQty ?? sr.quantity ?? sr.garmentQty ?? 0;
-                      const baseReq = actualQty * currentPerPiece;
-                      const wastageAmount = baseReq * (wastage / 100);
-                      const sizeTotalQty = parseFloat((baseReq + wastageAmount).toFixed(2));
-                      const currentPerUnitPrice = sizeUnitPriceOverrides[item.id]?.[sr.size] ?? safeNumber(item.perUnitPrice);
-                      const sizeFinalPrice = (sizeTotalQty * currentPerUnitPrice);
+            {/* Material Block Repeat */}
+            {editableMaterials && editableMaterials.length > 0 ? (
+              editableMaterials.map((mat, matIdx) => {
+                const combinedQty = mat.totalCombinedQty;
+                const combinedPrice = mat.totalCombinedAmount;
 
-                      return {
-                        size: sr.size,
-                        volume: actualQty,
-                        perPieceQty: currentPerPiece,
-                        sizeTotalQty,
-                        sizeFinalPrice
-                      };
-                    }) || [];
+                return (
+                  <div key={`bom-row-${mat.materialName}-${mat.id || matIdx}`} className="border-b border-gray-800/80">
+                    <div className="grid grid-cols-12 px-6 py-4 items-start">
+                      
+                      {/* Left Metadata Panel */}
+                      <div className="col-span-3 pr-4">
+                        <h4 className="text-sm font-bold text-white">{mat.materialName}</h4>
+                        <span className="inline-block mt-2 px-2 py-0.5 text-[10px] bg-gray-800/80 text-gray-400 rounded-full border border-gray-700/50">
+                          {mat.unit || 'units'}
+                        </span>
+                      </div>
 
-                    const hasSizeBreakdown = sizeRows.length > 0;
+                      <div className="col-span-2 pr-6 flex flex-col gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter brand"
+                          value={mat.selectedBrand || mat.brand || ''}
+                          onChange={(e) => updateMaterialField(matIdx, 'selectedBrand', e.target.value)}
+                          className="w-full bg-transparent text-gray-400 text-xs focus:outline-none placeholder-gray-600 py-1"
+                        />
+                        <select
+                          value={mat.selectedWidth || mat.fabric_width || "Standard Size"}
+                          onChange={(e) => updateMaterialField(matIdx, 'selectedWidth', e.target.value)}
+                          className="w-full bg-[#141b2d] text-gray-300 text-xs px-2.5 py-1.5 rounded border border-gray-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        >
+                          {mat.available_widths && mat.available_widths.length > 0 ? (
+                            mat.available_widths.map((spec: string) => (
+                              <option className="bg-slate-800" key={spec} value={spec}>{spec}</option>
+                            ))
+                          ) : (
+                            <>
+                              <option className="bg-slate-800" value={mat.fabric_width || "Standard Size"}>
+                                {mat.fabric_width || "Standard Size"}
+                              </option>
+                              <option className="bg-slate-800" value="Custom Size">Custom Size</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
 
-                    const rawCombinedTotalQty = hasSizeBreakdown
-                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeTotalQty, 0)
-                      : safeNumber(item.totalQty);
+                      {/* Right Size-wise Rows */}
+                      <div className="col-span-7 flex flex-col">
+                        {mat.sizes.map((row: any, sizeIdx: number) => (
+                          <div 
+                            key={`size-${mat.id || matIdx}-${row.size}-${sizeIdx}`} 
+                            className="grid grid-cols-7 items-center py-2 border-b border-gray-800/40 last:border-0 text-xs"
+                          >
+                            
+                            {/* Size Badge */}
+                            <div className="col-span-1 flex justify-center">
+                              <span className="bg-indigo-950/80 text-indigo-300 font-semibold px-2.5 py-0.5 rounded border border-indigo-800/50">
+                                {row.size}
+                              </span>
+                            </div>
 
-                    const combinedTotalQty = parseFloat(rawCombinedTotalQty.toFixed(2));
-
-                    const combinedFinalPrice = hasSizeBreakdown
-                      ? sizeRows.reduce((sum: number, sr: any) => sum + sr.sizeFinalPrice, 0)
-                      : (combinedTotalQty * safeNumber(item.perUnitPrice));
-
-                    return (
-                      <React.Fragment key={idx}>
-                        {!hasSizeBreakdown ? (
-                          <tr className={isShortage ? "bg-red-50/50 dark:bg-red-900/10" : "bg-neutral-50/30 dark:bg-slate-800/20"}>
-                            <td className="px-4 py-3 text-left align-top">
-                              <div className="flex flex-col">
-                                <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
-                                    {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-left align-top">
-                              <select
-                                value={item.brand || ""}
-                                onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                                className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
-                              >
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
-                              </select>
-                              <select
-                                value={item.sizeRange || ""}
-                                onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
-                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                              >
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
-                                <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
-                              </select>
-                            </td>
-                            <td className="px-4 py-3 text-left align-top pt-4">
-                              <span className="text-xs text-muted-foreground pl-2">-</span>
-                            </td>
-                            <td className="px-4 py-3 text-right align-top">
+                            {/* Per Piece Qty Input */}
+                            <div className="col-span-2 flex justify-center">
                               <input
-                                type="number"
-                                min="0"
-                                step="0.1"
-                                value={item.perPiece}
-                                onChange={(e) => updateMaterial(item.id, 'perPiece', e.target.value)}
-                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
+                                type="text"
+                                inputMode="decimal"
+                                value={row.perPieceQty ?? ''}
+                                onChange={(e) => handlePerPieceQtyChange(matIdx, sizeIdx, e.target.value)}
+                                className="w-16 bg-transparent text-center text-gray-200 text-xs py-1 focus:bg-gray-800/80 focus:border focus:border-indigo-500 rounded focus:outline-none transition-all"
                               />
-                            </td>
-                            <td className="px-4 py-3 text-right align-top pt-4">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={item.totalQty}
-                                onChange={(e) => updateMaterial(item.id, 'totalQty', e.target.value)}
-                                className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm font-semibold transition-colors"
-                              />
-                            </td>
-                            <td className="px-4 py-3 text-right align-top">
-                              <div className="relative flex items-center">
-                                <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={item.perUnitPrice ?? ''}
-                                  onChange={(e) => updateMaterial(item.id, 'perUnitPrice', e.target.value)}
-                                  className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-right align-top pt-4">
-                              <span className={`text-sm font-bold pr-2 ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </td>
-                          </tr>
-                        ) : (
-                          sizeRows.map((sr: any, sIdx: number) => (
-                            <tr key={`${idx}-size-${sIdx}`} className={`transition-colors ${sIdx !== 0 ? 'border-t border-neutral-100 dark:border-slate-800/50' : ''} ${isShortage ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-neutral-50/30 dark:bg-slate-800/20'}`}>
-                              {sIdx === 0 && (
-                                <>
-                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
-                                    <div className="flex flex-col">
-                                      <span className={`text-sm font-semibold ${isShortage ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}>{item.name}</span>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <span className="bg-neutral-100 dark:bg-card text-neutral-600 dark:text-neutral-300 text-[10px] font-medium px-2 py-0.5 rounded-sm border border-neutral-200 dark:border-border">
-                                          {item.name.toLowerCase().includes('thread') ? 'meters' : item.unit}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td rowSpan={sizeRows.length} className="px-4 py-3 text-left align-top bg-white dark:bg-background border-b border-neutral-100 dark:border-slate-800/50">
-                                    <select
-                                      value={item.brand || ""}
-                                      onChange={(e) => updateMaterial(item.id, 'brand', e.target.value)}
-                                      className="w-full bg-transparent border border-neutral-300 dark:border-zinc-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 text-sm transition-colors mb-2 text-foreground"
-                                    >
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Select Brand</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Raymond">Raymond</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Siyaram's">Siyaram's</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Donear">Donear</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Arvind">Arvind</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Oswal">Oswal</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Vardhman">Vardhman</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="Generic">Generic</option>
-                                    </select>
-                                    <select
-                                      value={item.sizeRange || ""}
-                                      onChange={(e) => updateMaterial(item.id, 'sizeRange', e.target.value)}
-                                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-neutral-300 dark:border-zinc-700 text-foreground dark:text-white rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                    >
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="">Standard Size</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="44-45">44-45</option>
-                                      <option className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white" value="58-60">58-60</option>
-                                    </select>
-                                  </td>
-                                </>
-                              )}
-                              <td className="px-4 py-2 text-left pl-6">
-                                <div className="flex items-center gap-2">
-                                  <span className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 text-[10px] font-bold px-2 py-1 rounded">
-                                    {sr.size}
-                                  </span>
-                                  <span className="text-[11px] text-muted-foreground font-semibold">
-                                    ({sr.volume || 0} pcs)
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.1"
-                                  value={sizePerPieceOverrides[item.id]?.[sr.size] ?? sr.perPieceQty ?? item.perPiece ?? '0.00'}
-                                  onChange={(e) => updateSizePerPiece(item.id, sr.size, e.target.value)}
-                                  className="w-full text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded pl-0 pr-3 py-1 text-sm transition-colors"
-                                />
-                              </td>
-                              <td className="px-4 py-2 text-right pt-4">
-                                <span className="text-sm font-semibold text-foreground pr-3">{isNaN(sr.sizeTotalQty) ? '0.00' : Number(sr.sizeTotalQty).toFixed(2)}</span>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <div className="relative flex items-center">
-                                  <span className="absolute left-2 text-muted-foreground text-sm">₹</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={sizeUnitPriceOverrides[item.id]?.[sr.size] ?? item.perUnitPrice ?? ''}
-                                    onChange={(e) => updateSizeUnitPrice(item.id, sr.size, e.target.value)}
-                                    className="w-full pl-6 text-right bg-transparent border border-transparent hover:border-border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1 text-sm transition-colors"
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-right pt-4">
-                                <span className={`text-sm font-medium pr-2 ${isShortage ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
-                                  ₹{isNaN(sr.sizeFinalPrice) ? '0.00' : sr.sizeFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                            </div>
 
-                        {hasSizeBreakdown && (
-                          <tr className="bg-indigo-50/30 dark:bg-indigo-900/10 border-t border-indigo-100 dark:border-indigo-900/50">
-                            <td colSpan={4} className="px-4 py-2.5 text-right">
-                              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider pr-3">
-                                Total Combined Amount
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-3">
-                                {isNaN(combinedTotalQty) ? '0.00' : Number(combinedTotalQty).toFixed(2)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5"></td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="text-sm font-bold text-indigo-900 dark:text-indigo-300 pr-2">
-                                ₹{isNaN(combinedFinalPrice) ? '0.00' : combinedFinalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      No materials found for this garment in DB.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                            {/* Total Qty */}
+                            <div className="col-span-2 text-center font-bold text-gray-200">
+                              {row.totalQty || 0}
+                            </div>
+
+                            {/* Per Unit Price Input */}
+                            <div className="col-span-1 flex items-center justify-end gap-1">
+                              <span className="text-gray-500">₹</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={row.perUnitPrice ?? ''}
+                                onChange={(e) => handlePerUnitPriceChange(matIdx, sizeIdx, e.target.value)}
+                                className="w-12 bg-transparent text-right text-gray-200 text-xs py-1 focus:bg-gray-800/80 focus:border focus:border-indigo-500 rounded focus:outline-none transition-all"
+                              />
+                            </div>
+
+                            {/* Final Price */}
+                            <div className="col-span-1 text-right font-bold text-white">
+                              ₹{(parseFloat(row.finalPrice) || 0).toFixed(2)}
+                            </div>
+
+                          </div>
+                        ))}
+                      </div>
+
+                    </div>
+
+                    {/* Subtotal Summary Bar */}
+                    <div className="grid grid-cols-12 px-6 py-2.5 bg-[#101626] border-t border-gray-800 text-xs font-bold items-center">
+                      <div className="col-span-5"></div>
+                      <div className="col-span-2 text-indigo-400 uppercase tracking-wider text-[11px]">
+                        Total Combined Amount
+                      </div>
+                      <div className="col-span-2 text-center text-indigo-300 text-sm">
+                        {combinedQty}
+                      </div>
+                      <div className="col-span-1"></div>
+                      <div className="col-span-2 text-right text-indigo-300 text-sm">
+                        ₹{combinedPrice.toFixed(2)}
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-4 py-8 text-center text-sm text-slate-400">
+                No materials found for this garment in DB.
+              </div>
+            )}
           </div>
-          <div className="bg-neutral-50 dark:bg-card px-4 py-3 border-t border-border text-xs text-muted-foreground flex justify-between">
-            <p>{t('bom.wastage') || 'Calculations include wastage margin.'}</p>
-            <p>{t('dashboard.recentOrders.headers.amount') || 'Last recalculated: Just now'}</p>
+          <div className="flex justify-between items-center px-6 py-4 bg-gray-900 border-t border-gray-800 rounded-b-xl text-sm font-semibold">
+            <div className="text-gray-400">
+              Wastage Margin Applied: <span className="text-indigo-400">{wastage}%</span>
+            </div>
+            <div className="text-right">
+              <span className="text-gray-400 mr-3">GRAND TOTAL AMOUNT:</span>
+              <span className="text-lg text-emerald-400 font-bold">
+                ₹{Number(totals.estCost).toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1049,14 +1091,14 @@ export default function BOMCalculationView() {
 
                       const bomLines = editableMaterials.map(m => ({
                         material_id: m.id,
-                        material_name: m.name,
-                        category: m.category,
-                        unit: m.unit,
-                        per_piece_qty: Number(m.perPiece || 0),
-                        final_qty: Number(m.totalQty || 0),
+                        material_name: m.materialName || '',
+                        category: m.category || '',
+                        unit: m.unit || '',
+                        per_piece_qty: Number(m.sizes[0]?.perPieceQty || 0),
+                        final_qty: m.totalCombinedQty,
                         brand: m.brand || '',
-                        unit_price: Number(m.perUnitPrice || 0),
-                        amount: (Number(m.totalQty || 0) * Number(m.perUnitPrice || 0))
+                        unit_price: Number(m.sizes[0]?.perUnitPrice || 0),
+                        amount: m.totalCombinedAmount
                       }));
 
                       const res = await fetch(`${BACKEND_URL}/api/bom/save`, {

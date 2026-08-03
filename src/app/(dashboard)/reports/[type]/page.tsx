@@ -222,21 +222,19 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
     if (type === 'active-production') {
       const poNum = item.poNumber || item.po_number || `PO-${idx + 1}`;
       const style = item.style || item.garmentStyle || item.garment_style || '-';
+      const qty = item.qty || item.quantity || 0;
       return (
-        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-          <td className="px-4 py-3 text-[13px] font-medium text-foreground">{poNum}</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{style}</td>
-          <td className="px-4 py-3">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-              {item.stage || item.currentStage || item.current_stage || '-'}
+        <tr key={rowKey} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/40 transition-colors">
+          <td className="px-6 py-4 font-bold text-foreground dark:text-slate-100">{poNum}</td>
+          <td className="px-6 py-4 text-muted-foreground dark:text-slate-300">{style}</td>
+          <td className="px-6 py-4">
+            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border border-emerald-500/20">
+              {item.stage || item.currentStage || item.current_stage || 'PRODUCTION'}
             </span>
           </td>
-          <td className="px-4 py-3 text-[13px] font-bold text-foreground">{item.qty || item.quantity || 0} pcs</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground">{item.startDate || item.start_date || '-'}</td>
-          <td className="px-4 py-3 text-[13px] text-muted-foreground flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5 text-neutral-400" />
-            {item.expectedCompletion || item.expected_completion || '-'}
-          </td>
+          <td className="px-6 py-4 font-bold text-amber-600 dark:text-amber-400">{qty} pcs</td>
+          <td className="px-6 py-4 text-muted-foreground dark:text-slate-400">{item.startDate || item.start_date || '-'}</td>
+          <td className="px-6 py-4 text-muted-foreground dark:text-slate-400">{item.expectedCompletion || item.expected_completion || '-'}</td>
         </tr>
       );
     }
