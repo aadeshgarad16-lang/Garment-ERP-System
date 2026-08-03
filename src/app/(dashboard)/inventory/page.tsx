@@ -63,51 +63,28 @@ export default function InventoryPage() {
 
   const { orders } = useOrders();
   const [selectedPO, setSelectedPO] = useState<string>('');
-  const [poList, setPoList] = useState<any[]>([]);
 
   React.useEffect(() => {
-    let currentPO = '';
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
-      if (po && po !== 'UDF' && po !== 'undefined') {
+      if (po) {
         setSelectedPO(po);
-        currentPO = po;
       }
     }
-    
-    // Fetch valid POs and auto-fallback
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-    fetch(`${BACKEND_URL}/api/bom/po-list`)
-      .then(res => res.json())
-      .then(res => {
-        if (res.success && res.data) {
-          setPoList(res.data);
-          if (res.data.length > 0 && !currentPO) {
-            setSelectedPO(res.data[0].po_number);
-            if (typeof window !== 'undefined') {
-              const newUrl = new URL(window.location.href);
-              newUrl.searchParams.set('poNumber', res.data[0].po_number);
-              window.history.replaceState({}, '', newUrl.toString());
-            }
-          }
-        }
-      })
-      .catch(err => console.error("Failed to load PO list:", err));
   }, []);
 
   const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
+      const { getAuthHeaders } = await import('@/lib/api');
+      const authHeaders = getAuthHeaders(false);
+      
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...(options.headers as Record<string, string> || {}),
       };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
@@ -466,9 +443,9 @@ export default function InventoryPage() {
                   className="block w-full sm:w-48 pl-3 pr-10 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer text-ellipsis overflow-hidden"
                 >
                   <option value="">Select Purchase Order</option>
-                  {poList?.map((po: any) => (
-                    <option key={po.po_number} value={po.po_number}>
-                      {po.po_number} {po.customer_name ? `- ${po.customer_name}` : ''}
+                  {orders?.map((order: any) => (
+                    <option key={order.poNumber} value={order.poNumber}>
+                      {order.poNumber} {order.customerName ? `- ${order.customerName}` : ''}
                     </option>
                   ))}
                 </select>

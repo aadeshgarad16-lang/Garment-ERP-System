@@ -446,7 +446,13 @@ export default function BOMCalculationView() {
 
         const activePoSizes = selectedSizes.map((s: any) => s.size);
 
-        const res = await fetch(`${BACKEND_URL}/api/bom-calculations?category=${encodeURIComponent(identifier)}&sleeveType=${encodeURIComponent(sleeveType || '')}`);
+        const res = await fetch(`/api/bom/calculate?category=${encodeURIComponent(identifier)}&sleeveType=${encodeURIComponent(sleeveType || '')}`);
+        
+        if (!res.ok) {
+          console.error(`API Error ${res.status}:`, await res.text());
+          return;
+        }
+
         const data = await res.json();
 
         if (data.success) {
