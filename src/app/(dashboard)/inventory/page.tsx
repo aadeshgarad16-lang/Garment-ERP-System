@@ -115,6 +115,7 @@ export default function InventoryPage() {
   };
 
   const fetchPOInventory = async (poNumber: string) => {
+    if (!poNumber || poNumber === 'UDF' || poNumber === 'undefined') return;
     const res = await apiFetch(`/api/inventory/check?po_number=${encodeURIComponent(poNumber)}`);
     if (res.success && Array.isArray(res.data)) {
       const formatted = res.data.map((item: any, index: number) => ({

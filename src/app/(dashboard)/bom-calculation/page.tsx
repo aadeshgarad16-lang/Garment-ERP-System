@@ -1089,29 +1089,31 @@ export default function BOMCalculationView() {
                     try {
                       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-                      const bomLines = editableMaterials.map(m => ({
-                        material_id: m.id,
-                        material_name: m.materialName || '',
-                        category: m.category || '',
-                        unit: m.unit || '',
-                        per_piece_qty: Number(m.sizes[0]?.perPieceQty || 0),
-                        final_qty: m.totalCombinedQty,
-                        brand: m.brand || '',
-                        unit_price: Number(m.sizes[0]?.perUnitPrice || 0),
-                        amount: m.totalCombinedAmount
-                      }));
+                      const payload = {
+                        po_number: currentOrder.poNumber,
+                        customer_name: currentOrder.customerName,
+                        wastage_margin: Number(wastage),
+                        grand_total_amount: Number(totals.estCost),
+                        materials: editableMaterials.map(m => ({
+                          material_name: m.materialName || '',
+                          brand: m.selectedBrand || m.brand || 'Standard',
+                          size_breakdown: m.sizes.map((s: any) => ({
+                            size: s.size,
+                            per_piece_qty: Number(s.perPieceQty || 0),
+                            total_qty: Number(s.sizeTotalQty || 0),
+                            per_unit_price: Number(s.perUnitPrice || 0),
+                            final_price: Number(s.sizeFinalPrice || 0)
+                          }))
+                        }))
+                      };
 
-                      const res = await fetch(`${BACKEND_URL}/api/bom/save`, {
+                      const res = await fetch(`${BACKEND_URL}/api/bom/check-inventory`, {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
                           ...getAuthHeaders(true)
                         },
-                        body: JSON.stringify({
-                          poNumber: currentOrder.poNumber,
-                          bomLines: bomLines,
-                          wastagePct: wastage
-                        })
+                        body: JSON.stringify(payload)
                       });
 
                       const data = await res.json();
