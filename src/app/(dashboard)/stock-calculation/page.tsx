@@ -162,6 +162,7 @@ function StockCalculationContent() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
+  const [stockCheckData, setStockCheckData] = useState<any>(null);
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
   const [orderSpecifications, setOrderSpecifications] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -275,64 +276,57 @@ function StockCalculationContent() {
     );
   }, [activeOrders, selectedCustomer, selectedPONumber]);
 
-  useEffect(() => {
-    if (selectedPONumber) {
-      setStatusMessage(null);
-      // 1. Find the selected order dynamically from your global or parent state
-      const order = activeOrders.find(
-        (o: any) => o.po_number === selectedPONumber || o.poNumber === selectedPONumber
-      ) || orders.find(
-        (o: any) => o.po_number === selectedPONumber || o.poNumber === selectedPONumber
-      );
+  const handlePoChange = async (val: string) => {
+    setSelectedPONumber(val);
+    if (!val) {
+      setStockCheckData(null);
+      setDetailedOrder(null);
+      setOrderSpecifications([]);
+      return;
+    }
+    
+    setStatusMessage(null);
 
-      if (!order) {
-        setDetailedOrder(null);
-        return;
-      }
+    const localOrder: any = activeOrders.find(
+      (o: any) => o.po_number === val || o.poNumber === val
+    ) || orders.find(
+      (o: any) => o.po_number === val || o.poNumber === val
+    ) || {};
 
-      // Fetch accurate specifications and total qty from the backend
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      fetch(`${BACKEND_URL}/api/stock-check/${selectedPONumber}`, {
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/stock-check/${val}`, {
         method: 'GET',
         headers: getAuthHeaders(true)
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          const specsList = order.specifications || order.items || order.specs || [];
-          setDetailedOrder({
-            ...order,
-            poNumber: order.po_number || order.poNumber,
-            customerName: order.customer_name || order.customerName || order.clientName,
-            poDate: order.po_date || order.poDate || order.created_at || 'N/A',
-            deliveryDate: order.delivery_date || order.deliveryDate || 'N/A',
-            specificationsSummary: data.orderSpecification,
-            totalQty: data.totalQty,
-            storeStock: order.store_stock ?? order.available_stock ?? 0,
-            status: data.status,
-            specs: specsList.map((s: any) => ({
-              ...s,
-              itemDescription: s.item_description || s.garment_name || s.category,
-              stockAvailable: s.stock_available || s.store_stock || 0,
-              useExistingStock: s.use_existing_stock || 0,
-              stockStatus: s.stock_status || ((s.store_stock || 0) >= (s.quantity || s.qty || 0) ? 'IN_STOCK' : (s.store_stock || 0) > 0 ? 'PARTIAL' : 'OUT_OF_STOCK')
-            }))
-          });
-          setOrderSpecifications(specsList);
-        } else {
-          // Fallback if backend fails
-          setDetailedOrder(null);
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch stock check for PO:", err);
-        setDetailedOrder(null);
       });
-    } else {
+      const data = await res.json();
+      console.log('Stock Check API Response:', data);
+      
+      setStockCheckData(data);
+      
+      // Keep detailedOrder populated for the BOM bottom-half logic
+      const specsList = localOrder.specifications || localOrder.items || localOrder.specs || [];
+      setDetailedOrder({
+        ...localOrder,
+        poNumber: val,
+        customerName: localOrder.customer_name || localOrder.customerName || localOrder.clientName || 'Unknown Customer',
+        poDate: localOrder.po_date || localOrder.poDate || localOrder.created_at || 'N/A',
+        deliveryDate: localOrder.delivery_date || localOrder.deliveryDate || 'N/A',
+        specificationsSummary: data.order_specifications,
+        totalQty: data.req_qty || 0,
+        storeStock: data.available_in_store ?? 0,
+        available_stock: data.available_in_store ?? 0,
+        status: data.status_type || 'OUT_OF_STOCK',
+        specs: specsList
+      });
+      setOrderSpecifications(specsList);
+    } catch (err) {
+      console.error("Failed to fetch stock check for PO:", err);
+      setStockCheckData(null);
       setDetailedOrder(null);
       setOrderSpecifications([]);
     }
-  }, [selectedPONumber, activeOrders, orders]);
+  };
 
   // Structural metric processing updates
   const orderAnalysis = useMemo(() => {
@@ -641,20 +635,20 @@ function StockCalculationContent() {
               value={selectedPONumber}
               placeholder="Select a PO Number..."
               disabled={!selectedCustomer}
-              onChange={(val) => setSelectedPONumber(val)}
+              onChange={(val) => handlePoChange(val)}
             />
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">PO Date</label>
               <div
                 className="w-full px-3 py-2 bg-neutral-50 dark:bg-card/40 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
               >
-                {formatDate(displayOrder?.poDate || displayOrder?.po_date || displayOrder?.order_date) || "—"}
+                {formatDate(stockCheckData?.po_date || stockCheckData?.order_date) || "—"}
               </div>
             </div>
           </div>
 
           <div className="mb-6">
-            {!selectedPONumber || !displayOrder ? (
+            {!selectedPONumber || !stockCheckData ? (
               <div className="text-center p-8 border border-dashed border-neutral-300 dark:border-border rounded-xl bg-neutral-50 dark:bg-card/30 text-muted-foreground text-sm italic">
                 Please select a PO number.
               </div>
@@ -672,50 +666,37 @@ function StockCalculationContent() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-slate-800 bg-card">
                     <tr className="text-sm text-card-foreground hover:bg-neutral-50/30 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400 whitespace-normal break-words max-w-[200px]">{displayOrder.poNumber || displayOrder.po_number}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.poDate || displayOrder.order_date)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.deliveryDate || displayOrder.delivery_date)}</td>
+                      <td className="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400 whitespace-normal break-words max-w-[200px]">{stockCheckData?.po_number}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{formatDate(stockCheckData?.po_date)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{formatDate(stockCheckData?.delivery_date)}</td>
                       <td className="px-6 py-4 text-xs text-muted-foreground space-y-2">
-                        {(() => {
-                          if (!displayOrder) return null;
-                          const specsDisplay = displayOrder.specificationsSummary || "No specifications available";
-
-                          return (
-                            <span className="font-medium text-slate-700 dark:text-slate-300">
-                              {specsDisplay}
-                            </span>
-                          );
-                        })()}
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {stockCheckData?.order_specifications || "No specifications available"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-xs space-y-2">
                         {(() => {
-                          if (!displayOrder) return <span className="italic min-h-[24px] flex items-center">—</span>;
-                          
-                          const totalQty = displayOrder.totalQty || 0;
-                          const storeStock = Number(displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock) || 0;
-
-                          const calculatedStatus = displayOrder.status || "OUT_OF_STOCK";
-
-                          const isAvailable = calculatedStatus === 'IN_STOCK' || calculatedStatus === 'Available';
-                          const isPartial = calculatedStatus === 'PARTIAL' || calculatedStatus === 'Partial Stock';
+                          const statusType = stockCheckData?.status_type || "OUT_OF_STOCK";
+                          const isAvailable = statusType === 'IN_STOCK' || statusType === 'Available';
+                          const isPartial = statusType === 'PARTIAL_STOCK' || statusType === 'Partial Stock';
 
                           return (
                             <div className="flex items-center min-h-[24px]">
                               {isAvailable ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                  In Stock ({storeStock})
+                                  {stockCheckData?.status_label || "In Stock"}
                                 </span>
                               ) : isPartial ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                  Partial Stock ({storeStock})
+                                  {stockCheckData?.status_label || "Partial Stock"}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                  Out of Stock
+                                  {stockCheckData?.status_label || "Out of Stock (0)"}
                                 </span>
                               )}
                               <span className="text-xs text-muted-foreground font-medium ml-3">
-                                Req: {totalQty}
+                                Req: {stockCheckData?.req_qty || 0}
                               </span>
                             </div>
                           );
