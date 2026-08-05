@@ -328,10 +328,10 @@ export default function ProcurementPage() {
     const fetchSuppliers = async () => {
       try {
         console.log("Fetching suppliers from API...");
-        const res = await fetch('http://127.0.0.1:5000/api/suppliers');
+        const res = await fetch('/api/suppliers');
         
         if (!res.ok) {
-          console.error(`Backend returned status ${res.status}`);
+          console.error(`Failed to fetch suppliers: ${res.status}`);
           setSuppliersList([]);
           setSuppliers([]);
           return;
@@ -358,7 +358,7 @@ export default function ProcurementPage() {
         // Map to ensure 'name' exists for the lower table and other components
         const mappedData = rawArray.map((s: any) => ({
           ...s,
-          name: s.name || s.supplier_name || s.company_name || 'Unnamed Supplier'
+          name: s.name || s.companyName || s.supplier_name || s.company_name || 'Unnamed Supplier'
         }));
 
         setSuppliersList(mappedData);
@@ -375,13 +375,35 @@ export default function ProcurementPage() {
   const fetchStoreArticleShortages = async () => {
     try {
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-      const res = await fetch(`${BACKEND_URL}/procurement/dashboard`, {
+      const targetUrl = `${BACKEND_URL}/api/store-articles/shortages`;
+      
+      const res = await fetch(targetUrl, {
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': 'sasons_read_only_key_2026_abc'
         }
       });
-      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error(`Store materials fetch failed with status: ${res.status}`);
+        return [];
+      }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error(`Store materials endpoint returned non-JSON response from ${targetUrl}`);
+        return [];
+      }
+
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error("Failed to parse store materials JSON. Raw HTML Snippet:", text.substring(0, 150));
+        return [];
+      }
+
       if (data && Array.isArray(data.data)) {
         if (data.suppliers) {
           setSuppliersList(data.suppliers);
@@ -401,11 +423,11 @@ export default function ProcurementPage() {
             const hasShortage = deficit > 0 && status.toUpperCase() !== 'FULFILLED';
             return hasShortage;
           })
-          .map((item: any) => {
+          .map((item: any, index: number) => {
             const available = Number(item.available_qty ?? 0);
             const minRequired = Number(item.min_required_qty ?? 0);
             const shortageQty = Number(item.deficit ?? 0);
-            const materialName = item.article_name || 'Unknown Material';
+            const materialName = item.article_name || item.name || item.material_name || item.description || 'Unknown Item';
             const hsn = item.hsn_code;
             const materialStr = hsn ? `${materialName} (HSN: ${hsn})` : materialName;
 
@@ -434,10 +456,13 @@ export default function ProcurementPage() {
               return matchedSupplier ? matchedSupplier.name : strSupp;
             });
 
+            const itemId = item.id || item.article_id || item.material_id || item.garment_id || index;
+            const itemType = item.type || 'Material';
+
             return {
-              id: `PR-STORE-${item.type}-${item.id}`,
-              storeId: item.id,
-              itemType: item.type === 'Garment' ? 'Stock Good' : 'Material',
+              id: `PR-STORE-${itemType}-${itemId}`,
+              storeId: itemId,
+              itemType: itemType === 'Garment' ? 'Stock Good' : 'Material',
               material: materialStr,
               category: item.category || 'General',
               required: minRequired,

@@ -36,3 +36,19 @@ export function compareSizes(a: string, b: string): number {
 export function sortSizesAscending(sizes: string[]): string[] {
   return [...sizes].sort(compareSizes);
 }
+
+export const getOrderSpecifications = (order: any): any[] => {
+  if (!order) return [];
+  
+  // Check all potential keys returned by backend or context
+  const rawSpecs = 
+    order.specs || 
+    order.specifications || 
+    order.items || 
+    order.garmentDetails || 
+    order.garment_details || 
+    [];
+
+  if (!Array.isArray(rawSpecs)) return [];
+  return rawSpecs;
+};

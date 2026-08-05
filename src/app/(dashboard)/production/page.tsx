@@ -483,7 +483,7 @@ export default function ProductionPage() {
            let foundType = defaultGarment;
            if (currentPoGarments.length > 0) {
              const matNameLower = (mat.materials_inventory || mat.name || "").toLowerCase();
-             const match = currentPoGarments.find(g => 
+             const match = currentPoGarments.find((g: any) => 
                g.materials && g.materials.some((mStr: string) => mStr.toLowerCase().includes(matNameLower.split(' ')[0]))
              );
              if (match) foundType = match.type;
@@ -494,7 +494,7 @@ export default function ProductionPage() {
 
         const selectedType = newGarmentTypes[mat.id];
         const allSizes = new Set<string>();
-        const targetGarment = currentPoGarments.find(g => g.type === selectedType);
+        const targetGarment = currentPoGarments.find((g: any) => g.type === selectedType);
         
         if (targetGarment && targetGarment.sizeGrid) {
           const parts = targetGarment.sizeGrid.split('|')[0].split(',');
@@ -996,7 +996,7 @@ export default function ProductionPage() {
                                                 setMaterialGarmentTypes(prev => ({ ...prev, [mat.id]: e.target.value }));
                                               }}
                                             >
-                                              {currentPoGarments.length > 0 ? currentPoGarments.map(g => (
+                                              {currentPoGarments.length > 0 ? currentPoGarments.map((g: any) => (
                                                 <option key={g.type} value={g.type}>{g.type}</option>
                                               )) : (
                                                 <>
@@ -1749,7 +1749,7 @@ export default function ProductionPage() {
                     <div className="px-4 py-3 text-right">{stageName} Status</div>
                   </div>
                   <div className="divide-y divide-neutral-200 dark:divide-slate-700/50">
-                    {currentPoGarments.map((g: any, i) => {
+                    {currentPoGarments.map((g: any, i: number) => {
                       const quantity = g[stageKey] as number;
                       return (
                         <React.Fragment key={i}>
@@ -1887,7 +1887,7 @@ export default function ProductionPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200 dark:divide-slate-700/50">
-                      {currentPoGarments.map((g: any, i) => (
+                      {currentPoGarments.map((g: any, i: number) => (
                         <tr key={i} className="hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-3 text-sm font-bold text-foreground border-r border-border">{g.type}</td>
                           <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 text-center border-r border-border font-medium">{g.cutting || 0}</td>

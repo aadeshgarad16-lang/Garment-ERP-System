@@ -22,6 +22,11 @@ let __idCounter = 0;
 const generateId = () => `row-${Date.now()}-${__idCounter++}`;
 
 // --- INTERFACES ---
+interface GarmentCategory {
+  itemName: string;
+  defaultSleeve: string | null;
+}
+
 interface GarmentSpec {
   id: string;
   category: string;
@@ -41,6 +46,7 @@ interface GarmentSpec {
   deliveryAddress?: string;
   deliveryPin?: string;
   sleeveType?: string;
+  isSleeveDisabled?: boolean;
 }
 
 interface DeliveryAddress {
@@ -352,18 +358,60 @@ function GarmentSpecsContent() {
   const [masterGarments, setMasterGarments] = useState<any[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [categories, setCategories] = useState<string[]>(['Shirts', 'T-Shirts', 'Pants', 'Blazer']);
+  const [categories, setCategories] = useState<GarmentCategory[]>([
+    { itemName: 'Shirt',   defaultSleeve: null },
+    { itemName: 'T-Shirt', defaultSleeve: 'half_sleeve' },
+    { itemName: 'Pant',    defaultSleeve: 'full_sleeve' },
+    { itemName: 'Blazer',  defaultSleeve: 'full_sleeve' },
+  ]);
+
+  // Priority items always appear first in the category dropdown
+  const CATEGORY_PRIORITY = ['Shirt', 'T-Shirt'];
+
+  const sortCategoriesWithPriority = (list: GarmentCategory[]): GarmentCategory[] =>
+    [...list].sort((a, b) => {
+      const idxA = CATEGORY_PRIORITY.indexOf(a.itemName);
+      const idxB = CATEGORY_PRIORITY.indexOf(b.itemName);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.itemName.localeCompare(b.itemName);
+    });
+
+  const safeFetch = async (url: string, options?: RequestInit) => {
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        console.error(`HTTP Error ${res.status} on endpoint: ${url}`);
+        return null;
+      }
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error(`Expected JSON but received non-JSON response from ${url}`);
+        return null;
+      }
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(`Failed to parse JSON from ${url}. Raw:`, text.substring(0, 100));
+        return null;
+      }
+    } catch (err) {
+      console.error(`Network error on ${url}:`, err);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/bom/categories`);
-        const json = await res.json();
-        if (json.success && json.categories) {
-          setCategories(json.categories);
+        const data = await safeFetch('/api/garment-categories');
+        if (data && Array.isArray(data) && data.length > 0) {
+          setCategories(sortCategoriesWithPriority(data));
         }
       } catch (err) {
-        console.warn("Failed to fetch categories:", err);
+        console.warn("Failed to fetch garment categories:", err);
       }
     };
     fetchCategories();
@@ -720,38 +768,59 @@ function GarmentSpecsContent() {
       });
   }, [currentPoNumber]);
 
-  // Synchronize detailed allocations with garment specs when in Single Delivery mode
+  // Synchronize detailed allocations with garment specs for ALL delivery modes
   useEffect(() => {
-    if (deliveryType === "single") {
-      setDetailedAllocations((prev) => {
-        const newAllocations: DetailedAllocation[] = [];
-        specs.forEach((s) => {
-          const sizes = s.size ? safeSplit(s?.size).map((sz) => sz.trim()).filter(Boolean) : ["Standard"];
-          sizes.forEach((sz) => {
-            const existing = prev.find((a) => a.itemId === s.id && a.size === sz);
-            const colors = s.color ? safeSplit(s?.color).map((c: string) => c.trim()).filter(Boolean) : [];
-            const autoColor = colors.length === 1 ? colors[0] : "";
+    setDetailedAllocations((prev) => {
+      const newAllocations: DetailedAllocation[] = [];
+      const blankRows = prev.filter((a) => !a.itemId); // Preserve user-added blank rows
 
-            newAllocations.push({
-              id: existing ? existing.id : generateId(),
-              deliveryAddress: singleAddress,
-              pinCode: singlePin,
-              itemId: s.id,
-              color: existing && existing.color ? existing.color : autoColor,
-              size: sz,
-              quantity: sizes.length === 1 ? s.quantity : (existing ? existing.quantity : 0),
+      specs.forEach((s) => {
+        const sizes = s.size ? safeSplit(s?.size).map((sz) => sz.trim()).filter(Boolean) : ["Standard"];
+        const colors = s.color ? safeSplit(s?.color).map((c: string) => c.trim()).filter(Boolean) : [];
+        const autoColor = colors.length === 1 ? colors[0] : "";
+
+        sizes.forEach((sz) => {
+          const existingRows = prev.filter((a) => a.itemId === s.id && a.size === sz);
+
+          if (existingRows.length > 0) {
+            existingRows.forEach((existing) => {
+              newAllocations.push({
+                ...existing,
+                deliveryAddress: deliveryType === "single" ? singleAddress : existing.deliveryAddress,
+                pinCode: deliveryType === "single" ? singlePin : existing.pinCode,
+                color: existing.color ? existing.color : autoColor,
+                quantity: deliveryType === "single" && sizes.length === 1 && existingRows.length === 1 ? s.quantity : existing.quantity,
+              });
             });
-          });
+          } else {
+            newAllocations.push({
+              id: generateId(),
+              deliveryAddress: deliveryType === "single" ? singleAddress : "",
+              pinCode: deliveryType === "single" ? singlePin : "",
+              itemId: s.id,
+              color: autoColor,
+              size: sz,
+              quantity: deliveryType === "single" && sizes.length === 1 ? s.quantity : 0,
+            });
+          }
         });
-
-        const isSame = prev.length === newAllocations.length && prev.every((p, i) => {
-          const n = newAllocations[i];
-          return p.itemId === n.itemId && p.size === n.size && p.quantity === n.quantity && p.deliveryAddress === n.deliveryAddress && p.pinCode === n.pinCode && p.color === n.color;
-        });
-
-        return isSame ? prev : newAllocations;
       });
-    }
+
+      blankRows.forEach(blank => {
+        newAllocations.push({
+          ...blank,
+          deliveryAddress: deliveryType === "single" ? singleAddress : blank.deliveryAddress,
+          pinCode: deliveryType === "single" ? singlePin : blank.pinCode
+        });
+      });
+
+      const isSame = prev.length === newAllocations.length && prev.every((p, i) => {
+        const n = newAllocations[i];
+        return p.id === n.id && p.itemId === n.itemId && p.size === n.size && p.quantity === n.quantity && p.deliveryAddress === n.deliveryAddress && p.pinCode === n.pinCode && p.color === n.color;
+      });
+
+      return isSame ? prev : newAllocations;
+    });
   }, [specs, deliveryType, singleAddress, singlePin]);
 
   // --- GARMENT MATRIX ACTION HANDLERS ---
@@ -900,7 +969,7 @@ function GarmentSpecsContent() {
       .reduce((sum, alloc) => sum + (alloc.quantity || 0), 0);
   };
 
-  const hasExceedingItems = specs.some((s) => calculateAllocatedQty(s.id) > s.quantity);
+  const hasExceedingItems = specs.some((s) => calculateAllocatedQty(s.id) > Number(s.quantity));
 
   // --- VALIDATION AND STEP TRANSITIONS ---
   const validateFormOrAlert = (): boolean => {
@@ -945,6 +1014,50 @@ function GarmentSpecsContent() {
     };
 
     try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      
+      if (!currentPoNumber) {
+        alert("Please select a valid PO Number before saving.");
+        return;
+      }
+
+      const validItems = specs.filter(item => (item.category || item.itemDescription) && Number(item.quantity) > 0);
+      if (validItems.length === 0) {
+        alert("Please fill in at least one item specification.");
+        return;
+      }
+
+      const specResponse = await fetch(`${BACKEND_URL}/api/order-specifications/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poNumber: currentPoNumber,
+          items: validItems.map(row => ({
+            category: row.category || '',
+            sleeveType: row.sleeveType || row.sleeve_type || '',
+            gender: row.gender || '',
+            sizes: Array.isArray(row.sizes || row.size) ? (row.sizes || row.size).join(', ') : (row.sizes || row.size || ''),
+            colors: Array.isArray(row.colors || row.color) ? (row.colors || row.color).join(', ') : (row.colors || row.color || ''),
+            hsnCode: row.hsnCode || row.hsn_code || row.hsn || '',
+            quantity: Number(row.quantity) || 0,
+            unitPrice: Number(row.unitPrice || row.unit_price) || 0,
+            service: row.serviceType || row.service || 'In House',
+            itemDescription: row.itemDescription || row.item_description || row.description || '',
+            pattern: row.pattern || '',
+            photoUrl: row.photoUrl || row.photo_url || row.photoName || ''
+          }))
+        })
+      });
+
+      const specResult = await specResponse.json();
+      if (!specResult.success) {
+        alert(`Failed to save specifications: ${specResult.message || specResult.error}`);
+        return;
+      }
+      
+      alert(`Specifications for ${currentPoNumber} saved successfully!`);
+
+      // Keep legacy call to update stage status to allow Stock Check processing
       const response = await fetch("http://localhost:5000/purchase_orders/save_specifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1011,7 +1124,7 @@ function GarmentSpecsContent() {
 
   const onSaveDraft = () => {
     // Check if empty
-    const isEmpty = specs.every(s => !s.itemDescription?.trim() && !s.size?.trim() && (s.quantity || 0) === 0);
+    const isEmpty = specs.every(s => !s.itemDescription?.trim() && !(Array.isArray(s.size) ? s.size.join('') : s.size)?.trim() && (s.quantity || 0) === 0);
     if (isEmpty) {
       alert("The form is empty. Cannot save as draft.");
       setShowConfirmModal(false);
@@ -1154,55 +1267,75 @@ function GarmentSpecsContent() {
 
                 <div className="flex flex-col gap-6 mt-2">
 
-                  {/* Row 1: Primary Selects, Size & Color */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Select Category <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <select
-                          value={spec.category || ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateRow(spec.id, "category", val);
-                            setSelectedCategory(val);
+                  {/* Row 1: Category, Sleeve Type, Gender, Size, Color — 5 equal columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
 
-                            const catLower = val.toLowerCase();
-                            let newSleeve = "";
+                    {/* ── Field 1: Category ── */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Select Category <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={spec.category || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedCategory(val);
 
-                            if (catLower.includes('shirt') && !catLower.includes('t-shirt')) {
-                              newSleeve = ""; // Manual selection allowed
-                            } else if (catLower.includes('pant') || catLower.includes('jacket') || catLower.includes('salwar') || catLower.includes('dupatta') || catLower.includes('boiler suit')) {
-                              newSleeve = "full_sleeve";
-                            } else if (catLower.includes('t-shirt') || catLower.includes('kurta')) {
-                              newSleeve = "half_sleeve";
-                            }
+                          const matched = categories.find(c => c.itemName === val);
+                          const isShirt = val.toLowerCase().includes('shirt') && !val.toLowerCase().includes('t-shirt');
 
-                            updateRow(spec.id, "sleeveType", newSleeve);
-                          }}
-                          className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm pr-[110px]`}
-                        >
-                          <option value="">Select...</option>
-                          {categories.map((cat, idx) => (
-                            <option key={idx} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-2 flex items-center">
-                          <select
-                            value={spec.sleeveType || ""}
-                            onChange={(e) => updateRow(spec.id, "sleeveType", e.target.value)}
-                            disabled={!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt'))}
-                            className={`h-8 text-xs bg-muted/50 border border-border rounded-md px-1 focus:ring-1 focus:ring-ring focus:outline-none max-w-[100px] text-ellipsis overflow-hidden ${!(spec.category?.toLowerCase().includes('shirt') && !spec.category?.toLowerCase().includes('t-shirt')) ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          >
-                            <option value="" disabled hidden>Select Sleeve</option>
-                            <option value="full_sleeve">Full Sleeve</option>
-                            <option value="half_sleeve">Half Sleeve</option>
-                          </select>
-                        </div>
-                      </div>
+                          if (isShirt) {
+                            setSpecs(prev => prev.map(s => s.id === spec.id
+                              ? { ...s, category: val, sleeveType: '', isSleeveDisabled: false }
+                              : s
+                            ));
+                          } else {
+                            const autoSleeve = matched?.defaultSleeve ?? '';
+                            setSpecs(prev => prev.map(s => s.id === spec.id
+                              ? { ...s, category: val, sleeveType: autoSleeve, isSleeveDisabled: true }
+                              : s
+                            ));
+                          }
+                        }}
+                        className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm`}
+                      >
+                        <option value="">Select...</option>
+                        {categories.map((cat) => (
+                          <option key={cat.itemName} value={cat.itemName}>{cat.itemName}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Gender <span className="text-red-500">*</span></label>
+                    {/* ── Field 2: Sleeve Type — separate standalone field ── */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        Sleeve Type
+                        {spec.isSleeveDisabled && spec.sleeveType && (
+                          <span className="text-[9px] font-semibold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded uppercase tracking-wider">Auto</span>
+                        )}
+                      </label>
+                      <select
+                        value={spec.sleeveType || ""}
+                        onChange={(e) => updateRow(spec.id, "sleeveType", e.target.value)}
+                        disabled={spec.isSleeveDisabled === true}
+                        title={
+                          spec.isSleeveDisabled
+                            ? `Auto-set from category: ${spec.sleeveType === 'full_sleeve' ? 'Full Sleeve' : spec.sleeveType === 'half_sleeve' ? 'Half Sleeve' : 'N/A'}`
+                            : 'Select sleeve type'
+                        }
+                        className={`w-full ${INPUT_STYLE} h-[44px] shadow-sm transition-opacity ${spec.isSleeveDisabled ? 'opacity-60 cursor-not-allowed bg-muted/60' : ''}`}
+                      >
+                        <option value="">Select Sleeve...</option>
+                        <option value="full_sleeve">Full Sleeve</option>
+                        <option value="half_sleeve">Half Sleeve</option>
+                      </select>
+                    </div>
+
+                    {/* ── Field 3: Gender ── */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Gender <span className="text-red-500">*</span>
+                      </label>
                       <select
                         value={spec.gender || ""}
                         onChange={(e) => updateRow(spec.id, "gender", e.target.value)}
@@ -1214,8 +1347,11 @@ function GarmentSpecsContent() {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Size (Multi-Select) <span className="text-red-500">*</span></label>
+                    {/* ── Field 4: Size Multi-Select ── */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Size (Multi-Select) <span className="text-red-500">*</span>
+                      </label>
                       <CustomMultiSelect
                         options={SIZE_OPTIONS}
                         selectedValues={spec.size ? safeSplit(spec?.size).map(s => s.trim()).filter(Boolean) : []}
@@ -1224,8 +1360,11 @@ function GarmentSpecsContent() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">Color (Multi-Select) <span className="text-red-500">*</span></label>
+                    {/* ── Field 5: Color Multi-Select ── */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Color (Multi-Select) <span className="text-red-500">*</span>
+                      </label>
                       <CustomMultiSelect
                         options={COLOR_OPTIONS}
                         selectedValues={spec.color ? safeSplit(spec?.color).map(c => c.trim()).filter(Boolean) : []}
@@ -1235,6 +1374,7 @@ function GarmentSpecsContent() {
                         allowCustomAdd
                       />
                     </div>
+
                   </div>
 
                   {/* Row 2: Symmetrical Small Metrics & Action Panel */}
@@ -1304,34 +1444,7 @@ function GarmentSpecsContent() {
                     </div>
                   </div>
 
-                  {deliveryType === "multi" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/50 dark:bg-card/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
-                      <div>
-                        <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5" /> Delivery Address (For this Item) <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={spec.deliveryAddress || ""}
-                          onChange={(e) => updateRow(spec.id, "deliveryAddress", e.target.value)}
-                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-ring`}
-                          placeholder="Enter complete delivery address"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider">
-                          Delivery PIN <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={spec.deliveryPin || ""}
-                          onChange={(e) => updateRow(spec.id, "deliveryPin", e.target.value)}
-                          className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 focus:ring-ring`}
-                          placeholder="e.g. 110001"
-                        />
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Row 3: Large Textareas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1487,7 +1600,7 @@ function GarmentSpecsContent() {
                 </tr>
               ) : (
                 specs.map((spec) => {
-                  const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id).sort((a, b) => compareSizes(a.size || '', b.size || ''));
+                  const specAllocations = detailedAllocations.filter(a => a.itemId === spec.id).sort((a, b) => compareSizes(Array.isArray(a.size) ? a.size.join(',') : (a.size || ''), Array.isArray(b.size) ? b.size.join(',') : (b.size || '')));
                   return (
                     <tr key={spec.id} className="bg-card hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-foreground">
@@ -1582,6 +1695,37 @@ function GarmentSpecsContent() {
           </div>
         </div>
 
+        {deliveryType === "single" && (
+          <div className="p-6 border-b border-border bg-card">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#0B132B]/5 dark:bg-[#0B132B]/20 p-5 rounded-xl border border-blue-100 dark:border-blue-900/50">
+              <div>
+                <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Delivery Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={singleAddress || ""}
+                  onChange={(e) => setSingleAddress(e.target.value)}
+                  className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 dark:border-blue-800/50 focus:ring-blue-500`}
+                  placeholder="Enter complete delivery address"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider">
+                  Delivery PIN <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={singlePin || ""}
+                  onChange={(e) => setSinglePin(e.target.value)}
+                  className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 dark:border-blue-800/50 focus:ring-blue-500`}
+                  placeholder="e.g. 110001"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead className="bg-neutral-50 dark:bg-card">
@@ -1621,10 +1765,12 @@ function GarmentSpecsContent() {
                     if (isNumA && isNumB) {
                       return Number(a.size) - Number(b.size);
                     } else if (!isNumA && !isNumB) {
-                      const idxA = sizeOrder.indexOf(a.size?.toUpperCase() || "");
-                      const idxB = sizeOrder.indexOf(b.size?.toUpperCase() || "");
+                      const sizeStrA = Array.isArray(a.size) ? a.size.join(',') : (a.size || '');
+                      const sizeStrB = Array.isArray(b.size) ? b.size.join(',') : (b.size || '');
+                      const idxA = sizeOrder.indexOf(sizeStrA.toUpperCase());
+                      const idxB = sizeOrder.indexOf(sizeStrB.toUpperCase());
                       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                      return (a.size || "").localeCompare(b.size || "");
+                      return sizeStrA.localeCompare(sizeStrB);
                     } else {
                       return isNumA ? -1 : 1;
                     }

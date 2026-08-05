@@ -16,7 +16,19 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
-import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
+import { isStageMatch, sortSizesAscending, getOrderSpecifications } from '@/utils/orderUtils';
+
+// Helper: Safely parse JSON responses without crashing on HTML 404/500 pages
+const safeFetchJson = async (url: string, options?: RequestInit) => {
+  const res = await fetch(url, options);
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok || !contentType.includes('application/json')) {
+    console.error(`Fetch failed for ${url} with status ${res.status}`);
+    return { success: false, data: null };
+  }
+  const data = await res.json();
+  return { success: true, data };
+};
 
 interface GarmentSpec {
   id: string;
@@ -151,13 +163,16 @@ function StockCalculationContent() {
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
+  const [orderSpecifications, setOrderSpecifications] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [allocatedToPacking, setAllocatedToPacking] = useState(false);
   const [allocatedToBOM, setAllocatedToBOM] = useState(false);
+  const [localPartialDispatched, setLocalPartialDispatched] = useState(false);
 
   useEffect(() => {
     setAllocatedToPacking(false);
     setAllocatedToBOM(false);
+    setLocalPartialDispatched(false);
   }, [selectedPONumber]);
 
   // Synchronize component dropdown selections with search parameters safely
@@ -176,10 +191,51 @@ function StockCalculationContent() {
 
   // Compute active tracking datasets inside a isolated block
   const activeOrders = useMemo(() => {
-    const targetKeywords = ['stock check'];
-    return (orders || []).filter(
-      (o) => isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED'
-    );
+    if (!orders || !Array.isArray(orders)) return [];
+
+    const filtered = orders.filter((o) => {
+      // Extract stage from any possible field name
+      const rawStage = String(
+        o.stage || o.activeStage || o.currentStage || o.current_stage || o.step || ''
+      ).toLowerCase().replace(/[\s_]+/g, '');
+
+      // Match 'stockcheck'
+      const isStockCheck = rawStage.includes('stockcheck');
+
+      // Check completion flags
+      const isCompleted = 
+        o.stock_check_completed === true || 
+        o.is_submitted === true || 
+        String(o.status || '').toUpperCase() === 'COMPLETED';
+
+      return isStockCheck && !isCompleted;
+    });
+
+    const formattedOrders = filtered.map(order => ({
+      ...order,
+      po_number: order.po_number || order.poNumber,
+      customer_name: order.customer_name || order.customerName || order.clientName,
+      po_date: order.po_date || order.poDate,
+      delivery_date: order.delivery_date || order.deliveryDate,
+      
+      // MAP SPECIFICATIONS
+      specifications: order.specifications || order.items || [
+        {
+          category: order.category || "Shirt",
+          sleeve_type: order.sleeve_type || "full_sleeve",
+          colors: order.colors || "Blue",
+          sizes: order.sizes || "42, 44, 46, 48, 50",
+          ordered_qty: order.quantity || order.ordered_qty || 100
+        }
+      ],
+      available_stock: order.available_stock ?? order.storeStock ?? order.store_stock ?? 0
+    }));
+
+    if (formattedOrders.length === 0) {
+      console.log("ALL ORDERS IN STORE:", orders);
+    }
+
+    return formattedOrders;
   }, [orders]);
 
   // Track layout boundaries and clear data parameters if an assignment shifts status metrics
@@ -193,13 +249,23 @@ function StockCalculationContent() {
 
   // Unique lists derived directly from active states
   const customers = useMemo(() => {
-    return Array.from(new Set(activeOrders.map((o) => o.customerName))).filter(Boolean);
+    if (!activeOrders.length) return [];
+    
+    const names = activeOrders
+      .map((o) => o.customerName || o.customer_name || o.clientName || o.customer?.name)
+      .filter(Boolean);
+
+    return Array.from(new Set(names));
   }, [activeOrders]);
 
   const poNumbers = useMemo(() => {
     if (!selectedCustomer) return [];
     return Array.from(
-      new Set(activeOrders.filter((o) => o.customerName === selectedCustomer).map((o) => o.poNumber))
+      new Set(
+        activeOrders
+          .filter((o) => o.customerName === selectedCustomer)
+          .map((o) => o.poNumber || o.po_number)
+      )
     ).filter(Boolean);
   }, [activeOrders, selectedCustomer]);
 
@@ -211,69 +277,62 @@ function StockCalculationContent() {
 
   useEffect(() => {
     if (selectedPONumber) {
-      const fetchDetails = async () => {
-        setStatusMessage(null);
-        try {
-          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-          const res = await fetch(`${BACKEND_URL}/api/purchase-orders/${selectedPONumber}`, {
-            headers: getAuthHeaders()
+      setStatusMessage(null);
+      // 1. Find the selected order dynamically from your global or parent state
+      const order = activeOrders.find(
+        (o: any) => o.po_number === selectedPONumber || o.poNumber === selectedPONumber
+      ) || orders.find(
+        (o: any) => o.po_number === selectedPONumber || o.poNumber === selectedPONumber
+      );
+
+      if (!order) {
+        setDetailedOrder(null);
+        return;
+      }
+
+      // Fetch accurate specifications and total qty from the backend
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      fetch(`${BACKEND_URL}/api/stock-check/${selectedPONumber}`, {
+        method: 'GET',
+        headers: getAuthHeaders(true)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const specsList = order.specifications || order.items || order.specs || [];
+          setDetailedOrder({
+            ...order,
+            poNumber: order.po_number || order.poNumber,
+            customerName: order.customer_name || order.customerName || order.clientName,
+            poDate: order.po_date || order.poDate || order.created_at || 'N/A',
+            deliveryDate: order.delivery_date || order.deliveryDate || 'N/A',
+            specificationsSummary: data.orderSpecification,
+            totalQty: data.totalQty,
+            storeStock: order.store_stock ?? order.available_stock ?? 0,
+            status: data.status,
+            specs: specsList.map((s: any) => ({
+              ...s,
+              itemDescription: s.item_description || s.garment_name || s.category,
+              stockAvailable: s.stock_available || s.store_stock || 0,
+              useExistingStock: s.use_existing_stock || 0,
+              stockStatus: s.stock_status || ((s.store_stock || 0) >= (s.quantity || s.qty || 0) ? 'IN_STOCK' : (s.store_stock || 0) > 0 ? 'PARTIAL' : 'OUT_OF_STOCK')
+            }))
           });
-          
-          if (!res.ok) {
-            console.warn(`Server responded with status ${res.status}`);
-            setDetailedOrder(null);
-            return;
-          }
-          
-          const data = await res.json();
-          if (data.success !== false) {
-             setDetailedOrder({
-               ...selectedOrder,
-               ...data,
-               hasAllocationError: !!data.hasAllocationError,
-               poNumber: data.po_number || selectedOrder?.poNumber,
-               specs: data.specs?.map((s: any) => ({
-                 ...s,
-                 itemDescription: s.item_description,
-                 stockAvailable: s.stock_available,
-                 useExistingStock: s.use_existing_stock,
-                 stockStatus: s.stock_status
-               })) || []
-             });
-          } else {
-             console.warn(data.message || "Failed to load order details");
-             setDetailedOrder(null);
-          }
-        } catch (err) {
-          console.error(err);
+          setOrderSpecifications(specsList);
+        } else {
+          // Fallback if backend fails
           setDetailedOrder(null);
-          setStatusMessage("Offline: Using fallback dashboard cache");
-          // Fallback to local storage draft if endpoint fails
-          const ordersStr = localStorage.getItem('savedOrders');
-          if (ordersStr) {
-            const orders = JSON.parse(ordersStr);
-            const found = orders.find((o: any) => o.poNumber === selectedPONumber);
-            if (found) {
-               setDetailedOrder({
-                 ...selectedOrder,
-                 ...found,
-                 hasAllocationError: !!found.hasAllocationError,
-                 poNumber: found.poNumber || selectedOrder?.poNumber,
-                 specs: found.specs || []
-               });
-            } else {
-               setDetailedOrder(selectedOrder ? { ...selectedOrder, specs: [], hasAllocationError: false } : null);
-            }
-          } else {
-             setDetailedOrder(selectedOrder ? { ...selectedOrder, specs: [], hasAllocationError: false } : null);
-          }
         }
-      };
-      fetchDetails();
+      })
+      .catch(err => {
+        console.error("Failed to fetch stock check for PO:", err);
+        setDetailedOrder(null);
+      });
     } else {
       setDetailedOrder(null);
+      setOrderSpecifications([]);
     }
-  }, [selectedPONumber, selectedOrder]);
+  }, [selectedPONumber, activeOrders, orders]);
 
   // Structural metric processing updates
   const orderAnalysis = useMemo(() => {
@@ -309,13 +368,16 @@ function StockCalculationContent() {
   const displayOrder = detailedOrder || selectedOrder;
   
   const { isFullyAvailable, isPartiallyAvailable, isNotAvailableAtAll } = useMemo(() => {
-    if (!displayOrder?.specs || displayOrder.specs.length === 0) {
+    const specs = getOrderSpecifications(displayOrder);
+    if (!specs || specs.length === 0) {
       return { isFullyAvailable: false, isPartiallyAvailable: false, isNotAvailableAtAll: true };
     }
     let allAvailable = true;
     let allOut = true;
-    displayOrder.specs.forEach((s: any) => {
-      const status = s.stockStatus || (s.stockAvailable > 0 ? (s.stockAvailable >= s.quantity ? 'Available' : 'Low Stock') : 'Out of Stock');
+    specs.forEach((s: any) => {
+      const avail = s.stockAvailable || s.stock_available || 0;
+      const req = s.quantity || s.qty || s.order_qty || 0;
+      const status = s.stockStatus || (avail > 0 ? (avail >= req ? 'Available' : 'Low Stock') : 'Out of Stock');
       if (status !== 'Available') allAvailable = false;
       if (status !== 'Out of Stock') allOut = false;
     });
@@ -365,10 +427,11 @@ function StockCalculationContent() {
   const { totalAvailableStock, totalRequiredQty } = useMemo(() => {
     let avail = 0;
     let req = 0;
-    if (displayOrder?.specs) {
-      displayOrder.specs.forEach((s: any) => {
-        const sReq = s.quantity || 0;
-        const sAvail = s.stockAvailable || 0;
+    const specs = getOrderSpecifications(displayOrder);
+    if (specs && specs.length > 0) {
+      specs.forEach((s: any) => {
+        const sReq = s.quantity || s.qty || s.order_qty || 0;
+        const sAvail = s.stockAvailable || s.stock_available || 0;
         req += sReq;
         avail += Math.min(sAvail, sReq);
       });
@@ -428,10 +491,7 @@ function StockCalculationContent() {
             return;
           }
           
-          // Force network reload of context data to ensure accuracy across components
           await reloadOrders();
-          
-          // Trigger global order reload so other tabs see the DB update immediately
           window.dispatchEvent(new Event("orders-updated"));
   
           let nextRoute = 'bom-calculation';
@@ -446,7 +506,8 @@ function StockCalculationContent() {
         }
       } catch (err) {
         console.error("Failed to advance stage:", err);
-        setStatusMessage("Server error encountered during BOM calculation. Attempting local client fallback validation.");
+        setStatusMessage("Server error encountered during stage transition. Attempting local client fallback validation.");
+
         
         if (routeTo === 'split-quality-packing') {
           setAllocatedToPacking(true);
@@ -467,6 +528,69 @@ function StockCalculationContent() {
         }
         router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
       }
+    }
+  };
+  const isPartialDispatched = localPartialDispatched || displayOrder?.store_partially_processed;
+
+  const handlePartialDispatch = async () => {
+    if (!displayOrder) return;
+    try {
+      setStatusMessage(null);
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
+      
+      const res = await fetch(`${BACKEND_URL}/api/stock-check/dispatch-partial`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(true)
+        },
+        body: JSON.stringify({ poNumber: actualPoNumber })
+      });
+      
+      if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+      const data = await res.json();
+      if (data.success) {
+        setLocalPartialDispatched(true);
+      } else {
+        setStatusMessage(data.error || "Failed to dispatch partial stock");
+      }
+    } catch (err: any) {
+      console.error("Failed to dispatch partial stock:", err);
+      setStatusMessage(err.message || "Server error encountered");
+    }
+  };
+
+  const handleSubmitBomShortage = async () => {
+    if (!displayOrder) return;
+    try {
+      setStatusMessage(null);
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
+      
+      const res = await fetch(`${BACKEND_URL}/api/stock-check/submit-bom-shortage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(true)
+        },
+        body: JSON.stringify({ poNumber: actualPoNumber })
+      });
+      
+      if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+      const data = await res.json();
+      if (data.success) {
+        await reloadOrders();
+        window.dispatchEvent(new Event("orders-updated"));
+        setSelectedCustomer('');
+        setSelectedPONumber('');
+        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}`);
+      } else {
+        setStatusMessage(data.error || "Failed to submit BOM shortage");
+      }
+    } catch (err: any) {
+      console.error("Failed to submit BOM shortage:", err);
+      setStatusMessage(err.message || "Server error encountered");
     }
   };
 
@@ -502,20 +626,20 @@ function StockCalculationContent() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <SearchableDropdown
-              label="PO Number"
+              label="Customer Name"
               options={customers}
               value={selectedCustomer}
-              placeholder="Select a PO Number..."
+              placeholder="Select a Customer Name..."
               onChange={(val) => {
                 setSelectedCustomer(val);
                 setSelectedPONumber('');
               }}
             />
             <SearchableDropdown
-              label="Customer Name"
+              label="PO Number"
               options={poNumbers}
               value={selectedPONumber}
-              placeholder="Select a Customer Name..."
+              placeholder="Select a PO Number..."
               disabled={!selectedCustomer}
               onChange={(val) => setSelectedPONumber(val)}
             />
@@ -524,7 +648,7 @@ function StockCalculationContent() {
               <div
                 className="w-full px-3 py-2 bg-neutral-50 dark:bg-card/40 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm min-h-[38px] flex items-center shadow-inner whitespace-nowrap"
               >
-                {formatDate(orderAnalysis.derivedPODate) || "—"}
+                {formatDate(displayOrder?.poDate || displayOrder?.po_date || displayOrder?.order_date) || "—"}
               </div>
             </div>
           </div>
@@ -552,64 +676,50 @@ function StockCalculationContent() {
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.poDate || displayOrder.order_date)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{formatDate(displayOrder.deliveryDate || displayOrder.delivery_date)}</td>
                       <td className="px-6 py-4 text-xs text-muted-foreground space-y-2">
-                        {displayOrder.specs && displayOrder.specs.length > 0 ? (
-                          displayOrder.specs.map((spec: any) => (
-                            <div key={spec.id || spec.spec_id} className="flex justify-between border-b border-neutral-100 dark:border-border last:border-0 pb-1.5 last:pb-0 min-h-[24px] items-center">
-                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{spec.garment_name || spec.itemDescription} ({typeof spec.size === 'string' ? sortSizesAscending(spec.size.split(',').map((s: string) => s.trim())).join(', ') : spec.size}) - {spec.pattern}</span>
-                              <span className="font-semibold bg-gray-100 dark:bg-card px-2 py-0.5 rounded text-foreground">Qty: {spec.quantity}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="italic min-h-[24px] flex items-center">No specifications available</span>
-                        )}
+                        {(() => {
+                          if (!displayOrder) return null;
+                          const specsDisplay = displayOrder.specificationsSummary || "No specifications available";
+
+                          return (
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              {specsDisplay}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-xs space-y-2">
-                        {displayOrder.specs && displayOrder.specs.length > 0 ? (
-                          displayOrder.specs.map((spec: any) => {
-                            const avail = spec.stockAvailable || 0;
-                            const req = spec.quantity || 0;
-                            
-                            // Dynamic validation: 'Pending Selection' if not explicitly set/calculated yet
-                            const hasMaterials = spec.articlesSelected || (spec.materials && spec.materials.length > 0) || spec.stockStatus;
-                            const status: string = hasMaterials 
-                              ? (avail >= req ? 'In Stock' : (avail > 0 ? 'Low Stock' : 'Out of Stock')) 
-                              : 'Pending Selection';
-                              
-                            const isAvailable = status === 'In Stock' || status === 'Available';
-                            const isLowStock = status === 'Low Stock';
-                            const isPending = status === 'Pending Selection';
-                            const isOut = status === 'Out of Stock';
+                        {(() => {
+                          if (!displayOrder) return <span className="italic min-h-[24px] flex items-center">—</span>;
+                          
+                          const totalQty = displayOrder.totalQty || 0;
+                          const storeStock = Number(displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock) || 0;
 
-                            return (
-                              <div key={`status-${spec.id || spec.spec_id}`} className="flex items-center justify-between border-b border-transparent last:border-0 pb-1.5 last:pb-0 min-h-[24px]">
-                                <div>
-                                  {isPending ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-card dark:text-neutral-400 border border-border">
-                                      Pending Selection
-                                    </span>
-                                  ) : isAvailable ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                      In Stock ({avail})
-                                    </span>
-                                  ) : isLowStock ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                                      Low Stock ({avail})
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                      Out of Stock
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-xs text-muted-foreground font-medium ml-3">
-                                  Req: {req}
+                          const calculatedStatus = displayOrder.status || "OUT_OF_STOCK";
+
+                          const isAvailable = calculatedStatus === 'IN_STOCK' || calculatedStatus === 'Available';
+                          const isPartial = calculatedStatus === 'PARTIAL' || calculatedStatus === 'Partial Stock';
+
+                          return (
+                            <div className="flex items-center min-h-[24px]">
+                              {isAvailable ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                  In Stock ({storeStock})
                                 </span>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <span className="italic min-h-[24px] flex items-center">—</span>
-                        )}
+                              ) : isPartial ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                  Partial Stock ({storeStock})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                  Out of Stock
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground font-medium ml-3">
+                                Req: {totalQty}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   </tbody>
@@ -633,7 +743,9 @@ function StockCalculationContent() {
             </div>
 
             {(() => {
-              const isUniform = displayOrder?.specs?.some((s: any) => {
+              if (!displayOrder) return null;
+              const specs = displayOrder?.specifications || displayOrder?.specs || displayOrder?.items || [];
+              const isUniform = specs.some((s: any) => {
                 const specText = s.order_specifications || s.itemDescription || s.item_description || s.garment_name || "";
                 const category = s.category || s.item_category || s.garmentType || "";
                 
@@ -644,7 +756,7 @@ function StockCalculationContent() {
                 return s.is_uniform === true || s.isUniform === true || isUniformApparel;
               });
               
-              const isServiceOutsource = displayOrder?.specs?.some((s: any) => s.serviceType === "Outsource" && (s.outsourceType === "Service Outsource" || !s.outsourceType));
+              const isServiceOutsource = specs.some((s: any) => s.serviceType === "Outsource" && (s.outsourceType === "Service Outsource" || !s.outsourceType));
 
               return (
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -673,35 +785,59 @@ function StockCalculationContent() {
                     )
                   ) : (
                     <>
-                      {/* Scenario 1A and 2B-1: Stock Available */}
-                      {(isFullyAvailable || isPartiallyAvailable) && (
-                        <button
-                          onClick={() => handleCalculateBOM(isServiceOutsource ? 'service-outsource' : 'quality-packing')}
-                          disabled={!selectedOrder}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
-                              ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
-                              : 'bg-[#2563EB] text-white hover:bg-blue-700 active:transform active:scale-[0.99]'
-                            }`}
-                        >
-                          {isServiceOutsource ? 'Go to Service Outsource' : 'Go to Quality & Packing'}
-                          <span>-&gt;</span>
-                        </button>
-                      )}
+                      {(() => {
+                        const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder.quantity || 0;
+                        const totalAvailable = displayOrder.available_stock ?? displayOrder.storeStock ?? displayOrder.store_stock ?? 0;
+                        
+                        let stockStatus = 'ZERO';
+                        if (totalAvailable >= totalOrdered && totalOrdered > 0) stockStatus = 'FULL';
+                        else if (totalAvailable > 0 && totalAvailable < totalOrdered) stockStatus = 'PARTIAL';
 
-                      {/* Scenario 1B and 2B-2: Stock Out of Stock / Deficit */}
-                      {(isNotAvailableAtAll || isPartiallyAvailable) && (
-                        <button
-                          onClick={() => handleCalculateBOM('bom-calculation')}
-                          disabled={!selectedOrder}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
-                              ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
-                              : 'bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]'
-                            }`}
-                        >
-                          Go to BOM Calculation
-                          <span>-&gt;</span>
-                        </button>
-                      )}
+                        const handleStageTransition = (stage: 'Quality & Packing' | 'BOM Calculation') => {
+                          handleCalculateBOM(stage === 'Quality & Packing' ? (isServiceOutsource ? 'service-outsource' : 'quality-packing') : 'bom-calculation');
+                        };
+
+                        return (
+                          <>
+                            {stockStatus === 'FULL' && (
+                              <button onClick={() => handleStageTransition('Quality & Packing')} disabled={!selectedOrder} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-[#2563EB] text-white hover:bg-blue-700 active:transform active:scale-[0.99]">
+                                Send to Quality & Packing
+                              </button>
+                            )}
+
+                            {stockStatus === 'ZERO' && (
+                              <button onClick={() => handleStageTransition('BOM Calculation')} disabled={!selectedOrder} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]">
+                                Go to BOM Calculation
+                              </button>
+                            )}
+
+                            {stockStatus === 'PARTIAL' && (
+                              <div className="flex flex-col gap-3 w-full sm:w-auto">
+                                {!isPartialDispatched ? (
+                                  <>
+                                    <div className="text-sm text-neutral-700 dark:text-neutral-300 font-medium bg-neutral-50 dark:bg-card/40 px-4 py-2 rounded-lg border border-border">
+                                      Available Stock: {totalAvailable} pcs | Shortage: {totalOrdered - totalAvailable} pcs
+                                    </div>
+                                    <button onClick={handlePartialDispatch} disabled={!selectedOrder} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-[#2563EB] text-white hover:bg-blue-700 active:transform active:scale-[0.99]">
+                                      Dispatch Available Stock ({totalAvailable} pcs) to Quality & Packing
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="text-sm text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+                                      <CheckCircle2 className="h-4 w-4" />
+                                      ✓ {totalAvailable} pcs dispatched. {totalOrdered - totalAvailable} pcs pending BOM Calculation.
+                                    </div>
+                                    <button onClick={handleSubmitBomShortage} disabled={!selectedOrder} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]">
+                                      Dispatch Shortage ({totalOrdered - totalAvailable} pcs) to BOM Calculation
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </>
                   )}
                 </div>

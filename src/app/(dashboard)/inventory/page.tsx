@@ -63,28 +63,41 @@ export default function InventoryPage() {
 
   const { orders } = useOrders();
   const [selectedPO, setSelectedPO] = useState<string>('');
+  const [availablePOs, setAvailablePOs] = useState<{po_number: string, customer_name: string}[]>([]);
+  const [noBomFound, setNoBomFound] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const po = params.get('poNumber');
+      const po = params.get('poNumber') || params.get('po_number');
       if (po) {
         setSelectedPO(po);
       }
     }
   }, []);
 
+  React.useEffect(() => {
+    const fetchAvailablePOs = async () => {
+      const res = await apiFetch(`/api/inventory-check/pos`);
+      if (res.success && Array.isArray(res.data)) {
+        setAvailablePOs(res.data);
+      }
+    };
+    fetchAvailablePOs();
+  }, []);
+
   const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const { getAuthHeaders } = await import('@/lib/api');
-      const authHeaders = getAuthHeaders(false);
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...authHeaders,
         ...(options.headers as Record<string, string> || {}),
       };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
@@ -114,24 +127,33 @@ export default function InventoryPage() {
   };
 
   const fetchPOInventory = async (poNumber: string) => {
-    if (!poNumber || poNumber === 'UDF' || poNumber === 'undefined') return;
-    const res = await apiFetch(`/api/inventory/check?po_number=${encodeURIComponent(poNumber)}`);
+    setIsLoading(true);
+    setNoBomFound(false);
+    const res = await apiFetch(`/api/inventory-check/details?po_number=${encodeURIComponent(poNumber)}`);
+
     if (res.success && Array.isArray(res.data)) {
-      const formatted = res.data.map((item: any, index: number) => ({
-        id: item.id || item.material_id || `MAT-${Math.floor(Math.random() * 1000)}`,
-        name: item.material_name || item.name || `Item #${index + 1}`,
-        category: item.category || 'Fabric',
-        available: item.available_qty || 0,
-        required: item.required_qty || 0,
-        shortage: item.shortage_qty || 0,
-        unit: item.unit || 'units',
-        min_required: item.min_required || 0,
-        original_status: item.original_status || 'Available'
-      }));
-      setPoInventoryData(formatted);
+      if (res.data.length === 0) {
+        setNoBomFound(true);
+        setPoInventoryData([]);
+      } else {
+        const formatted = res.data.map((item: any, index: number) => ({
+          id: item.id || item.material_id || `MAT-${Math.floor(Math.random() * 1000)}`,
+          name: item.material_name || item.name || `Item #${index + 1}`,
+          category: item.category || 'Fabric',
+          available: item.available_qty || item.available || 0,
+          required: item.required_qty || item.required || 0,
+          shortage: item.shortage_qty || item.shortage || 0,
+          unit: item.unit || 'units',
+          min_required: item.min_required || 0,
+          original_status: item.original_status || 'Available'
+        }));
+        setPoInventoryData(formatted);
+      }
     } else {
+      setNoBomFound(true);
       setPoInventoryData([]);
     }
+    setIsLoading(false);
   };
 
   const fetchAvailableMaterials = async (poNumber: string | null) => {
@@ -435,17 +457,19 @@ export default function InventoryPage() {
                     const params = new URLSearchParams(window.location.search);
                     if (e.target.value) {
                       params.set('poNumber', e.target.value);
+                      params.set('po_number', e.target.value);
                     } else {
                       params.delete('poNumber');
+                      params.delete('po_number');
                     }
                     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
                   }}
                   className="block w-full sm:w-48 pl-3 pr-10 py-2 border border-border rounded-lg focus:ring-2 focus:ring-ring/20 focus:border-blue-500 sm:text-sm text-foreground appearance-none bg-card cursor-pointer text-ellipsis overflow-hidden"
                 >
                   <option value="">Select Purchase Order</option>
-                  {orders?.map((order: any) => (
-                    <option key={order.poNumber} value={order.poNumber}>
-                      {order.poNumber} {order.customerName ? `- ${order.customerName}` : ''}
+                  {availablePOs.map((po: any) => (
+                    <option key={po.po_number} value={po.po_number}>
+                      {po.po_number} {po.customer_name ? `- ${po.customer_name}` : ''}
                     </option>
                   ))}
                 </select>
@@ -567,6 +591,16 @@ export default function InventoryPage() {
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
                       <p>Loading inventory data...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : noBomFound && selectedPO ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center">
+                      <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
+                      <p className="font-medium text-foreground text-base">No BOM calculation found for this PO.</p>
+                      <p className="text-sm mt-1">Please run BOM calculation first.</p>
                     </div>
                   </td>
                 </tr>

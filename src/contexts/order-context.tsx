@@ -19,6 +19,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const reloadOrders = useCallback(async () => {
     const fetched = await getAllOrdersAPI();
     setOrders(fetched);
+    // Keep localStorage synchronized with backend
+    localStorage.setItem('savedOrders', JSON.stringify(fetched));
     // Keep the PO number blocklist in sync automatically
     setExistingPoNumbers(fetched.map(o => o.poNumber));
   }, []);

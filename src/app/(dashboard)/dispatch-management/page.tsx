@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Truck, CheckCircle2, FileText, ArrowRight, Package, Edit, MoreVertical, Archive, CheckSquare, AlertCircle } from 'lucide-react';
+import { Truck, CheckCircle2, FileText, ArrowRight, Package, Edit, MoreVertical, Archive, CheckSquare, AlertCircle, Download, UserPlus } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import LogisticsWorkflowHeader from '@/components/logistics/LogisticsWorkflowHeader';
 import PackingVerification from '@/components/logistics/PackingVerification';
@@ -301,6 +301,20 @@ export default function DispatchManagementPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button 
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = `/api/dispatch/download-invoice/${order.poNumber}`;
+                          a.download = `Invoice_${order.poNumber}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                        className="p-1.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
+                        title="Download Invoice"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button 
                         onClick={() => router.push(`/dispatch-management?poNumber=${order.poNumber}`)}
                         className="p-1.5 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
                         title="Process Order"
@@ -348,7 +362,22 @@ export default function DispatchManagementPage() {
             Generate Delivery Challan
           </button>
           <button 
-            onClick={() => setIsSetupModalOpen(true)}
+            onClick={() => router.push('/vendors')}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Manage Vendors
+          </button>
+          <button 
+            onClick={() => {
+              if (selectedRows.length === 1) {
+                router.push(`/dispatch-goods?poNumber=${selectedRows[0]}`);
+              } else if (selectedRows.length > 1) {
+                alert("Please select only one PO for dispatch.");
+              } else {
+                alert("Please select a PO first to dispatch goods.");
+              }
+            }}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
           >
             <Package className="w-4 h-4" />

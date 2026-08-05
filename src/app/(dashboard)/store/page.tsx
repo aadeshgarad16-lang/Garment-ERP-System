@@ -2245,6 +2245,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
     category: "Shirt",
     gender: "Male",
     size: "M",
+    sizes: [] as string[],
     colour: "",
     availableQty: "",
     blockedQty: "",
@@ -2252,6 +2253,13 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
     unitPrice: "",
     image: "",
   });
+
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, { availableQty: string, minQty: string }>>({});
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [colorSearch, setColorSearch] = useState("");
+  const [customColors, setCustomColors] = useState<string[]>([]);
+  const MASTER_COLORS = ["Red", "Blue", "Green", "Yellow", "Black", "White", "Grey", "Navy", "Navy Blue", "Sky Blue", "Brown", "Khaki"];
+  const allColors = [...new Set([...MASTER_COLORS, ...customColors])];
 
   const [userRole, setUserRole] = useState("");
   useEffect(() => {
@@ -2275,6 +2283,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
         category: editRequest.category || "Shirt",
         gender: editRequest.gender || "Male",
         size: editRequest.size || "M",
+        sizes: [],
         colour: editRequest.color || editRequest.colour || "",
         availableQty: editRequest.available_qty ? editRequest.available_qty.toString() : "",
         blockedQty: editRequest.blocked_qty ? editRequest.blocked_qty.toString() : "",
@@ -2296,6 +2305,10 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
   };
 
   const handleSave = () => {
+    const isMultiSize = !editingId && formData.sizes && formData.sizes.length > 0;
+    const effectiveSize = isMultiSize ? formData.sizes[0] : formData.size;
+    const effectiveAvailableQty = isMultiSize ? (sizeQuantities[effectiveSize]?.availableQty || "") : formData.availableQty;
+
     if (
       !formData.skuNo ||
       !formData.hsnCode ||
@@ -2303,45 +2316,94 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       !formData.pattern ||
       !formData.category ||
       !formData.gender ||
-      !formData.size ||
+      !effectiveSize ||
       !formData.colour ||
-      !formData.availableQty ||
+      !effectiveAvailableQty ||
       !formData.unitPrice ||
-      !formData.minimumRequired
+      (!isMultiSize && !formData.minimumRequired)
     ) {
       setUiError("Please fill all mandatory fields");
       return;
     }
+
+    if (isMultiSize) {
+      const missingQty = formData.sizes.some(sz => !sizeQuantities[sz]?.availableQty || isNaN(Number(sizeQuantities[sz]?.availableQty)) || !sizeQuantities[sz]?.minQty || isNaN(Number(sizeQuantities[sz]?.minQty)));
+      if (missingQty) {
+        setUiError("Please provide valid Available Qty and Min Qty for all selected sizes");
+        return;
+      }
+    }
+
     setUiError(null);
-    const payload = {
+
+    const basePayload = {
       skuNo: formData.skuNo,
       hsnCode: formData.hsnCode,
       description: formData.description,
       pattern: formData.pattern,
       category: formData.category,
       gender: formData.gender,
-      size: formData.size,
       colour: formData.colour,
-      availableQty: Number(formData.availableQty),
       blockedQty: Number(formData.blockedQty || 0),
       minimumRequired: Number(formData.minimumRequired),
       unitPrice: Number(formData.unitPrice),
       image: formData.image,
     };
+    if (editingId || !isMultiSize) {
+      const payload = {
+        ...basePayload,
+        size: formData.size,
+        availableQty: Number(formData.availableQty),
+      };
 
-    const targetUrl = editingId
-      ? `${BACKEND_URL}/store_garments/edit/${editingId}`
-      : `${BACKEND_URL}/store_garments/add`;
+      const targetUrl = editingId
+        ? `${BACKEND_URL}/store_garments/edit/${editingId}`
+        : `${BACKEND_URL}/store_garments/add`;
 
-    fetch(targetUrl, {
-      method: editingId ? 'PUT' : 'POST',
-      headers: getAuthHeaders(true),
-      body: JSON.stringify(payload)
-    })
-      .then(async (res) => {
+      fetch(targetUrl, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify(payload)
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || errData.error || "Failed to save garment");
+          }
+          return res.json();
+        })
+        .then(() => {
+          fetchGarments();
+          fetchDashboardMeta();
+          setShowModal(false);
+          setEditingId(null);
+        })
+        .catch((err) => {
+          console.error(err);
+          setUiError(err.message || "Unable to connect to the server. Working in offline mode.");
+        });
+    } else {
+      const targetUrl = `${BACKEND_URL}/store_garments/add`;
+      
+      const items = formData.sizes.map(sz => ({
+        size: sz,
+        availableQty: Number(sizeQuantities[sz]?.availableQty || 0),
+        minimumRequired: Number(sizeQuantities[sz]?.minQty || 0)
+      }));
+
+      const payload = {
+        ...basePayload,
+        items
+      };
+
+      fetch(targetUrl, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify(payload)
+      }).then(async (res) => {
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || errData.error || "Failed to save garment");
+          throw new Error(errData.message || errData.error || "Failed to batch create garments");
         }
         return res.json();
       })
@@ -2351,12 +2413,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
         setShowModal(false);
         setEditingId(null);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
-        setUiError("Unable to connect to the server. Working in offline mode.");
+        setUiError(err.message || "Failed to batch create garments");
       });
+    }
   };
-
   return (
     <div className="space-y-6">
       {uiError && (
@@ -2554,6 +2616,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                 category: "Shirt",
                 gender: "Male",
                 size: "M",
+                sizes: [],
                 colour: "",
                 availableQty: "",
                 blockedQty: "",
@@ -2685,6 +2748,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                                 category: item.category || "Shirt",
                                 gender: item.gender || "Male",
                                 size: item.size || "M",
+                                sizes: [],
                                 colour: item.colour || "",
                                 availableQty: item.availableQty ? item.availableQty.toString() : "",
                                 blockedQty: item.blockedQty ? item.blockedQty.toString() : "",
@@ -2808,112 +2872,225 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Category <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                <div
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setActiveDropdown(activeDropdown === 'category' ? null : 'category')}
                 >
-                  <option>Shirt</option>
-                  <option>Pant</option>
-                  <option>T-Shirt</option>
-                  <option>Blazer</option>
-                  <option>Shorts</option>
-                </select>
+                  <span className="truncate">{formData.category || "Select Category"}</span>
+                  <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${activeDropdown === 'category' ? 'rotate-180' : ''}`} />
+                </div>
+                {activeDropdown === 'category' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
+                    {["Shirt", "Pant", "T-Shirt", "Blazer", "Shorts"].map(cat => (
+                      <div
+                        key={cat}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                        onClick={() => {
+                          setFormData({ ...formData, category: cat });
+                          setActiveDropdown(null);
+                        }}
+                      >
+                        {cat}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Gender <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gender: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                <div
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setActiveDropdown(activeDropdown === 'gender' ? null : 'gender')}
                 >
-                  <option>Male</option>
-                  <option>Female</option>
-                </select>
+                  <span className="truncate">{formData.gender || "Select Gender"}</span>
+                  <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${activeDropdown === 'gender' ? 'rotate-180' : ''}`} />
+                </div>
+                {activeDropdown === 'gender' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
+                    {["Male", "Female"].map(gen => (
+                      <div
+                        key={gen}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                        onClick={() => {
+                          setFormData({ ...formData, gender: gen });
+                          setActiveDropdown(null);
+                        }}
+                      >
+                        {gen}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Size <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.size}
-                  onChange={(e) =>
-                    setFormData({ ...formData, size: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                <div
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setActiveDropdown(activeDropdown === 'size' ? null : 'size')}
                 >
-                  <option>XS</option>
-                  <option>S</option>
-                  <option>M</option>
-                  <option>L</option>
-                  <option>XL</option>
-                  <option>XXL</option>
-                </select>
+                  <span className="truncate">
+                    {!editingId && formData.sizes && formData.sizes.length > 0 
+                      ? formData.sizes.join(", ") 
+                      : formData.size || "Select Size"}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${activeDropdown === 'size' ? 'rotate-180' : ''}`} />
+                </div>
+                {activeDropdown === 'size' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50">
+                    {[
+                      "S", "M", "L", "XL", "XXL",
+                      "28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60"
+                    ].map(sz => (
+                      <div
+                        key={sz}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm flex items-center justify-between"
+                        onClick={() => {
+                          if (!editingId) {
+                            const currentSizes = Array.isArray(formData.sizes) ? formData.sizes : [];
+                            const newSizes = currentSizes.includes(sz)
+                              ? currentSizes.filter(s => s !== sz)
+                              : [...currentSizes, sz];
+                            setFormData({ ...formData, sizes: newSizes });
+                          } else {
+                            setFormData({ ...formData, size: sz });
+                            setActiveDropdown(null);
+                          }
+                        }}
+                      >
+                        <span>{sz}</span>
+                        {!editingId && Array.isArray(formData.sizes) && formData.sizes.includes(sz) && (
+                          <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Color <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.colour}
-                  onChange={(e) =>
-                    setFormData({ ...formData, colour: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                <div
+                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer flex justify-between items-center"
+                  onClick={() => setActiveDropdown(activeDropdown === 'colour' ? null : 'colour')}
                 >
-                  <option value="">Select Colour</option>
-                  <option value="White">White</option>
-                  <option value="Black">Black</option>
-                  <option value="Navy Blue">Navy Blue</option>
-                  <option value="Sky Blue">Sky Blue</option>
-                  <option value="Grey">Grey</option>
-                  <option value="Red">Red</option>
-                  <option value="Green">Green</option>
-                  <option value="Yellow">Yellow</option>
-                  <option value="Brown">Brown</option>
-                  <option value="Khaki">Khaki</option>
-                </select>
+                  <span className="truncate">{formData.colour || "Select Colour"}</span>
+                  <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${activeDropdown === 'colour' ? 'rotate-180' : ''}`} />
+                </div>
+                {activeDropdown === 'colour' && (
+                  <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-lg shadow-xl z-50 flex flex-col">
+                    <div className="p-2 border-b border-border sticky top-0 bg-card z-10">
+                      <input
+                        type="text"
+                        placeholder="Search color..."
+                        value={colorSearch}
+                        onChange={(e) => setColorSearch(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border border-border rounded focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-background"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    {allColors.filter(c => c.toLowerCase().includes(colorSearch.toLowerCase())).map(col => (
+                      <div
+                        key={col}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                        onClick={() => {
+                          setFormData({ ...formData, colour: col });
+                          setActiveDropdown(null);
+                          setColorSearch("");
+                        }}
+                      >
+                        {col}
+                      </div>
+                    ))}
+                    {colorSearch && !allColors.some(c => c.toLowerCase() === colorSearch.toLowerCase()) && (
+                      <div
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm text-purple-600 dark:text-purple-400 font-medium bg-purple-50 dark:bg-purple-900/10"
+                        onClick={() => {
+                          setCustomColors(prev => [...prev, colorSearch]);
+                          setFormData({ ...formData, colour: colorSearch });
+                          setActiveDropdown(null);
+                          setColorSearch("");
+                        }}
+                      >
+                        + Add '{colorSearch}'
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
-                  Available Qty <span className="text-red-500">*</span>
-                </label>
-                <input
-                  placeholder="Quantity"
-                  type="number"
-                  value={formData.availableQty}
-                  onChange={(e) =>
-                    setFormData({ ...formData, availableQty: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
-                  Minimum Qty <span className="text-red-500">*</span>
-                </label>
-                <input
-                  placeholder="Quantity"
-                  type="number"
-                  min="0"
-                  value={formData.minimumRequired}
-                  disabled={editingId !== null && userRole !== 'Super Admin'}
-                  onChange={(e) =>
-                    setFormData({ ...formData, minimumRequired: e.target.value })
-                  }
-                  className={`w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-muted' : ''}`}
-                />
-              </div>
+              {!editingId && formData.sizes && formData.sizes.length > 0 ? (
+                <div className="sm:col-span-2 lg:col-span-3 mt-2">
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-2">
+                    Available Quantities & Min Qty <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-xl border border-border bg-card shadow-sm">
+                    {formData.sizes.map(sz => (
+                      <div key={sz} className="flex flex-col gap-2 p-3 bg-muted/20 border border-border rounded-lg">
+                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 bg-muted px-2 py-1 rounded w-max">
+                          Size {sz}
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Avail Qty"
+                            value={sizeQuantities[sz]?.availableQty || ""}
+                            onChange={(e) => setSizeQuantities({ ...sizeQuantities, [sz]: { ...sizeQuantities[sz], availableQty: e.target.value } })}
+                            className="w-full px-2 py-1.5 border border-border rounded text-foreground bg-background text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none transition-shadow"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Min Qty"
+                            value={sizeQuantities[sz]?.minQty || ""}
+                            onChange={(e) => setSizeQuantities({ ...sizeQuantities, [sz]: { ...sizeQuantities[sz], minQty: e.target.value } })}
+                            className="w-full px-2 py-1.5 border border-border rounded text-foreground bg-background text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none transition-shadow"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                      Available Qty <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      placeholder="Quantity"
+                      type="number"
+                      value={formData.availableQty}
+                      onChange={(e) =>
+                        setFormData({ ...formData, availableQty: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
+                      Minimum Qty <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      placeholder="Quantity"
+                      type="number"
+                      min="0"
+                      value={formData.minimumRequired}
+                      disabled={editingId !== null && userRole !== 'Super Admin'}
+                      onChange={(e) =>
+                        setFormData({ ...formData, minimumRequired: e.target.value })
+                      }
+                      className={`w-full px-3 py-2 border border-border rounded-lg text-foreground bg-card text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none ${editingId !== null && userRole !== 'Super Admin' ? 'opacity-50 cursor-not-allowed bg-muted' : ''}`}
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1">
                   Blocked Qty
