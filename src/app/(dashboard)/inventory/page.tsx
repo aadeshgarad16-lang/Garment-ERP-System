@@ -22,6 +22,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
+import { getAuthHeaders } from '@/lib/api';
 
 interface InventoryItem {
   id: string;
@@ -79,8 +80,15 @@ export default function InventoryPage() {
   React.useEffect(() => {
     const fetchAvailablePOs = async () => {
       const res = await apiFetch(`/api/inventory-check/pos`);
-      if (res.success && Array.isArray(res.data)) {
-        setAvailablePOs(res.data);
+      if (res.success) {
+        // apiFetch wraps response: { success, data: BACKEND_RESPONSE }
+        // backend returns: { success, pos: [...], data: [...] }
+        const backendData = res.data || {};
+        const poList = Array.isArray(backendData.pos) ? backendData.pos
+          : Array.isArray(backendData.data) ? backendData.data
+          : Array.isArray(backendData) ? backendData
+          : [];
+        setAvailablePOs(poList);
       }
     };
     fetchAvailablePOs();
@@ -89,9 +97,10 @@ export default function InventoryPage() {
   const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const authHeaders = getAuthHeaders(false);
 
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        ...authHeaders,
         ...(options.headers as Record<string, string> || {}),
       };
 
@@ -131,12 +140,18 @@ export default function InventoryPage() {
     setNoBomFound(false);
     const res = await apiFetch(`/api/inventory-check/details?po_number=${encodeURIComponent(poNumber)}`);
 
-    if (res.success && Array.isArray(res.data)) {
-      if (res.data.length === 0) {
+    if (res.success) {
+      // apiFetch wraps: { success, data: BACKEND_RESPONSE }
+      // backend /api/inventory-check/details returns: { success, data: [...], summary: {} }
+      const backendData = res.data || {};
+      const items = Array.isArray(backendData.data) ? backendData.data
+        : Array.isArray(backendData) ? backendData
+        : [];
+      if (items.length === 0) {
         setNoBomFound(true);
         setPoInventoryData([]);
       } else {
-        const formatted = res.data.map((item: any, index: number) => ({
+        const formatted = items.map((item: any, index: number) => ({
           id: item.id || item.material_id || `MAT-${Math.floor(Math.random() * 1000)}`,
           name: item.material_name || item.name || `Item #${index + 1}`,
           category: item.category || 'Fabric',
