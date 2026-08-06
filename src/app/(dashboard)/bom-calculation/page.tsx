@@ -273,6 +273,27 @@ function BOMCalculationView() {
   const [bomApiData, setBomApiData] = useState<any>(null);
   const [urlNetQty, setUrlNetQty] = useState<number | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState<boolean>(false);
+  const [cellInputStrings, setCellInputStrings] = useState<{ [key: string]: string }>({});
+
+  const handleCellInputChange = (artIdx: number, sizeIdx: number, field: 'per_piece_qty' | 'per_unit_price', rawVal: string) => {
+    if (rawVal !== '' && !/^\d*\.?\d*$/.test(rawVal)) {
+      return;
+    }
+    const key = `${artIdx}-${sizeIdx}-${field}`;
+    setCellInputStrings(prev => ({ ...prev, [key]: rawVal }));
+
+    const numericVal = parseFloat(rawVal) || 0;
+    handleCellEdit(artIdx, sizeIdx, field, numericVal);
+  };
+
+  const handleCellInputBlur = (artIdx: number, sizeIdx: number, field: 'per_piece_qty' | 'per_unit_price') => {
+    const key = `${artIdx}-${sizeIdx}-${field}`;
+    setCellInputStrings(prev => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
 
   const handleCellEdit = (artIdx: number, sizeIdx: number, field: 'per_piece_qty' | 'per_unit_price', value: number) => {
     setArticles(prev => {
@@ -958,26 +979,28 @@ function BOMCalculationView() {
 
                                 <div className="col-span-2 flex justify-center text-slate-700 dark:text-slate-300 font-medium">
                                   <input
-                                    type="number"
-                                    step="any"
-                                    value={perPiece}
-                                    onChange={(e) => handleCellEdit(artIdx, sizeIdx, 'per_piece_qty', parseFloat(e.target.value) || 0)}
-                                    className="w-20 text-center border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={cellInputStrings[`${artIdx}-${sizeIdx}-per_piece_qty`] !== undefined ? cellInputStrings[`${artIdx}-${sizeIdx}-per_piece_qty`] : String(perPiece ?? 0)}
+                                    onChange={(e) => handleCellInputChange(artIdx, sizeIdx, 'per_piece_qty', e.target.value)}
+                                    onBlur={() => handleCellInputBlur(artIdx, sizeIdx, 'per_piece_qty')}
+                                    className="w-20 text-center border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-mono font-medium"
                                   />
                                 </div>
 
-                                <div className="col-span-2 text-center font-bold text-slate-900 dark:text-white">
+                                <div className="col-span-2 text-center font-bold text-slate-900 dark:text-white font-mono">
                                   {totQty}
                                 </div>
 
                                 <div className="col-span-1 flex items-center justify-end gap-1 text-slate-700 dark:text-slate-300">
                                   <span className="text-slate-400 dark:text-slate-500">₹</span>
                                   <input
-                                    type="number"
-                                    step="any"
-                                    value={unitPrice}
-                                    onChange={(e) => handleCellEdit(artIdx, sizeIdx, 'per_unit_price', parseFloat(e.target.value) || 0)}
-                                    className="w-20 text-right border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={cellInputStrings[`${artIdx}-${sizeIdx}-per_unit_price`] !== undefined ? cellInputStrings[`${artIdx}-${sizeIdx}-per_unit_price`] : String(unitPrice ?? 0)}
+                                    onChange={(e) => handleCellInputChange(artIdx, sizeIdx, 'per_unit_price', e.target.value)}
+                                    onBlur={() => handleCellInputBlur(artIdx, sizeIdx, 'per_unit_price')}
+                                    className="w-20 text-right border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-mono font-medium"
                                   />
                                 </div>
 
