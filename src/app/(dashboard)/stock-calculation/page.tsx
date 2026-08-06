@@ -408,11 +408,16 @@ function StockCalculationContent() {
         await reloadOrders();
         window.dispatchEvent(new Event("orders-updated"));
         const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
+        // Calculate shortage qty for split: available stock goes to packing, shortage goes to BOM
+        const specs = displayOrder?.specifications || displayOrder?.specs || displayOrder?.items || [];
+        const splitTotalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder.quantity || 0;
+        const splitTotalAvailable = displayOrder.available_stock ?? displayOrder.storeStock ?? displayOrder.store_stock ?? 0;
+        const splitShortageQty = Math.max(0, splitTotalOrdered - splitTotalAvailable);
         setSelectedCustomer('');
         setSelectedPONumber('');
         setAllocatedToPacking(false);
         setAllocatedToBOM(false);
-        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}`);
+        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${splitShortageQty}`);
       };
       finalizeSplit();
     }
@@ -494,7 +499,16 @@ function StockCalculationContent() {
           } else if (routeTo === 'service-outsource') {
             nextRoute = 'out-source';
           }
-          router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+          // For BOM routes, pass netQty (total ordered = shortage since no stock)
+          if (nextRoute === 'bom-calculation') {
+            const specs = displayOrder?.specifications || displayOrder?.specs || displayOrder?.items || [];
+            const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder?.quantity || 0;
+            const availableStock = displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock ?? 0;
+            const shortageQty = Math.max(0, totalOrdered - availableStock);
+            router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${shortageQty}`);
+          } else {
+            router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+          }
         } else {
           setStatusMessage(data.error || "Failed to process order");
         }
@@ -520,7 +534,15 @@ function StockCalculationContent() {
         } else if (routeTo === 'service-outsource') {
           nextRoute = 'out-source';
         }
-        router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+        if (nextRoute === 'bom-calculation') {
+          const specs = displayOrder?.specifications || displayOrder?.specs || displayOrder?.items || [];
+          const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder?.quantity || 0;
+          const availableStock = displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock ?? 0;
+          const shortageQty = Math.max(0, totalOrdered - availableStock);
+          router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${shortageQty}`);
+        } else {
+          router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+        }
       }
     }
   };
@@ -578,7 +600,12 @@ function StockCalculationContent() {
         window.dispatchEvent(new Event("orders-updated"));
         setSelectedCustomer('');
         setSelectedPONumber('');
-        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}`);
+        // Pass shortage quantity: the amount that couldn't be fulfilled from store stock
+        const specs = displayOrder?.specifications || displayOrder?.specs || displayOrder?.items || [];
+        const shortTotalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder?.quantity || 0;
+        const shortAvailable = displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock ?? 0;
+        const shortageQty = Math.max(0, shortTotalOrdered - shortAvailable);
+        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${shortageQty}`);
       } else {
         setStatusMessage(data.error || "Failed to submit BOM shortage");
       }

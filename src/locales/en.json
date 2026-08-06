@@ -211,11 +211,11 @@
     "totalProd": "Total Prod",
     "wastage": "Wastage Margin",
     "fabric": "Total Fabric",
-    "allied": "Allied Materials",
+    "allied": "Allied Articles",
     "cost": "Est. Cost",
     "shortages": "Shortages",
-    "materials": "Materials Calculation",
-    "export": "Export BOM",
+    "materials": "Articles Calculation",
+    "export": "Export BOM / Articles",
     "checkInventory": "Check Inventory"
   },
   "inventoryVal": {

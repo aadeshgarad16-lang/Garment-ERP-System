@@ -16,7 +16,8 @@ import {
   ShoppingCart,
   Box,
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
@@ -27,24 +28,61 @@ import { useOrders } from '@/contexts/order-context';
 import { getAuthHeaders } from '@/lib/api';
 import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
-interface SizeRow {
-  size: string;
-  perPieceQty: number | string;
-  totalQty: number;
-  perUnitPrice: string | number;
-  finalPrice: number;
-  orderQty: number;
+async function safeFetchJson(url: string, options?: RequestInit) {
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok) return { success: false, data: null };
+    const data = await res.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, data: null };
+  }
 }
 
-interface MaterialGroup {
+interface Order {
+  id: string;
+  poNumber: string;
+  customerName: string;
+  poDate: string;
+  deliveryDate?: string;
+  totalAmount?: number;
+  status?: string;
+  activeStage?: string;
+  itemsCount?: number;
+  progress?: number;
+  garmentDetails?: any[];
+}
+
+interface SizeRow {
+  size: string;
+  per_piece_qty?: number | string;
+  perPieceQty?: number | string;
+  total_qty_inc_wastage?: number | string;
+  total_qty?: number | string;
+  totalQty?: number | string;
+  unit_price?: number | string;
+  per_unit_price?: number | string;
+  perUnitPrice?: number | string;
+  final_price?: number | string;
+  finalPrice?: number | string;
+  orderQty?: number;
+  garment_qty?: number;
+}
+
+interface ArticleGroup {
   id?: string;
-  materialName: string;
+  article_name?: string;
+  articleName?: string;
+  materialName?: string;
   unit?: string;
   brand?: string;
   sizeType?: string;
-  sizes: SizeRow[];
-  totalCombinedQty: number;
-  totalCombinedAmount: number;
+  breakdown?: SizeRow[];
+  sizes?: SizeRow[];
+  size_breakdown?: SizeRow[];
+  article_combined_qty?: number;
+  totalCombinedQty?: number;
+  totalCombinedAmount?: number;
   category?: string;
   fabric_width?: string;
   selectedWidth?: string;
@@ -77,7 +115,7 @@ function SearchableDropdown({
   const getValue = (opt: DropdownOption) => typeof opt === 'string' ? opt : opt.value;
 
   const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find(opt => getValue(opt) === value);
+  const selectedOption = (options || []).find(opt => getValue(opt) === value);
   const displayLabel = selectedOption ? getLabel(selectedOption) : value;
   const [search, setSearch] = useState(displayLabel);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
@@ -97,126 +135,204 @@ function SearchableDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [displayLabel]);
 
-  const filteredOptions = React.useMemo(() => {
-    if (!search || search === displayLabel) {
-      return options;
-    }
-    return options.filter((opt) =>
-      getLabel(opt).toLowerCase().includes(search.toLowerCase())
-    );
-  }, [options, search, displayLabel]);
+  const filteredOptions = (options || []).filter((opt) =>
+    getLabel(opt).toLowerCase().includes((search || '').toLowerCase())
+  );
 
   return (
-    <div className="relative" ref={wrapperRef}>
-      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+    <div className="relative w-full" ref={wrapperRef}>
+      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
         {label}
       </label>
       <div className="relative">
         <input
           type="text"
+          disabled={disabled}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setIsOpen(true);
-            if (e.target.value === '') {
-              onChange('');
-            }
           }}
           onFocus={() => setIsOpen(true)}
-          disabled={disabled}
           placeholder={placeholder}
-          className="w-full h-[42px] px-3 py-2.5 pr-10 bg-card border border-border text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full px-3.5 py-2.5 bg-background border border-input rounded-lg text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${disabled ? 'opacity-50 cursor-not-allowed bg-muted' : 'cursor-pointer'}`}
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
-          <ChevronDown className="h-4 w-4" />
-        </div>
+        <ChevronDown
+          className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-transform pointer-events-none ${isOpen ? 'rotate-180' : ''}`}
+        />
       </div>
+
       {isOpen && !disabled && (
-        <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-card border border-border rounded-lg shadow-lg py-1">
-          {filteredOptions.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-neutral-500">No options found</li>
-          ) : (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-auto py-1 text-sm">
+          {filteredOptions.length > 0 ? (
             filteredOptions.map((opt, idx) => (
-              <li
-                key={`opt-${getValue(opt)}-${idx}`}
-                className="px-3 py-2 text-sm text-foreground hover:bg-indigo-50 dark:hover:bg-indigo-900/50 cursor-pointer"
-                onMouseDown={(e) => {
-                  e.preventDefault();
+              <div
+                key={`opt-${idx}`}
+                onClick={() => {
                   onChange(getValue(opt));
                   setSearch(getLabel(opt));
                   setIsOpen(false);
                 }}
+                className={`px-3.5 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors ${getValue(opt) === value ? 'bg-accent/50 font-semibold text-primary' : 'text-popover-foreground'}`}
               >
                 {getLabel(opt)}
-              </li>
+              </div>
             ))
+          ) : (
+            <div className="px-3.5 py-2.5 text-muted-foreground text-xs text-center">
+              No matching options
+            </div>
           )}
-        </ul>
+        </div>
       )}
     </div>
   );
 }
 
-// Helper: Safely parse JSON responses without crashing on HTML 404/500 pages
-const safeFetchJson = async (url: string, options?: RequestInit) => {
-  const res = await fetch(url, options);
-  const contentType = res.headers.get('content-type') || '';
-  if (!res.ok || !contentType.includes('application/json')) {
-    console.error(`Fetch failed for ${url} with status ${res.status}`);
-    return { success: false, data: null };
+// Lightweight React Error Boundary
+class BOMErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
-  const data = await res.json();
-  return { success: true, data };
-};
 
-// Sanitizer Helper: Converts "PO-2024-005 (Rishi)" -> "PO-2024-005"
-const sanitizePOKey = (rawInput: any): string => {
-  if (!rawInput) return '';
-  const str = String(rawInput);
-  return str
-    .replace(/^PO:\s*/i, '')
-    .replace(/\s*\(.*?\)/g, '')
-    .split('|')[0]
-    .trim();
-};
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
 
-export default function BOMCalculationView() {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("BOM Calculation Component Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-4xl mx-auto my-12 p-8 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-red-200 dark:border-red-900/50 text-center space-y-4 font-sans">
+          <div className="inline-flex p-3 bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-full">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Unable to Load BOM Calculation</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+            A temporary component error occurred. Please retry or refresh the page.
+          </p>
+          {this.state.error?.message && (
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono text-slate-700 dark:text-slate-300 max-w-lg mx-auto overflow-x-auto text-left">
+              {this.state.error.message}
+            </div>
+          )}
+          <div className="pt-4 flex justify-center gap-3">
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+            >
+              Retry & Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function BOMCalculationView() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { isAuthorized } = useAuth();
-  const canAdvance = isAuthorized("Inventory Check");
+  const { user } = useAuth();
   const { orders } = useOrders();
 
-  const [isLoaded, setIsLoaded] = useState(false);
+  const userRoles = (user?.role || '').split(',').map(r => r.trim().toLowerCase());
+  const canAdvance = userRoles.some(r => ['admin', 'super admin', 'manager', 'production_manager'].includes(r));
+
+  const sanitizePOKey = (raw: string) => {
+    if (!raw) return '';
+    let cleaned = raw.trim();
+    cleaned = cleaned.replace(/^PO:\s*/i, '');
+    cleaned = cleaned.replace(/\s*\(.*?\)/, '');
+    cleaned = cleaned.split('|')[0].trim();
+    return cleaned;
+  };
+
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [selectedPODate, setSelectedPODate] = useState<string>('');
   const [selectedPONumber, setSelectedPONumber] = useState<string>('');
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
   const [wastage, setWastage] = useState(5);
-  const [materials, setMaterials] = useState<MaterialGroup[]>([]);
+  const [articles, setArticles] = useState<ArticleGroup[]>([]);
   const [, setGarmentSpecs] = useState<any>(null);
   const [sleeveType, setSleeveType] = useState<string>('');
   const [selectedGarmentIndex, setSelectedGarmentIndex] = useState<number>(0);
   const [isTotalBomMode, setIsTotalBomMode] = useState<boolean>(false);
+  const [bomApiData, setBomApiData] = useState<any>(null);
+  const [urlNetQty, setUrlNetQty] = useState<number | null>(null);
+  const [isLoadingApi, setIsLoadingApi] = useState<boolean>(false);
+
+  const handleCellEdit = (artIdx: number, sizeIdx: number, field: 'per_piece_qty' | 'per_unit_price', value: number) => {
+    setArticles(prev => {
+      const updated = [...prev];
+      const art = { ...updated[artIdx] };
+      const sizesArray = [...(art.sizes || art.size_breakdown || [])];
+      const row = { ...sizesArray[sizeIdx] };
+      
+      if (field === 'per_piece_qty') {
+        row.per_piece_qty = value;
+        row.perPieceQty = value;
+      } else if (field === 'per_unit_price') {
+        row.per_unit_price = value;
+        row.perUnitPrice = value;
+      }
+      
+      const numericQty = parseFloat(String(row.per_piece_qty ?? row.perPieceQty ?? 0)) || 0;
+      const numericPrice = parseFloat(String(row.per_unit_price ?? row.perUnitPrice ?? 0)) || 0;
+      const orderQ = parseFloat(String(row.orderQty ?? row.garment_qty ?? 0)) || 0;
+      
+      const newTotalQty = (numericQty * orderQ) * (1 + (wastage || 0) / 100);
+      const newFinalPrice = newTotalQty * numericPrice;
+      
+      row.total_qty_inc_wastage = Number(newTotalQty.toFixed(2));
+      row.totalQty = Number(newTotalQty.toFixed(2));
+      row.total_qty = Number(newTotalQty.toFixed(2));
+      
+      row.final_price = Number(newFinalPrice.toFixed(2));
+      row.finalPrice = Number(newFinalPrice.toFixed(2));
+      
+      sizesArray[sizeIdx] = row;
+      art.sizes = sizesArray;
+      art.size_breakdown = sizesArray;
+      
+      art.article_combined_qty = Number(sizesArray.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2));
+      art.totalCombinedQty = Number(sizesArray.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2));
+      art.totalCombinedAmount = Number(sizesArray.reduce((sum: number, s: SizeRow) => sum + (Number(s?.final_price ?? s?.finalPrice) || 0), 0).toFixed(2));
+      
+      updated[artIdx] = art;
+      return updated;
+    });
+  };
 
   useEffect(() => {
     if (selectedPONumber) {
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
       safeFetchJson(`${BACKEND_URL}/purchase_orders/details/${selectedPONumber}`, {
         headers: getAuthHeaders()
-      }).then(({ success, data }) => {
+      }).then(({ success, data }: any) => {
         if (success && data && data.success !== false) {
           setDetailedOrder({
             ...data,
             poNumber: data.po_number || selectedPONumber,
-            specs: data.specs?.map((s: any) => ({
+            specs: (data.specs || []).map((s: any) => ({
               ...s,
               itemDescription: s.item_description,
               stockAvailable: s.stock_available,
               useExistingStock: s.use_existing_stock,
               stockStatus: s.stock_status
-            })) || []
+            }))
           });
         }
       });
@@ -225,107 +341,79 @@ export default function BOMCalculationView() {
     }
   }, [selectedPONumber]);
 
+  // Read netQty from URL params
   useEffect(() => {
-    const ordersStr = localStorage.getItem('savedOrders');
-    let loadedOrders = [];
-    if (ordersStr) {
-      try {
-        loadedOrders = JSON.parse(ordersStr);
-      } catch (e) { }
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const urlPoNumber = params.get('poNumber');
-
-    if (urlPoNumber) {
-      const targetKeywords = ['bom calculation'];
-      const targetOrder = loadedOrders.find((o: any) => o.poNumber === urlPoNumber && isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
-      if (targetOrder) {
-        setSelectedCustomer(targetOrder.customerName || '');
-        setSelectedPODate(targetOrder.poDate || '');
-        setSelectedPONumber(targetOrder.poNumber || '');
-        setWastage(5);
-        return;
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const netQtyParam = searchParams.get('netQty');
+      if (netQtyParam !== null) {
+        const parsedNetQty = parseFloat(netQtyParam);
+        if (!isNaN(parsedNetQty)) {
+          setUrlNetQty(parsedNetQty);
+        }
       }
-    }
-
-    const draft = localStorage.getItem('bomCalculationDraft');
-    if (draft) {
-      try {
-        const data = JSON.parse(draft);
-        if (data.selectedCustomer) setSelectedCustomer(data.selectedCustomer);
-        if (data.selectedPODate) setSelectedPODate(data.selectedPODate);
-        if (data.selectedPONumber) setSelectedPONumber(data.selectedPONumber);
-        if (data.wastage !== undefined) setWastage(data.wastage);
-      } catch (e) { }
+      const poParam = searchParams.get('poNumber');
+      if (poParam) {
+        setSelectedPONumber(poParam);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 800);
-    if (orders && orders.length > 0) {
-      setIsLoaded(true);
-    }
-    return () => clearTimeout(timer);
-  }, [orders]);
+  const ordersList: Order[] = (orders || []).map((o: any) => ({
+    id: o?.poNumber || o?.po_number || o?.id || '',
+    poNumber: o?.poNumber || o?.po_number || '',
+    customerName: o?.customerName || o?.customer_name || o?.clientName || o?.customer || '',
+    poDate: o?.poDate || o?.po_date || '',
+    deliveryDate: o?.deliveryDate || o?.delivery_date || '',
+    totalAmount: o?.totalAmount || o?.total_amount || o?.total_value || 0,
+    status: o?.status || 'Pending',
+    activeStage: o?.stage || o?.activeStage || o?.step || 'BOM Calculation',
+    itemsCount: o?.itemsCount || (o?.specifications ? o.specifications.length : 1),
+    progress: o?.progress || 0,
+    garmentDetails: (o?.specifications || o?.items || []).map((s: any) => ({
+      category: s?.category || s?.fabric_type || 'Shirt',
+      sleeveType: s?.sleeve_type || s?.sleeveType || s?.sleeve || 'full_sleeve',
+      colors: s?.colors || s?.color ? [s.colors || s.color] : ['White'],
+      sizes: s?.sizes || s?.size ? (typeof (s.sizes || s.size) === 'string' ? (s.sizes || s.size).split(',').map((sz: string) => sz.trim()) : (s.sizes || s.size)) : ['38', '40', '42'],
+      quantity: Number(s?.quantity || s?.ordered_qty || 0),
+      itemDescription: s?.itemDescription || s?.item_description || '',
+      pattern: s?.pattern || '',
+      stockAvailable: Number(s?.stockAvailable || s?.stock_available || s?.available_stock || 0),
+      useExistingStock: Number(s?.useExistingStock || s?.use_existing_stock || 0),
+      stockStatus: s?.stockStatus || s?.stock_status || ''
+    }))
+  }));
 
-  useEffect(() => {
-    localStorage.setItem('bomCalculationDraft', JSON.stringify({ selectedCustomer, selectedPODate, selectedPONumber, wastage }));
-  }, [selectedCustomer, selectedPODate, selectedPONumber, wastage]);
+  const targetKeywords = ['bom calculation', 'bom', 'stage 4'];
+  const activeOrders = ordersList.filter(o => isStageMatch(o.activeStage, targetKeywords) && o.status === 'SUBMITTED');
 
-  const activeOrders = React.useMemo(() => {
-    const targetKeywords = ['bom calculation'];
-    return (orders || []).filter(o => isStageMatch(o.stage, targetKeywords) && o.status === 'SUBMITTED');
-  }, [orders]);
+  const customerOptions: DropdownOption[] = Array.from(
+    new Set(activeOrders.map(o => o.customerName).filter(Boolean))
+  ).sort();
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (selectedPONumber && !activeOrders.find(o => o.poNumber === selectedPONumber)) {
-      setSelectedCustomer('');
-      setSelectedPODate('');
-      setSelectedPONumber('');
-      setWastage(5);
-      localStorage.removeItem('bomCalculationDraft');
-    }
-  }, [activeOrders, selectedPONumber, isLoaded]);
+  const handleCustomerChange = (customerName: string) => {
+    setSelectedCustomer(customerName);
+    setSelectedPODate('');
+    setSelectedPONumber('');
+  };
 
-  const customers = Array.from(new Set(activeOrders.map(o => o.customerName))).filter(Boolean) as string[];
-
-  const filteredOrders = activeOrders.filter(o =>
-    o.customerName === selectedCustomer &&
-    (selectedPODate ? o.poDate === selectedPODate : true)
+  const filteredOrdersForCustomer = activeOrders.filter(
+    o => !selectedCustomer || o.customerName === selectedCustomer
   );
 
-  // Handle PO Dropdown Change with safe fetch handling
-  const handlePOChange = async (selectedPO: string) => {
-    if (!selectedPO) {
-      setMaterials([]);
-      setGarmentSpecs(null);
-      return;
-    }
+  const poDateOptions: DropdownOption[] = Array.from(
+    new Set(filteredOrdersForCustomer.map(o => o.poDate).filter(Boolean))
+  ).sort();
 
-    const cleanPO = sanitizePOKey(selectedPO);
-    setSelectedPONumber(cleanPO);
-
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const flaskResult = await safeFetchJson(`${BACKEND_URL}/api/bom/calculate-from-db?poNumber=${encodeURIComponent(cleanPO)}`);
-
-    if (flaskResult.success && flaskResult.data?.success) {
-      setMaterials(flaskResult.data.materials || flaskResult.data.bom_calculations || []);
-      setGarmentSpecs(flaskResult.data.garmentSpecs || null);
-      return;
-    }
-
-    // Fallback to Next.js API route if backend is unavailable
-    const nextResult = await safeFetchJson(`/api/bom/calculate?poNumber=${encodeURIComponent(cleanPO)}`);
-    if (nextResult.success && nextResult.data?.success) {
-      setMaterials(nextResult.data.materials || nextResult.data.bom_calculations || []);
-      setGarmentSpecs(nextResult.data.garmentSpecs || null);
-    } else {
-      setMaterials([]);
-      setGarmentSpecs(null);
-    }
+  const handlePODateChange = (poDate: string) => {
+    setSelectedPODate(poDate);
+    setSelectedPONumber('');
   };
+
+  const filteredOrders = activeOrders.filter(o =>
+    (!selectedCustomer || o.customerName === selectedCustomer) &&
+    (!selectedPODate || o.poDate === selectedPODate)
+  );
 
   const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
   const poDropdownOptions = poNumbers.map(po => {
@@ -336,7 +424,7 @@ export default function BOMCalculationView() {
 
   const baseOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
   const currentOrder = detailedOrder ? { ...baseOrder, ...detailedOrder } : baseOrder;
-  const activeSpecs = currentOrder ? (currentOrder.specs || []) : [];
+  const activeSpecs = currentOrder ? (currentOrder.specs || currentOrder.garmentDetails || []) : [];
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '—';
@@ -352,15 +440,50 @@ export default function BOMCalculationView() {
     }
   };
 
-  const activeGarment = activeSpecs[selectedGarmentIndex] || activeSpecs[0];
+  const activeGarment = (activeSpecs || [])[selectedGarmentIndex] || (activeSpecs || [])[0];
 
-  const totalProductionRequired = isTotalBomMode
-    ? activeSpecs.reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0)), 0)
-    : activeGarment
-      ? Math.max(0, (Number(activeGarment.quantity) || 0) - (Number(activeGarment.useExistingStock) || 0))
-      : 0;
+  const totalProductionRequired = urlNetQty !== null
+    ? urlNetQty
+    : isTotalBomMode
+      ? (activeSpecs || []).reduce((sum: number, spec: any) => sum + Math.max(0, (Number(spec?.quantity) || 0) - (Number(spec?.useExistingStock) || 0)), 0)
+      : activeGarment
+        ? Math.max(0, (Number(activeGarment?.quantity) || 0) - (Number(activeGarment?.useExistingStock) || 0))
+        : 0;
 
   const garmentType = isTotalBomMode ? 'Total Order' : (activeGarment?.itemDescription || 'Shirt');
+
+  // Fetch from unified BOM endpoint whenever PO or netQty changes
+  useEffect(() => {
+    if (!selectedPONumber) {
+      setBomApiData(null);
+      setArticles([]);
+      return;
+    }
+    setIsLoadingApi(true);
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+    const netQtyQuery = urlNetQty !== null ? `&net_qty=${urlNetQty}` : '';
+    safeFetchJson(
+      `${BACKEND_URL}/api/bom-calculation/${encodeURIComponent(selectedPONumber)}?dummy=1${netQtyQuery}`,
+      { headers: getAuthHeaders() }
+    ).then(({ success, data }: any) => {
+      setIsLoadingApi(false);
+      if (success && data && !data.error) {
+        setBomApiData(data);
+        const fetchedArticles = data.articles || data.materials || [];
+        if (Array.isArray(fetchedArticles)) {
+          setArticles(fetchedArticles as ArticleGroup[]);
+        }
+      } else {
+        setBomApiData(null);
+        setArticles([]);
+      }
+    }).catch((err: any) => {
+      setIsLoadingApi(false);
+      console.error("Fetch BOM calculation error:", err);
+      setBomApiData(null);
+      setArticles([]);
+    });
+  }, [selectedPONumber, urlNetQty]);
 
   useEffect(() => {
     if (currentOrder && activeGarment) {
@@ -378,9 +501,9 @@ export default function BOMCalculationView() {
         currentOrder?.sleeve_type ||
         '';
 
-      if (sleeveValue.toLowerCase().includes('half')) {
+      if (typeof sleeveValue === 'string' && sleeveValue.toLowerCase().includes('half')) {
         setSleeveType('half_sleeve');
-      } else if (sleeveValue.toLowerCase().includes('full')) {
+      } else if (typeof sleeveValue === 'string' && sleeveValue.toLowerCase().includes('full')) {
         setSleeveType('full_sleeve');
       } else {
         setSleeveType('');
@@ -390,35 +513,58 @@ export default function BOMCalculationView() {
     }
   }, [currentOrder, activeGarment, selectedGarmentIndex]);
 
-  useEffect(() => {
-    if (selectedPONumber) {
-      handlePOChange(selectedPONumber);
+  // Handle PO Dropdown Change with safe fetch handling
+  const handlePOChange = async (selectedPO: string) => {
+    if (!selectedPO) {
+      setSelectedPONumber('');
+      setArticles([]);
+      setGarmentSpecs(null);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPONumber, selectedGarmentIndex, activeGarment?.itemDescription, sleeveType]);
+
+    const cleanPO = sanitizePOKey(selectedPO);
+    setSelectedPONumber(cleanPO);
+
+    // Auto-fill PO Date & Customer Name if matching order found
+    const match = activeOrders.find(o => sanitizePOKey(o.poNumber) === cleanPO || o.poNumber === cleanPO);
+    if (match) {
+      if (match.customerName) {
+        setSelectedCustomer(match.customerName);
+      }
+      if (match.poDate) {
+        setSelectedPODate(match.poDate);
+      }
+    }
+  };
 
   // Recalculate totals dynamically if wastage changes
   React.useEffect(() => {
-    setMaterials(prev => prev.map(mat => {
-      const sizes = mat.sizes.map((sz: SizeRow) => {
-        const numericQty = parseFloat(String(sz.perPieceQty)) || 0;
-        const numericPrice = parseFloat(String(sz.perUnitPrice)) || 0;
+    setArticles(prev => (Array.isArray(prev) ? prev : []).map(art => {
+      const sizesArray = art?.sizes || art?.size_breakdown || [];
+      const sizes = sizesArray.map((sz: SizeRow) => {
+        const numericQty = parseFloat(String(sz?.per_piece_qty ?? sz?.perPieceQty ?? 0)) || 0;
+        const numericPrice = parseFloat(String(sz?.per_unit_price ?? sz?.perUnitPrice ?? 0)) || 0;
+        const orderQ = sz?.orderQty || sz?.garment_qty || 0;
 
-        const newTotalQty = (numericQty * sz.orderQty) * (1 + (wastage || 0) / 100);
+        const newTotalQty = (numericQty * orderQ) * (1 + (wastage || 0) / 100);
         const newFinalPrice = newTotalQty * numericPrice;
 
         return {
           ...sz,
+          total_qty_inc_wastage: Number(newTotalQty.toFixed(2)),
           totalQty: Number(newTotalQty.toFixed(2)),
+          final_price: Number(newFinalPrice.toFixed(2)),
           finalPrice: Number(newFinalPrice.toFixed(2))
         };
       });
 
       return {
-        ...mat,
+        ...art,
         sizes,
-        totalCombinedQty: Number(sizes.reduce((sum: number, s: SizeRow) => sum + s.totalQty, 0).toFixed(2)),
-        totalCombinedAmount: Number(sizes.reduce((sum: number, s: SizeRow) => sum + s.finalPrice, 0).toFixed(2))
+        size_breakdown: sizes,
+        article_combined_qty: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2)),
+        totalCombinedQty: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2)),
+        totalCombinedAmount: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.final_price ?? s?.finalPrice) || 0), 0).toFixed(2))
       };
     }));
   }, [wastage]);
@@ -428,12 +574,14 @@ export default function BOMCalculationView() {
     let totalAlliedUnits = 0;
     let grandTotalCost = 0;
 
-    materials.forEach((mat) => {
-      const isFabric = mat.materialName?.toLowerCase().includes('fabric');
+    (articles || []).forEach((art) => {
+      const name = (art?.article_name || art?.articleName || art?.materialName || '').toLowerCase();
+      const isFabric = name.includes('fabric') || name.includes('cotton');
+      const sizesArray = art?.sizes || art?.size_breakdown || [];
 
-      mat.sizes.forEach((s: any) => {
-        const qty = parseFloat(String(s.totalQty)) || 0;
-        const price = parseFloat(String(s.finalPrice)) || 0;
+      sizesArray.forEach((s: any) => {
+        const qty = parseFloat(String(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0)) || 0;
+        const price = parseFloat(String(s?.final_price ?? s?.finalPrice ?? 0)) || 0;
 
         if (isFabric) {
           totalFabricMeters += qty;
@@ -446,12 +594,12 @@ export default function BOMCalculationView() {
 
     return {
       totalFabric: totalFabricMeters.toFixed(1),
-      alliedMaterials: Math.round(totalAlliedUnits),
+      alliedArticles: Math.round(totalAlliedUnits),
       estCost: grandTotalCost.toFixed(2)
     };
-  }, [materials]);
+  }, [articles]);
 
-  const itemsToProcure = totalProductionRequired > 0 ? materials.filter(m => (m.missing || 0) > 0).length : 0;
+  const itemsToProcure = totalProductionRequired > 0 ? (articles || []).filter(m => (m?.missing || 0) > 0).length : 0;
 
   return (
     <div className="max-w-full mx-auto space-y-4 sm:space-y-6 font-sans pb-8 px-4 sm:px-6 lg:px-8">
@@ -464,13 +612,17 @@ export default function BOMCalculationView() {
             <Calculator className="h-6 w-6 text-indigo-600" />
             {t('bom.title')}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('bom.subtitle')}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t('bom.subtitle')}
+          </p>
         </div>
       </div>
 
+      {/* Main Content Area */}
       <div className="space-y-6">
-        {/* 1. BOM Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        {/* 1. Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-card rounded-xl shadow-sm border border-border p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -488,7 +640,7 @@ export default function BOMCalculationView() {
               </div>
               <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.allied')}</p>
             </div>
-            <p className="text-xl font-bold text-foreground">{totals.alliedMaterials} <span className="text-sm font-normal text-muted-foreground">units</span></p>
+            <p className="text-xl font-bold text-foreground">{totals.alliedArticles} <span className="text-sm font-normal text-muted-foreground">units</span></p>
           </div>
 
           <div className="bg-card rounded-xl shadow-sm border border-border p-4">
@@ -508,7 +660,7 @@ export default function BOMCalculationView() {
               </div>
               <p className="text-xs font-medium text-muted-foreground uppercase">{t('bom.shortages')}</p>
             </div>
-            <p className="text-xl font-bold text-foreground">{itemsToProcure} <span className="text-sm font-normal text-muted-foreground">{t('procurement.requestsHeader') || 'materials'}</span></p>
+            <p className="text-xl font-bold text-foreground">{itemsToProcure} <span className="text-sm font-normal text-muted-foreground">articles</span></p>
           </div>
         </div>
 
@@ -524,15 +676,10 @@ export default function BOMCalculationView() {
             <div className="w-full">
               <SearchableDropdown
                 label="Customer Name"
-                options={customers}
+                options={customerOptions}
                 value={selectedCustomer}
                 placeholder="Select a Customer..."
-                onChange={(val) => {
-                  setSelectedCustomer(val);
-                  setSelectedPODate('');
-                  setSelectedPONumber('');
-                  setWastage(5);
-                }}
+                onChange={handleCustomerChange}
               />
             </div>
             <div className="w-full">
@@ -540,59 +687,55 @@ export default function BOMCalculationView() {
                 label="PO Number"
                 options={poDropdownOptions}
                 value={selectedPONumber}
-                placeholder="Select a PO Number..."
-                disabled={!selectedCustomer}
-                onChange={(val) => {
-                  setSelectedGarmentIndex(0);
-                  setWastage(5);
-                  handlePOChange(val);
-                }}
+                placeholder="Select PO Number..."
+                onChange={(poVal) => handlePOChange(poVal)}
               />
             </div>
             <div className="w-full">
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">PO Date</label>
-              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed">
-                {currentOrder && currentOrder.poDate ? formatDate(currentOrder.poDate) : "—"}
-              </div>
+              <SearchableDropdown
+                label="PO Date"
+                options={poDateOptions}
+                value={selectedPODate}
+                placeholder="Select Date..."
+                disabled={!selectedCustomer}
+                onChange={handlePODateChange}
+              />
             </div>
-            <div className="w-full flex flex-col gap-1.5">
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">CATEGORY</label>
-              <div className="w-full h-[42px] px-3 py-2.5 bg-neutral-50 dark:bg-card/50 border border-border text-neutral-700 dark:text-neutral-300 rounded-lg text-sm flex items-center cursor-not-allowed select-none">
-                {garmentType || 'N/A'}
-              </div>
-            </div>
+
             <div className="w-full">
-              <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
-                {t('bom.wastage')}
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                {t('bom.wastage')} (%)
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={wastage}
-                  onChange={(e) => {
-                    let val = parseInt(e.target.value);
-                    if (isNaN(val)) val = 0;
-                    if (val > 20) val = 20;
-                    if (val < 0) val = 0;
-                    setWastage(val);
-                  }}
-                  className="w-full h-[42px] px-3 py-2.5 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                />
-                <span className="text-indigo-600 font-bold">%</span>
-              </div>
+              <input
+                type="number"
+                min="0"
+                max="30"
+                value={wastage}
+                onChange={(e) => setWastage(Math.max(0, Number(e.target.value)))}
+                className="w-full px-3.5 py-2.5 bg-background border border-input rounded-lg text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              />
+            </div>
+            <div className="w-full text-right pb-1">
+              <span className="text-xs text-muted-foreground">Order Status: </span>
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Ready for Calc
+              </span>
             </div>
           </div>
         </div>
 
         {/* 3. Garment Details */}
-        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-5 py-4 bg-neutral-50/50 dark:bg-card/30 flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-              <Layers className="h-4 w-4 text-muted-foreground" />
-              {t('bom.details')}
-            </h2>
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <Box className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('bom.details')}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Specifications & Requirements for PO #{selectedPONumber || '—'}</p>
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsTotalBomMode(!isTotalBomMode)}
@@ -603,22 +746,108 @@ export default function BOMCalculationView() {
               >
                 {isTotalBomMode ? 'View Individual BOM' : 'Total BOM Cal.'}
               </button>
-              <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-100">
-                {t('bom.totalProd')}: {totalProductionRequired} pcs
+              <span className="bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800/50">
+                {t('bom.totalProd')}: {bomApiData?.target_production_qty ?? totalProductionRequired} pcs
               </span>
             </div>
           </div>
           <div className="p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {!selectedPONumber || !currentOrder ? (
-                <p className="text-sm text-neutral-500 py-2 col-span-full">Please select a PO number.</p>
-              ) : activeSpecs.length === 0 ? (
-                <p className="text-sm text-neutral-500 py-2 col-span-full">No specifications found for this order.</p>
-              ) : (
-                activeSpecs.map((spec: any, idx: number) => {
+            {isLoadingApi ? (
+              <div className="py-8 flex flex-col items-center justify-center space-y-3 text-slate-500">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                <p className="text-xs font-medium">Fetching Garment Details & BOM Specifications...</p>
+              </div>
+            ) : !selectedPONumber ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400 py-2">Please select a PO number.</p>
+            ) : Array.isArray(bomApiData?.garments) && bomApiData.garments.length > 0 ? (
+              /* --- Compact Garment Summary Cards View --- */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {bomApiData.garments.map((g: any, gIdx: number) => {
+                  const formattedSleeve = typeof g?.sleeve_type === 'string' && g.sleeve_type && g.sleeve_type.toLowerCase() !== 'n/a'
+                    ? g.sleeve_type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                    : 'N/A';
+                  return (
+                    <div key={`garment-card-${gIdx}`} className="bg-slate-50/80 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700/60 shadow-sm space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/80 dark:border-slate-700/60">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white text-base">
+                            {g?.category || 'N/A'}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50">
+                            {formattedSleeve}
+                          </span>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                          urlNetQty !== null
+                            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60'
+                            : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60'
+                        }`}>
+                          Target: {g?.target_production_qty ?? 0} pcs
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs">
+                        <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                          Sizes & Breakdown
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {typeof g?.size_breakdown === 'string' && g.size_breakdown ? (
+                            g.size_breakdown.split(',').map((sb: string, sbIdx: number) => (
+                              <span key={`sb-${sbIdx}`} className="inline-block bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-slate-800 dark:text-slate-200 text-xs shadow-2xs">
+                                {sb.trim()}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-700 dark:text-slate-300 font-mono">{g?.sizes || 'N/A'}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 text-xs border-t border-slate-200/60 dark:border-slate-700/50">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Total PO Quantity:</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{g?.total_po_qty ?? 0} pcs</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : bomApiData ? (
+              /* Fallback single garment view */
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 text-xs font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">Sleeve Type</th>
+                      <th className="py-3 px-4">Sizes & Breakdown</th>
+                      <th className="py-3 px-4 text-center">Total PO Qty</th>
+                      <th className="py-3 px-4 text-center">Target Prod. Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                    <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">{bomApiData?.category || 'N/A'}</td>
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          {typeof bomApiData?.sleeve_type === 'string' && bomApiData.sleeve_type
+                            ? bomApiData.sleeve_type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                            : 'N/A'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300">{bomApiData?.sizes || 'N/A'}</td>
+                      <td className="py-3.5 px-4 text-center font-semibold text-slate-900 dark:text-white">{bomApiData?.total_po_qty ?? '—'} pcs</td>
+                      <td className="py-3.5 px-4 text-center font-bold text-amber-600 dark:text-amber-400">{bomApiData?.target_production_qty ?? '—'} pcs</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : Array.isArray(activeSpecs) && activeSpecs.length > 0 ? (
+              /* --- Fallback: existing spec cards --- */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {activeSpecs.map((spec: any, idx: number) => {
                   const isSelected = !isTotalBomMode && selectedGarmentIndex === idx;
                   const sValue = spec?.sleeveType || spec?.sleeve_type || spec?.sleeve || '';
-                  const formattedSleeve = sValue ? sValue.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'N/A';
+                  const formattedSleeve = typeof sValue === 'string' && sValue ? sValue.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'N/A';
 
                   return (
                     <button
@@ -631,10 +860,10 @@ export default function BOMCalculationView() {
                     >
                       <div>
                         <p className={`text-sm font-medium ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-foreground'}`}>
-                          {spec.itemDescription || '-'}{spec.pattern && !((spec.itemDescription || '').toLowerCase().includes(spec.pattern.toLowerCase())) ? ` - ${spec.pattern}` : ''}
+                          {spec?.itemDescription || '-'}{spec?.pattern && !((spec?.itemDescription || '').toLowerCase().includes(spec.pattern.toLowerCase())) ? ` - ${spec.pattern}` : ''}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Size: {typeof spec.size === 'string' ? sortSizesAscending(Array.from(new Set(spec.size.split(',').map((s: string) => s.trim()).filter(Boolean)))).join(', ') : (spec.size || '-')} | Ord: {spec.quantity || 0}
+                          Size: {typeof spec?.size === 'string' ? sortSizesAscending(Array.from(new Set(spec.size.split(',').map((s: string) => s.trim()).filter(Boolean)))).join(', ') : (spec?.size || '-')} | Ord: {spec?.quantity || 0}
                         </p>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="inline-block text-[10px] px-2 py-0.5 rounded border font-medium bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-zinc-800 dark:text-zinc-400">
@@ -645,104 +874,136 @@ export default function BOMCalculationView() {
                       <div className="text-right pl-3 border-l border-neutral-200">
                         <p className="text-[10px] text-muted-foreground uppercase">Req.</p>
                         <p className="text-sm font-bold text-foreground">
-                          {Math.max(0, (Number(spec.quantity) || 0) - (Number(spec.useExistingStock) || 0))}
+                          {Math.max(0, (Number(spec?.quantity) || 0) - (Number(spec?.useExistingStock) || 0))}
                         </p>
                       </div>
                     </button>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-neutral-500 py-2">Loading specifications...</p>
+            )}
           </div>
         </div>
 
-        {/* 4. Materials Calculation Table */}
-        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-6 py-5 flex justify-between items-center bg-neutral-50/50 dark:bg-card/30">
-            <h2 className="text-lg font-semibold text-card-foreground">{t('bom.materials')}</h2>
+        {/* 4. Articles Calculation Table - Dynamic Light/Dark Mode Styling */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Articles Calculation</h2>
           </div>
 
-          <div className="w-full bg-[#0d121f] border-t border-gray-800 overflow-hidden text-gray-200">
-            <div className="grid grid-cols-12 px-6 py-3 bg-gray-950/80 border-b border-gray-800 text-[11px] font-semibold text-gray-400 tracking-wider uppercase">
-              <div className="col-span-3">Material Inventory</div>
+          <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-slate-100">
+            <div className="grid grid-cols-12 px-6 py-3 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold tracking-wider uppercase">
+              <div className="col-span-3">ARTICLE INVENTORY</div>
               <div className="col-span-2">Brand</div>
               <div className="col-span-1 text-center">Selected Sizes</div>
               <div className="col-span-2 text-center">Per Piece Qty</div>
-              <div className="col-span-2 text-center">Total Qty <span className="text-[9px] text-gray-500 lowercase">(inc. wastage)</span></div>
+              <div className="col-span-2 text-center">Total Qty <span className="text-[9px] text-slate-500 dark:text-slate-400 lowercase">(inc. wastage)</span></div>
               <div className="col-span-1 text-right">Per Unit Price</div>
               <div className="col-span-1 text-right">Final Price</div>
             </div>
 
-            {materials && materials.length > 0 ? (
-              materials.map((mat, matIdx) => {
-                const combinedQty = Number(mat.totalCombinedQty || 0);
-                const combinedPrice = Number(mat.totalCombinedAmount || 0);
-                const matKey = `bom-row-${mat.id || mat.materialName || 'mat'}-${matIdx}`;
+            {isLoadingApi ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3 text-slate-500">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                <p className="text-xs font-medium">Calculating Article Requirements...</p>
+              </div>
+            ) : Array.isArray(articles) && articles.length > 0 ? (
+              articles.map((art, artIdx) => {
+                const combinedQty = Number(art?.article_combined_qty ?? art?.totalCombinedQty ?? 0);
+                const combinedPrice = Number(art?.totalCombinedAmount ?? 0);
+                const artName = art?.article_name || art?.articleName || art?.materialName || 'Article';
+                const artKey = `bom-row-${art?.id || artName}-${artIdx}`;
+                const sizesArray = art?.breakdown || art?.size_breakdown || art?.sizes || [];
 
                 return (
-                  <div key={matKey} className="border-b border-gray-800/80">
+                  <div key={artKey} className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <div className="grid grid-cols-12 px-6 py-4 items-start">
 
                       <div className="col-span-3 pr-4">
-                        <h4 className="text-sm font-bold text-white">{mat.materialName}</h4>
-                        <span className="inline-block mt-2 px-2 py-0.5 text-[10px] bg-gray-800/80 text-gray-400 rounded-full border border-gray-700/50">
-                          {mat.unit || 'units'}
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{artName}</h4>
+                        <span className="inline-block mt-2 px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700">
+                          {art?.unit || 'units'}
                         </span>
                       </div>
 
                       <div className="col-span-2 pr-6 flex flex-col gap-2">
-                        <span className="text-gray-400 text-xs py-1">
-                          {mat.selectedBrand || mat.brand || 'No Brand'}
+                        <span className="text-slate-600 dark:text-slate-400 text-xs py-1">
+                          {art?.selectedBrand || art?.brand || 'No Brand'}
                         </span>
-                        <span className="text-gray-300 text-xs px-2.5 py-1.5 rounded border border-gray-800">
-                          {mat.selectedWidth || mat.fabric_width || "Standard Size"}
+                        <span className="text-slate-700 dark:text-slate-300 text-xs px-2.5 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                          {art?.selectedWidth || art?.fabric_width || "Standard Size"}
                         </span>
                       </div>
 
-                      <div className="col-span-7 flex flex-col">
-                        {(mat.sizes || []).map((row: SizeRow, sizeIdx: number) => (
-                          <div
-                            key={`size-${matKey}-${row.size || sizeIdx}`}
-                            className="grid grid-cols-7 items-center py-2 border-b border-gray-800/40 last:border-0 text-xs"
-                          >
-                            <div className="col-span-1 flex justify-center">
-                              <span className="bg-indigo-950/80 text-indigo-300 font-semibold px-2.5 py-0.5 rounded border border-indigo-800/50">
-                                {row.size}
-                              </span>
-                            </div>
+                      <div className="col-span-7 flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                        {Array.isArray(sizesArray) && sizesArray.length > 0 ? (
+                          sizesArray.map((row: SizeRow, sizeIdx: number) => {
+                            const perPiece = row?.per_piece_qty ?? row?.perPieceQty ?? 0;
+                            const totQty = row?.total_qty_inc_wastage ?? row?.total_qty ?? row?.totalQty ?? 0;
+                            const unitPrice = row?.unit_price ?? row?.per_unit_price ?? row?.perUnitPrice ?? 0;
+                            const finalPrice = row?.final_price ?? row?.finalPrice ?? 0;
 
-                            <div className="col-span-2 flex justify-center text-gray-200">
-                              {row.perPieceQty ?? 0}
-                            </div>
+                            return (
+                              <div
+                                key={`size-${artKey}-${row?.size || sizeIdx}`}
+                                className="grid grid-cols-7 items-center py-2 text-xs hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-colors"
+                              >
+                                <div className="col-span-1 flex justify-center">
+                                  <span className="bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-semibold px-2.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800/50">
+                                    {row?.size}
+                                  </span>
+                                </div>
 
-                            <div className="col-span-2 text-center font-bold text-gray-200">
-                              {row.totalQty || 0}
-                            </div>
+                                <div className="col-span-2 flex justify-center text-slate-700 dark:text-slate-300 font-medium">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    value={perPiece}
+                                    onChange={(e) => handleCellEdit(artIdx, sizeIdx, 'per_piece_qty', parseFloat(e.target.value) || 0)}
+                                    className="w-20 text-center border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  />
+                                </div>
 
-                            <div className="col-span-1 flex items-center justify-end gap-1 text-gray-200">
-                              <span className="text-gray-500">₹</span>
-                              {row.perUnitPrice ?? 0}
-                            </div>
+                                <div className="col-span-2 text-center font-bold text-slate-900 dark:text-white">
+                                  {totQty}
+                                </div>
 
-                            <div className="col-span-1 text-right font-bold text-white">
-                              ₹{(parseFloat(String(row.finalPrice)) || 0).toFixed(2)}
-                            </div>
-                          </div>
-                        ))}
+                                <div className="col-span-1 flex items-center justify-end gap-1 text-slate-700 dark:text-slate-300">
+                                  <span className="text-slate-400 dark:text-slate-500">₹</span>
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    value={unitPrice}
+                                    onChange={(e) => handleCellEdit(artIdx, sizeIdx, 'per_unit_price', parseFloat(e.target.value) || 0)}
+                                    className="w-20 text-right border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 bg-white dark:bg-slate-800 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  />
+                                </div>
+
+                                <div className="col-span-1 text-right font-bold text-slate-900 dark:text-white">
+                                  ₹{(parseFloat(String(finalPrice)) || 0).toFixed(2)}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-2 text-xs text-slate-400 text-center">No size breakdown available</div>
+                        )}
                       </div>
 
                     </div>
 
-                    <div className="grid grid-cols-12 px-6 py-2.5 bg-[#101626] border-t border-gray-800 text-xs font-bold items-center">
+                    <div className="grid grid-cols-12 px-6 py-2.5 bg-indigo-50/60 dark:bg-slate-800/60 border-t border-indigo-100 dark:border-slate-700 text-xs font-bold items-center">
                       <div className="col-span-5"></div>
-                      <div className="col-span-2 text-indigo-400 uppercase tracking-wider text-[11px]">
+                      <div className="col-span-2 text-indigo-800 dark:text-indigo-300 uppercase tracking-wider text-[11px]">
                         Total Combined Amount
                       </div>
-                      <div className="col-span-2 text-center text-indigo-300 text-sm">
+                      <div className="col-span-2 text-center text-indigo-900 dark:text-indigo-200 text-sm">
                         {combinedQty}
                       </div>
                       <div className="col-span-1"></div>
-                      <div className="col-span-2 text-right text-indigo-300 text-sm">
+                      <div className="col-span-2 text-right text-indigo-900 dark:text-indigo-200 text-sm">
                         ₹{combinedPrice.toFixed(2)}
                       </div>
                     </div>
@@ -751,18 +1012,18 @@ export default function BOMCalculationView() {
                 );
               })
             ) : (
-              <div className="px-4 py-8 text-center text-sm text-slate-400">
-                No materials found for this garment in DB.
+              <div className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                No articles found for this garment in DB.
               </div>
             )}
           </div>
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-900 border-t border-gray-800 rounded-b-xl text-sm font-semibold">
-            <div className="text-gray-400">
-              Wastage Margin Applied: <span className="text-indigo-400">{wastage}%</span>
+          <div className="flex justify-between items-center px-6 py-4 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200 dark:border-slate-800 rounded-b-xl text-sm font-semibold">
+            <div className="text-slate-600 dark:text-slate-400">
+              Wastage Margin Applied: <span className="text-indigo-600 dark:text-indigo-400">{wastage}%</span>
             </div>
             <div className="text-right">
-              <span className="text-gray-400 mr-3">GRAND TOTAL AMOUNT:</span>
-              <span className="text-lg text-emerald-400 font-bold">
+              <span className="text-slate-600 dark:text-slate-400 mr-3">GRAND TOTAL AMOUNT:</span>
+              <span className="text-lg text-emerald-600 dark:text-emerald-400 font-bold">
                 ₹{Number(totals.estCost).toLocaleString('en-IN')}
               </span>
             </div>
@@ -782,7 +1043,7 @@ export default function BOMCalculationView() {
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <button className="w-full sm:w-auto px-6 py-2.5 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2">
               <Download className="h-4 w-4" />
-              {t('bom.export')}
+              Export BOM / Articles
             </button>
             {canAdvance ? (
               <button
@@ -791,26 +1052,25 @@ export default function BOMCalculationView() {
                     try {
                       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-                      // FIX: Ensure total_qty and final_price map correctly to s.totalQty and s.finalPrice
                       const payload = {
                         po_number: currentOrder.poNumber,
                         customer_name: currentOrder.customerName,
                         wastage_margin: Number(wastage),
                         grand_total_amount: Number(totals.estCost),
-                        materials: materials.map(m => ({
-                          material_name: m.materialName || '',
-                          brand: m.selectedBrand || m.brand || 'Standard',
-                          size_breakdown: m.sizes.map((s: SizeRow) => ({
-                            size: s.size,
-                            per_piece_qty: Number(s.perPieceQty || 0),
-                            total_qty: Number(s.totalQty || 0),         // Fixed property reference
-                            per_unit_price: Number(s.perUnitPrice || 0),
-                            final_price: Number(s.finalPrice || 0)       // Fixed property reference
+                        materials: (articles || []).map(a => ({
+                          material_name: a?.article_name || a?.articleName || a?.materialName || '',
+                          brand: a?.selectedBrand || a?.brand || 'Standard',
+                          size_breakdown: (a?.size_breakdown || a?.sizes || []).map((s: SizeRow) => ({
+                            size: s?.size,
+                            per_piece_qty: Number(s?.per_piece_qty ?? s?.perPieceQty ?? 0),
+                            total_qty: Number(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0),
+                            per_unit_price: Number(s?.per_unit_price ?? s?.perUnitPrice ?? 0),
+                            final_price: Number(s?.final_price ?? s?.finalPrice ?? 0)
                           }))
                         }))
                       };
 
-                      const { success, data } = await safeFetchJson(`${BACKEND_URL}/api/bom/check-inventory`, {
+                      const { success, data }: any = await safeFetchJson(`${BACKEND_URL}/api/bom/check-inventory`, {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -864,5 +1124,13 @@ export default function BOMCalculationView() {
 
       </div>
     </div>
+  );
+}
+
+export default function BOMCalculationViewWrapped() {
+  return (
+    <BOMErrorBoundary>
+      <BOMCalculationView />
+    </BOMErrorBoundary>
   );
 }
