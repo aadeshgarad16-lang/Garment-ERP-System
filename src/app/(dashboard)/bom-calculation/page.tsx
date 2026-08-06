@@ -299,19 +299,21 @@ function BOMCalculationView() {
     setArticles(prev => {
       const updated = [...prev];
       const art = { ...updated[artIdx] };
-      const sizesArray = [...(art.sizes || art.size_breakdown || [])];
+      const rawSizesArray = art.breakdown || art.size_breakdown || art.sizes || [];
+      const sizesArray = [...rawSizesArray];
       const row = { ...sizesArray[sizeIdx] };
       
       if (field === 'per_piece_qty') {
         row.per_piece_qty = value;
         row.perPieceQty = value;
       } else if (field === 'per_unit_price') {
+        row.unit_price = value;
         row.per_unit_price = value;
         row.perUnitPrice = value;
       }
       
       const numericQty = parseFloat(String(row.per_piece_qty ?? row.perPieceQty ?? 0)) || 0;
-      const numericPrice = parseFloat(String(row.per_unit_price ?? row.perUnitPrice ?? 0)) || 0;
+      const numericPrice = parseFloat(String(row.unit_price ?? row.per_unit_price ?? row.perUnitPrice ?? 0)) || 0;
       const orderQ = parseFloat(String(row.orderQty ?? row.garment_qty ?? 0)) || 0;
       
       const newTotalQty = (numericQty * orderQ) * (1 + (wastage || 0) / 100);
@@ -325,6 +327,7 @@ function BOMCalculationView() {
       row.finalPrice = Number(newFinalPrice.toFixed(2));
       
       sizesArray[sizeIdx] = row;
+      art.breakdown = sizesArray;
       art.sizes = sizesArray;
       art.size_breakdown = sizesArray;
       
@@ -964,7 +967,8 @@ function BOMCalculationView() {
                             const perPiece = row?.per_piece_qty ?? row?.perPieceQty ?? 0;
                             const totQty = row?.total_qty_inc_wastage ?? row?.total_qty ?? row?.totalQty ?? 0;
                             const unitPrice = row?.unit_price ?? row?.per_unit_price ?? row?.perUnitPrice ?? 0;
-                            const finalPrice = row?.final_price ?? row?.finalPrice ?? 0;
+                            const rowFinalPrice = (parseFloat(String(totQty)) || 0) * (parseFloat(String(unitPrice)) || 0);
+                            const finalPrice = rowFinalPrice > 0 ? rowFinalPrice : (row?.final_price ?? row?.finalPrice ?? 0);
 
                             return (
                               <div
@@ -1071,63 +1075,66 @@ function BOMCalculationView() {
             {canAdvance ? (
               <button
                 onClick={async () => {
-                  if (currentOrder) {
-                    try {
-                      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+                  const targetPoNumber = selectedPONumber || currentOrder?.poNumber;
+                  if (!targetPoNumber) {
+                    alert("Please select a PO Number first.");
+                    return;
+                  }
+                  try {
+                    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-                      const payload = {
-                        po_number: currentOrder.poNumber,
-                        customer_name: currentOrder.customerName,
-                        wastage_margin: Number(wastage),
-                        grand_total_amount: Number(totals.estCost),
-                        materials: (articles || []).map(a => ({
-                          material_name: a?.article_name || a?.articleName || a?.materialName || '',
-                          brand: a?.selectedBrand || a?.brand || 'Standard',
-                          size_breakdown: (a?.size_breakdown || a?.sizes || []).map((s: SizeRow) => ({
-                            size: s?.size,
-                            per_piece_qty: Number(s?.per_piece_qty ?? s?.perPieceQty ?? 0),
-                            total_qty: Number(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0),
-                            per_unit_price: Number(s?.per_unit_price ?? s?.perUnitPrice ?? 0),
-                            final_price: Number(s?.final_price ?? s?.finalPrice ?? 0)
-                          }))
+                    const payload = {
+                      po_number: targetPoNumber,
+                      customer_name: currentOrder?.customerName || selectedCustomer,
+                      wastage_margin: Number(wastage),
+                      grand_total_amount: Number(totals.estCost),
+                      materials: (articles || []).map(a => ({
+                        material_name: a?.article_name || a?.articleName || a?.materialName || '',
+                        brand: a?.selectedBrand || a?.brand || 'Standard',
+                        size_breakdown: (a?.breakdown || a?.size_breakdown || a?.sizes || []).map((s: SizeRow) => ({
+                          size: s?.size,
+                          per_piece_qty: Number(s?.per_piece_qty ?? s?.perPieceQty ?? 0),
+                          total_qty: Number(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0),
+                          per_unit_price: Number(s?.unit_price ?? s?.per_unit_price ?? s?.perUnitPrice ?? 0),
+                          final_price: Number(s?.final_price ?? s?.finalPrice ?? 0)
                         }))
-                      };
+                      }))
+                    };
 
-                      const { success, data }: any = await safeFetchJson(`${BACKEND_URL}/api/bom/check-inventory`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          ...getAuthHeaders(true)
-                        },
-                        body: JSON.stringify(payload)
-                      });
+                    const { success, data }: any = await safeFetchJson(`${BACKEND_URL}/api/bom/check-inventory`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders(true)
+                      },
+                      body: JSON.stringify(payload)
+                    });
 
-                      if (success && data && data.success !== false) {
-                        window.dispatchEvent(new Event("orders-updated"));
-                        const targetPoNumber = currentOrder.poNumber;
+                    if (success && data && data.success !== false) {
+                      window.dispatchEvent(new Event("orders-updated"));
 
-                        setSelectedCustomer('');
-                        setSelectedPODate('');
-                        setSelectedPONumber('');
-                        setWastage(5);
-                        localStorage.removeItem('bomCalculationDraft');
+                      setSelectedCustomer('');
+                      setSelectedPODate('');
+                      setSelectedPONumber('');
+                      setWastage(5);
+                      localStorage.removeItem('bomCalculationDraft');
 
-                        window.history.replaceState(null, '', window.location.pathname);
-                        router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
-                      } else {
-                        alert(data?.error || "Failed to process order");
-                      }
-                    } catch (err) {
-                      console.error(err);
-                      alert("Network error. Please try again.");
+                      window.history.replaceState(null, '', window.location.pathname);
+                      router.push(`/inventory?poNumber=${encodeURIComponent(targetPoNumber)}`);
+                    } else {
+                      alert(data?.error || "Failed to process order");
                     }
+                  } catch (err) {
+                    console.error(err);
+                    alert("Network error. Please try again.");
                   }
                 }}
-                disabled={totalProductionRequired === 0}
-                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${totalProductionRequired === 0
-                  ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                disabled={!selectedPONumber || isLoadingApi}
+                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+                  !selectedPONumber || isLoadingApi
+                    ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-indigo-200'
+                }`}
               >
                 {t('bom.checkInventory')}
                 <ArrowRight className="h-4 w-4" />
