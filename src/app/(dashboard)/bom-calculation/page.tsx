@@ -71,6 +71,7 @@ interface SizeRow {
 
 interface ArticleGroup {
   id?: string;
+  article_key?: string;
   article_name?: string;
   articleName?: string;
   materialName?: string;
@@ -983,7 +984,9 @@ function BOMCalculationView() {
 
                                 <div className="col-span-2 flex justify-center text-slate-700 dark:text-slate-300 font-medium">
                                   <input
-                                    type="text"
+                                    type="number"
+                                    step="any"
+                                    min="0"
                                     inputMode="decimal"
                                     value={cellInputStrings[`${artIdx}-${sizeIdx}-per_piece_qty`] !== undefined ? cellInputStrings[`${artIdx}-${sizeIdx}-per_piece_qty`] : String(perPiece ?? 0)}
                                     onChange={(e) => handleCellInputChange(artIdx, sizeIdx, 'per_piece_qty', e.target.value)}
@@ -999,7 +1002,9 @@ function BOMCalculationView() {
                                 <div className="col-span-1 flex items-center justify-end gap-1 text-slate-700 dark:text-slate-300">
                                   <span className="text-slate-400 dark:text-slate-500">₹</span>
                                   <input
-                                    type="text"
+                                    type="number"
+                                    step="any"
+                                    min="0"
                                     inputMode="decimal"
                                     value={cellInputStrings[`${artIdx}-${sizeIdx}-per_unit_price`] !== undefined ? cellInputStrings[`${artIdx}-${sizeIdx}-per_unit_price`] : String(unitPrice ?? 0)}
                                     onChange={(e) => handleCellInputChange(artIdx, sizeIdx, 'per_unit_price', e.target.value)}
@@ -1085,14 +1090,18 @@ function BOMCalculationView() {
 
                     const payload = {
                       po_number: targetPoNumber,
-                      customer_name: currentOrder?.customerName || selectedCustomer,
-                      wastage_margin: Number(wastage),
+                      customer_name: selectedCustomer || currentOrder?.customerName || '',
+                      po_date: selectedPODate || currentOrder?.poDate || '',
+                      wastage_margin_percent: Number(wastage),
                       grand_total_amount: Number(totals.estCost),
-                      materials: (articles || []).map(a => ({
+                      articles: (articles || []).map(a => ({
+                        article_key: a?.article_key || '',
                         material_name: a?.article_name || a?.articleName || a?.materialName || '',
                         brand: a?.selectedBrand || a?.brand || 'Standard',
+                        unit: a?.unit || 'units',
                         size_breakdown: (a?.breakdown || a?.size_breakdown || a?.sizes || []).map((s: SizeRow) => ({
                           size: s?.size,
+                          garment_qty: Number(s?.garment_qty ?? s?.orderQty ?? 0),
                           per_piece_qty: Number(s?.per_piece_qty ?? s?.perPieceQty ?? 0),
                           total_qty: Number(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0),
                           per_unit_price: Number(s?.unit_price ?? s?.per_unit_price ?? s?.perUnitPrice ?? 0),
@@ -1101,7 +1110,7 @@ function BOMCalculationView() {
                       }))
                     };
 
-                    const { success, data }: any = await safeFetchJson(`${BACKEND_URL}/api/bom/check-inventory`, {
+                    const { success, data }: any = await safeFetchJson(`${BACKEND_URL}/api/bom/save-done`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
