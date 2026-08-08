@@ -45,24 +45,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: { contactNo?: string; email?: string; password?: string }) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/users/login`, {
+      const res = await fetch('/api/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
+        body: JSON.stringify({
+          contactNumber: credentials.contactNo || credentials.email,
+          password: credentials.password
+        })
       });
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error("Non-JSON Server Response:", text);
+        return { success: false, error: `Server error (${res.status}). Ensure backend route /api/users/login exists.` };
+      }
+
       const data = await res.json();
       
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Invalid credentials' };
+        return { success: false, error: data.message || data.error || 'Invalid credentials' };
       }
 
-      const backendUser = data.user;
+      const backendUser = data.user || data.data;
       const safeUser: User = {
         id: backendUser.id,
-        fullName: backendUser.full_name,
-        name: backendUser.full_name, // Map for legacy components
-        contactNo: backendUser.contact_no,
-        email: backendUser.email,
+        fullName: backendUser.full_name || backendUser.name,
+        name: backendUser.full_name || backendUser.name, // Map for legacy components
+        contactNo: backendUser.contact_no || backendUser.contactNumber,
+        email: backendUser.email || backendUser.contactNumber,
         role: backendUser.role,
         designation: backendUser.designation,
         modules_access: backendUser.modules_access,

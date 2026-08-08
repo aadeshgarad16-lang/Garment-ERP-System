@@ -12,6 +12,8 @@ export async function GET(request: Request) {
     if (status) {
       query += ` WHERE status = ?`;
       params.push(status);
+    } else {
+      query += ` WHERE status = 'PENDING'`;
     }
     
     query += ` ORDER BY created_at DESC`;
@@ -22,9 +24,10 @@ export async function GET(request: Request) {
     const formattedRows = (rows as any[]).map(r => ({
       ...r,
       id: String(r.id),
-      currentStock: r.current_stock,
-      minRequired: r.min_required,
-      shortageQty: r.shortage_qty
+      name: r.item_name || r.name,
+      currentStock: r.current_stock || 0,
+      minRequired: r.min_required || 0,
+      shortageQty: r.order_qty || r.shortage_qty || 0
     }));
 
     return NextResponse.json({ success: true, data: formattedRows });

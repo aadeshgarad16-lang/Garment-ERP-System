@@ -75,7 +75,7 @@ export default function StoreDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B132B] text-white p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 p-6 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header Section */}

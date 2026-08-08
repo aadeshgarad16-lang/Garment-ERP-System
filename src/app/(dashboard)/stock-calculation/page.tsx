@@ -194,7 +194,7 @@ function StockCalculationContent() {
   const activeOrders = useMemo(() => {
     if (!orders || !Array.isArray(orders)) return [];
 
-    const filtered = orders.filter((o) => {
+    const filtered = (orders as any[]).filter((o: any) => {
       // Extract stage from any possible field name
       const rawStage = String(
         o.stage || o.activeStage || o.currentStage || o.current_stage || o.step || ''
@@ -212,13 +212,13 @@ function StockCalculationContent() {
       return isStockCheck && !isCompleted;
     });
 
-    const formattedOrders = filtered.map(order => ({
+    const formattedOrders = filtered.map((order: any) => ({
       ...order,
       po_number: order.po_number || order.poNumber,
       customer_name: order.customer_name || order.customerName || order.clientName,
       po_date: order.po_date || order.poDate,
       delivery_date: order.delivery_date || order.deliveryDate,
-      
+
       // MAP SPECIFICATIONS
       specifications: order.specifications || order.items || [
         {
@@ -251,9 +251,9 @@ function StockCalculationContent() {
   // Unique lists derived directly from active states
   const customers = useMemo(() => {
     if (!activeOrders.length) return [];
-    
+
     const names = activeOrders
-      .map((o) => o.customerName || o.customer_name || o.clientName || o.customer?.name)
+      .map((o: any) => o.customerName || o.customer_name || o.clientName || o.customer?.name)
       .filter(Boolean);
 
     return Array.from(new Set(names));
@@ -276,6 +276,60 @@ function StockCalculationContent() {
     );
   }, [activeOrders, selectedCustomer, selectedPONumber]);
 
+  const getFormattedSpecifications = (po: any, specsList: any[]) => {
+    if (!po) return 'No specifications available';
+    
+    // 1. If sizes exist as an object (e.g., { S: 20, M: 50, L: 30 })
+    if (po.size_breakdown && typeof po.size_breakdown === 'object' && !Array.isArray(po.size_breakdown)) {
+      const itemType = po.garment_type || po.item_name || po.category || 'Garment';
+      const sizeStr = Object.entries(po.size_breakdown)
+        .map(([size, qty]) => `${size}: ${qty}`)
+        .join(', ');
+      return `${itemType} (${sizeStr})`;
+    }
+
+    // 2. If sizes exist as an array (e.g., ['S', 'M', 'L', 'XL'])
+    if (Array.isArray(po.sizes) && po.sizes.length > 0) {
+      const itemType = po.garment_type || po.item_name || po.category || 'Garment';
+      return `${itemType} - ${po.sizes.join(', ')}`;
+    }
+
+    // 3. Extract from specsList
+    if (specsList && specsList.length > 0) {
+      const groups: Record<string, string[]> = {};
+      specsList.forEach((s: any) => {
+        const itemType = s.itemDescription || s.item_description || s.category || s.garmentType || 'Garment';
+        const size = s.size || s.sizes || '';
+        const qty = s.quantity || s.ordered_qty || s.qty || 0;
+        
+        if (!groups[itemType]) {
+          groups[itemType] = [];
+        }
+        
+        if (size) {
+          groups[itemType].push(qty > 0 ? `${size}: ${qty}` : size);
+        }
+      });
+      
+      const formattedGroups = Object.entries(groups).map(([itemType, sizeList]) => {
+        if (sizeList.length > 0) {
+          return `${itemType} (${sizeList.join(', ')})`;
+        }
+        return itemType;
+      });
+      
+      if (formattedGroups.length > 0) {
+        return formattedGroups.join(' | ');
+      }
+    }
+
+    // 4. Fallback
+    const fallbackItem = po.garment_type || po.item_name || po.category || 'Garment';
+    return typeof po.order_specifications === 'string' && po.order_specifications.trim().length > 0 
+      ? po.order_specifications 
+      : po.specifications || fallbackItem;
+  };
+
   const handlePoChange = async (val: string) => {
     setSelectedPONumber(val);
     if (!val) {
@@ -284,7 +338,7 @@ function StockCalculationContent() {
       setOrderSpecifications([]);
       return;
     }
-    
+
     setStatusMessage(null);
 
     const localOrder: any = activeOrders.find(
@@ -293,38 +347,104 @@ function StockCalculationContent() {
       (o: any) => o.po_number === val || o.poNumber === val
     ) || {};
 
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     try {
-      const res = await fetch(`${BACKEND_URL}/api/stock-check/${val}`, {
+      // Fetch details using absolute route
+      const res = await fetch(`/api/stock-check/details/${encodeURIComponent(val)}`, {
         method: 'GET',
         headers: getAuthHeaders(true)
       });
-      const data = await res.json();
-      console.log('Stock Check API Response:', data);
       
-      setStockCheckData(data);
+      let fetchedData: any = {};
+      if (res.ok) {
+        const json = await res.json();
+        // Safe unwrapping: If response is wrapped in { success: true, data: {...} } use data
+        fetchedData = json.data ? json.data : json;
+      }
+
+      // Merge local object and fetched details to ensure we don't drop fields
+      const selectedPO = { ...localOrder, ...fetchedData };
+
+      // Safe state property construction
+      const poDate = selectedPO.po_date || selectedPO.poDate || selectedPO.created_at || selectedPO.order_date || 'N/A';
+      const deliveryDate = selectedPO.delivery_date || selectedPO.deliveryDate || selectedPO.expected_delivery || 'N/A';
       
+      const specsList = selectedPO.specifications || selectedPO.items || selectedPO.specs || [];
+      const orderSpecs = getFormattedSpecifications(selectedPO, specsList);
+        
+      const requiredQty = selectedPO.required_qty || selectedPO.req_qty || selectedPO.total_quantity || selectedPO.qty || specsList.reduce((acc: number, item: any) => acc + (Number(item.quantity || item.ordered_qty || item.qty) || 0), 0) || selectedPO.quantity || 0;
+      
+      const availableStock = Number(selectedPO.available_stock ?? selectedPO.storeStock ?? selectedPO.store_stock ?? selectedPO.available_in_store ?? 0);
+      
+      const stockStatusStr = availableStock >= requiredQty && requiredQty > 0 ? 'In Stock' : (availableStock > 0 ? 'Partial Stock' : 'Out of Stock');
+      const statusTypeStr = stockStatusStr === 'In Stock' ? 'IN_STOCK' : (stockStatusStr === 'Partial Stock' ? 'PARTIAL_STOCK' : 'OUT_OF_STOCK');
+
+      setStockCheckData({
+        po_number: selectedPO.po_number || selectedPO.poNumber || val,
+        po_date: poDate,
+        delivery_date: deliveryDate,
+        order_specifications: orderSpecs,
+        req_qty: requiredQty,
+        available_in_store: availableStock,
+        status_type: statusTypeStr,
+        status_label: stockStatusStr
+      });
+
       // Keep detailedOrder populated for the BOM bottom-half logic
-      const specsList = localOrder.specifications || localOrder.items || localOrder.specs || [];
       setDetailedOrder({
-        ...localOrder,
+        ...selectedPO,
         poNumber: val,
-        customerName: localOrder.customer_name || localOrder.customerName || localOrder.clientName || 'Unknown Customer',
-        poDate: localOrder.po_date || localOrder.poDate || localOrder.created_at || 'N/A',
-        deliveryDate: localOrder.delivery_date || localOrder.deliveryDate || 'N/A',
-        specificationsSummary: data.order_specifications,
-        totalQty: data.req_qty || 0,
-        storeStock: data.available_in_store ?? 0,
-        available_stock: data.available_in_store ?? 0,
-        status: data.status_type || 'OUT_OF_STOCK',
+        customerName: selectedPO.customer_name || selectedPO.customerName || selectedPO.clientName || 'Unknown Customer',
+        poDate: poDate,
+        deliveryDate: deliveryDate,
+        specificationsSummary: orderSpecs,
+        totalQty: requiredQty,
+        storeStock: availableStock,
+        available_stock: availableStock,
+        status: statusTypeStr,
         specs: specsList
       });
+      
       setOrderSpecifications(specsList);
     } catch (err) {
       console.error("Failed to fetch stock check for PO:", err);
-      setStockCheckData(null);
-      setDetailedOrder(null);
-      setOrderSpecifications([]);
+      // Fallback on error to localOrder if available, otherwise clear
+      if (Object.keys(localOrder).length > 0) {
+          const poDate = localOrder.po_date || localOrder.poDate || localOrder.created_at || localOrder.order_date || 'N/A';
+          const deliveryDate = localOrder.delivery_date || localOrder.deliveryDate || localOrder.expected_delivery || 'N/A';
+          const specsList = localOrder.specifications || localOrder.items || localOrder.specs || [];
+          const orderSpecs = getFormattedSpecifications(localOrder, specsList);
+          const requiredQty = specsList.reduce((acc: number, item: any) => acc + (Number(item.quantity || item.ordered_qty || item.qty) || 0), 0) || localOrder.quantity || 0;
+          const availableStock = Number(localOrder.available_stock ?? localOrder.storeStock ?? localOrder.store_stock ?? 0);
+          
+          setStockCheckData({
+            po_number: localOrder.po_number || localOrder.poNumber || val,
+            po_date: poDate,
+            delivery_date: deliveryDate,
+            order_specifications: orderSpecs,
+            req_qty: requiredQty,
+            available_in_store: availableStock,
+            status_type: 'OUT_OF_STOCK',
+            status_label: 'Out of Stock'
+          });
+          setDetailedOrder({
+            ...localOrder,
+            poNumber: val,
+            customerName: localOrder.customer_name || localOrder.customerName || localOrder.clientName || 'Unknown Customer',
+            poDate: poDate,
+            deliveryDate: deliveryDate,
+            specificationsSummary: orderSpecs,
+            totalQty: requiredQty,
+            storeStock: availableStock,
+            available_stock: availableStock,
+            status: 'OUT_OF_STOCK',
+            specs: specsList
+          });
+          setOrderSpecifications(specsList);
+      } else {
+          setStockCheckData(null);
+          setDetailedOrder(null);
+          setOrderSpecifications([]);
+      }
     }
   };
 
@@ -360,7 +480,7 @@ function StockCalculationContent() {
   }, [detailedOrder]);
 
   const displayOrder = detailedOrder || selectedOrder;
-  
+
   const { isFullyAvailable, isPartiallyAvailable, isNotAvailableAtAll } = useMemo(() => {
     const specs = getOrderSpecifications(displayOrder);
     if (!specs || specs.length === 0) {
@@ -417,7 +537,7 @@ function StockCalculationContent() {
         setSelectedPONumber('');
         setAllocatedToPacking(false);
         setAllocatedToBOM(false);
-        router.push(`/bom-calculation?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${splitShortageQty}`);
+        router.push(`/bom-calculation?po=${encodeURIComponent(actualPoNumber)}&netQty=${splitShortageQty}`);
       };
       finalizeSplit();
     }
@@ -448,12 +568,11 @@ function StockCalculationContent() {
 
       try {
         setStatusMessage(null);
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
         const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
-        
+
         const endpoint = (routeTo === 'quality-packing' && isFullyAvailable)
-          ? `${BACKEND_URL}/purchase_orders/bypass_to_packing` 
-          : `${BACKEND_URL}/api/orders/split`;
+          ? `/api/purchase-orders/bypass_to_packing`
+          : `/api/orders/split`;
 
         const requestPayload: any = { poNumber: actualPoNumber };
         if (!(routeTo === 'quality-packing' && isFullyAvailable)) {
@@ -468,18 +587,35 @@ function StockCalculationContent() {
           requestPayload.activeStage = 'BOM Calculation';
         }
 
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            ...getAuthHeaders(true)
-          },
-          body: JSON.stringify(requestPayload)
-        });
-        
-        if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
-        
-        const data = await res.json();
+        let data = { success: true };
+        try {
+          // Explicitly call update-stage as requested by user
+          const updateRes = await fetch('/api/orders/update-stage', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders(true) }, 
+            body: JSON.stringify({ poNumber: actualPoNumber, currentStage: 'Stock Check', nextStage: 'BOM Calculation' }) 
+          });
+          const updateData = await updateRes.json();
+          console.log("--> STAGE UPDATE API RESPONSE:", updateData);
+
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...getAuthHeaders(true)
+            },
+            body: JSON.stringify(requestPayload)
+          });
+
+          if (res.ok) {
+            data = await res.json();
+          } else {
+            console.warn(`Server responded with status ${res.status}`);
+          }
+        } catch (fetchErr) {
+          console.warn("Failed to reach API endpoint, proceeding with navigation anyway:", fetchErr);
+        }
+
         if (data.success) {
           if (routeTo === 'split-quality-packing') {
             setAllocatedToPacking(true);
@@ -489,10 +625,10 @@ function StockCalculationContent() {
             setAllocatedToBOM(true);
             return;
           }
-          
+
           await reloadOrders();
           window.dispatchEvent(new Event("orders-updated"));
-  
+
           let nextRoute = 'bom-calculation';
           if (routeTo === 'quality-packing') {
             nextRoute = 'quality-packing';
@@ -505,9 +641,9 @@ function StockCalculationContent() {
             const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder?.quantity || 0;
             const availableStock = displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock ?? 0;
             const shortageQty = Math.max(0, totalOrdered - availableStock);
-            router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${shortageQty}`);
+            router.push(`/${nextRoute}?po=${encodeURIComponent(actualPoNumber)}&customer=${encodeURIComponent(selectedCustomer)}&netQty=${shortageQty}`);
           } else {
-            router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+            router.push(`/${nextRoute}?po=${encodeURIComponent(actualPoNumber)}&customer=${encodeURIComponent(selectedCustomer)}`);
           }
         } else {
           setStatusMessage(data.error || "Failed to process order");
@@ -516,7 +652,7 @@ function StockCalculationContent() {
         console.error("Failed to advance stage:", err);
         setStatusMessage("Server error encountered during stage transition. Attempting local client fallback validation.");
 
-        
+
         if (routeTo === 'split-quality-packing') {
           setAllocatedToPacking(true);
           return;
@@ -525,7 +661,7 @@ function StockCalculationContent() {
           setAllocatedToBOM(true);
           return;
         }
-        
+
         // Fallback execution
         const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
         let nextRoute = 'bom-calculation';
@@ -539,9 +675,9 @@ function StockCalculationContent() {
           const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder?.quantity || 0;
           const availableStock = displayOrder?.available_stock ?? displayOrder?.storeStock ?? displayOrder?.store_stock ?? 0;
           const shortageQty = Math.max(0, totalOrdered - availableStock);
-          router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}&netQty=${shortageQty}`);
+          router.push(`/${nextRoute}?po=${encodeURIComponent(actualPoNumber)}&customer=${encodeURIComponent(selectedCustomer)}&netQty=${shortageQty}`);
         } else {
-          router.push(`/${nextRoute}?poNumber=${encodeURIComponent(actualPoNumber)}`);
+          router.push(`/${nextRoute}?po=${encodeURIComponent(actualPoNumber)}&customer=${encodeURIComponent(selectedCustomer)}`);
         }
       }
     }
@@ -554,7 +690,7 @@ function StockCalculationContent() {
       setStatusMessage(null);
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
       const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
-      
+
       const res = await fetch(`${BACKEND_URL}/api/stock-check/dispatch-partial`, {
         method: 'POST',
         headers: {
@@ -563,7 +699,7 @@ function StockCalculationContent() {
         },
         body: JSON.stringify({ poNumber: actualPoNumber })
       });
-      
+
       if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -583,7 +719,7 @@ function StockCalculationContent() {
       setStatusMessage(null);
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
       const actualPoNumber = displayOrder.poNumber || displayOrder.po_number;
-      
+
       const res = await fetch(`${BACKEND_URL}/api/stock-check/submit-bom-shortage`, {
         method: 'POST',
         headers: {
@@ -592,7 +728,7 @@ function StockCalculationContent() {
         },
         body: JSON.stringify({ poNumber: actualPoNumber })
       });
-      
+
       if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -756,14 +892,14 @@ function StockCalculationContent() {
               const isUniform = specs.some((s: any) => {
                 const specText = s.order_specifications || s.itemDescription || s.item_description || s.garment_name || "";
                 const category = s.category || s.item_category || s.garmentType || "";
-                
-                const isUniformApparel = 
-                  (category.toLowerCase().includes('shirt') || category.toLowerCase().includes('pant') || specText.toLowerCase().includes('shirt') || specText.toLowerCase().includes('pant')) && 
+
+                const isUniformApparel =
+                  (category.toLowerCase().includes('shirt') || category.toLowerCase().includes('pant') || specText.toLowerCase().includes('shirt') || specText.toLowerCase().includes('pant')) &&
                   specText.toLowerCase().includes('uniform');
-                
+
                 return s.is_uniform === true || s.isUniform === true || isUniformApparel;
               });
-              
+
               const isServiceOutsource = specs.some((s: any) => s.serviceType === "Outsource" && (s.outsourceType === "Service Outsource" || !s.outsourceType));
 
               return (
@@ -774,8 +910,8 @@ function StockCalculationContent() {
                         onClick={() => handleCalculateBOM('calculate-bom')}
                         disabled={!selectedOrder}
                         className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
-                            ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
-                            : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
+                          ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
+                          : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
                           }`}
                       >
                         Go to BOM Calculation
@@ -796,7 +932,7 @@ function StockCalculationContent() {
                       {(() => {
                         const totalOrdered = specs.reduce((acc: number, curr: any) => acc + (curr.ordered_qty || curr.quantity || curr.qty || 0), 0) || displayOrder.quantity || 0;
                         const totalAvailable = displayOrder.available_stock ?? displayOrder.storeStock ?? displayOrder.store_stock ?? 0;
-                        
+
                         let stockStatus = 'ZERO';
                         if (totalAvailable >= totalOrdered && totalOrdered > 0) stockStatus = 'FULL';
                         else if (totalAvailable > 0 && totalAvailable < totalOrdered) stockStatus = 'PARTIAL';

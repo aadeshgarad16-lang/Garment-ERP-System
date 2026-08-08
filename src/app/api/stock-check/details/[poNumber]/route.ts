@@ -3,9 +3,10 @@ import pool from '@/lib/db'; // Your MySQL pool connection
 
 export async function GET(
   request: Request,
-  { params }: { params: { poNumber: string } }
+  context: { params: Promise<{ poNumber: string }> }
 ) {
   try {
+    const params = await context.params;
     const poNumber = params.poNumber;
 
     if (!poNumber) {

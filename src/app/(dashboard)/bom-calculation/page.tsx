@@ -343,8 +343,7 @@ function BOMCalculationView() {
 
   useEffect(() => {
     if (selectedPONumber) {
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      safeFetchJson(`${BACKEND_URL}/purchase_orders/details/${selectedPONumber}`, {
+      safeFetchJson(`/api/bom/po-details/${selectedPONumber}`, {
         headers: getAuthHeaders()
       }).then(({ success, data }: any) => {
         if (success && data && data.success !== false) {
@@ -366,7 +365,7 @@ function BOMCalculationView() {
     }
   }, [selectedPONumber]);
 
-  // Read netQty from URL params
+  // Read netQty, po and customer from URL params
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -377,7 +376,12 @@ function BOMCalculationView() {
           setUrlNetQty(parsedNetQty);
         }
       }
-      const poParam = searchParams.get('poNumber');
+      const poParam = searchParams.get('po') || searchParams.get('poNumber');
+      const custParam = searchParams.get('customer') || searchParams.get('customerName');
+      
+      if (custParam) {
+        setSelectedCustomer(custParam);
+      }
       if (poParam) {
         setSelectedPONumber(poParam);
       }
@@ -442,9 +446,8 @@ function BOMCalculationView() {
 
   const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
   const poDropdownOptions = poNumbers.map(po => {
-    const order = filteredOrders.find(o => o.poNumber === po);
     const rawPo = sanitizePOKey(po);
-    return { label: `${po} (${order?.customerName || selectedCustomer})`, value: rawPo };
+    return { label: String(po), value: rawPo };
   });
 
   const baseOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
@@ -485,16 +488,19 @@ function BOMCalculationView() {
       return;
     }
     setIsLoadingApi(true);
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const netQtyQuery = urlNetQty !== null ? `&net_qty=${urlNetQty}` : '';
+    const netQtyQuery = urlNetQty !== null ? `&netQty=${urlNetQty}` : '';
     safeFetchJson(
-      `${BACKEND_URL}/api/bom-calculation/${encodeURIComponent(selectedPONumber)}?dummy=1${netQtyQuery}`,
+      `/api/bom-calculation?poNumber=${encodeURIComponent(selectedPONumber)}${netQtyQuery}`,
       { headers: getAuthHeaders() }
     ).then(({ success, data }: any) => {
       setIsLoadingApi(false);
-      if (success && data && !data.error) {
-        setBomApiData(data);
-        const fetchedArticles = data.articles || data.materials || [];
+      const payload = data?.data || data; // Safe unwrap
+      if (success && payload && !payload.error) {
+        setBomApiData(payload);
+        if (payload.specifications) {
+          setGarmentSpecs(payload.specifications);
+        }
+        const fetchedArticles = payload.articles || payload.materials || [];
         if (Array.isArray(fetchedArticles)) {
           setArticles(fetchedArticles as ArticleGroup[]);
         }
@@ -623,6 +629,20 @@ function BOMCalculationView() {
       estCost: grandTotalCost.toFixed(2)
     };
   }, [articles]);
+
+  const isAllPricesEntered = React.useMemo(() => {
+    if (!articles || articles.length === 0) return false;
+
+    return articles.every((article: any) => {
+      const sizesArray = article.sizes || article.size_breakdown || [];
+      return sizesArray.length > 0 && sizesArray.every((row: any) => {
+        const price = parseFloat(String(row.unit_price ?? row.per_unit_price ?? row.perUnitPrice));
+        return !isNaN(price) && price > 0;
+      });
+    });
+  }, [articles]);
+
+  const isButtonDisabled = !selectedPONumber || isLoadingApi || !isAllPricesEntered || Number(totals.estCost) === 0;
 
   const itemsToProcure = totalProductionRequired > 0 ? (articles || []).filter(m => (m?.missing || 0) > 0).length : 0;
 
@@ -1138,9 +1158,9 @@ function BOMCalculationView() {
                     alert("Network error. Please try again.");
                   }
                 }}
-                disabled={!selectedPONumber || isLoadingApi}
+                disabled={isButtonDisabled}
                 className={`w-full sm:w-auto px-8 py-2.5 rounded-lg shadow-sm font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
-                  !selectedPONumber || isLoadingApi
+                  isButtonDisabled
                     ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-indigo-200'
                 }`}

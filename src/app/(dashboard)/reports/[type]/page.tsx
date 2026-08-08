@@ -50,18 +50,24 @@ export default function ReportPage({ params }: { params: Promise<{ type: string 
           return;
         }
         
-        const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
-        const readKey = process.env.NEXT_PUBLIC_ERP_READ_API_KEY || "sasons_read_only_key_2026_abc";
-        
-        const res = await fetch(`${baseUrl}${endpoint}`, {
+        const res = await fetch(endpoint, {
           headers: {
-            "X-API-Key": readKey,
             "Content-Type": "application/json"
           }
         });
         
-        if (!res.ok) throw new Error('Failed to fetch data');
-        const result = await res.json();
+        const contentType = res.headers.get("content-type");
+        let result: any = null;
+        if (contentType && contentType.includes("application/json")) {
+            result = await res.json();
+        } else {
+            const text = await res.text();
+            console.error("Non-JSON API Response:", text);
+        }
+
+        if (!res.ok) {
+            console.warn(`Report endpoint returned status ${res.status}`);
+        }
         
         if (isMounted && result) {
           if (type === 'total-orders') {

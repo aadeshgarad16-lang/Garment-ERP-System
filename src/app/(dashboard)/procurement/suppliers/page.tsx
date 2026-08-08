@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Mail, Phone, MapPin, Receipt, Search, FileDown, TrendingUp, AlertTriangle, Plus, X, CheckCircle2 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import SupplierDirectorySummary from '@/components/SupplierDirectorySummary';
 
 // Real suppliers will be fetched on mount
 
@@ -81,8 +82,8 @@ const CreatableMultiSelect: React.FC<CreatableMultiSelectProps> = ({ label, plac
             </button>
           </span>
         ))}
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -97,17 +98,17 @@ const CreatableMultiSelect: React.FC<CreatableMultiSelectProps> = ({ label, plac
 
 export default function SupplierHistoryPage() {
   const router = useRouter();
-  
-  const [suppliersList, setSuppliersList] = useState<{id: string, name: string}[]>([]);
+
+  const [suppliersList, setSuppliersList] = useState<{ id: string, name: string }[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
   const [supplierData, setSupplierData] = useState<SupplierHistoryData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Add Supplier Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     companyName: "",
     contactPerson: "",
@@ -146,22 +147,22 @@ export default function SupplierHistoryPage() {
   const handleAddSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       const payload = {
         ...formData,
         rawMaterials,
         finishedGoods
       };
-      
+
       const res = await fetch('/api/suppliers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       const result = await res.json();
-      
+
       if (result.success) {
         const newSupplier = { id: result.data.id, name: result.data.companyName };
         setSuppliersList(prev => [newSupplier, ...prev]);
@@ -198,8 +199,8 @@ export default function SupplierHistoryPage() {
         setAddressFormData({ name: "", line1: "", line2: "", city: "", country: "India", contact: "", type: "consignee", isDefault: false });
         // Refresh supplier data
         setSupplierData(prev => prev ? {
-          ...prev, 
-          addresses: [...(prev.addresses || []), result.data] 
+          ...prev,
+          addresses: [...(prev.addresses || []), result.data]
         } : prev);
       }
     } catch (error) {
@@ -222,7 +223,7 @@ export default function SupplierHistoryPage() {
         if (!prev || !prev.addresses) return prev;
         return {
           ...prev,
-          addresses: prev.addresses.map(a => 
+          addresses: prev.addresses.map(a =>
             a.type === type ? { ...a, isDefault: a.id === addressId } : a
           )
         };
@@ -316,7 +317,7 @@ export default function SupplierHistoryPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
         <div>
-          <button 
+          <button
             onClick={() => router.push('/procurement')}
             className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
           >
@@ -349,6 +350,11 @@ export default function SupplierHistoryPage() {
         </div>
       </div>
 
+      {/* Supplier Directory Summary Block */}
+      <div className="w-full">
+        <SupplierDirectorySummary />
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Sidebar for Supplier Selection */}
         <div className="w-full lg:w-72 flex-shrink-0 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-[600px]">
@@ -356,9 +362,9 @@ export default function SupplierHistoryPage() {
             <h2 className="text-sm font-bold text-foreground mb-3">Suppliers Directory</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search suppliers..." 
+              <input
+                type="text"
+                placeholder="Search suppliers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:ring-1 focus:ring-indigo-500 outline-none"
@@ -370,11 +376,10 @@ export default function SupplierHistoryPage() {
               <button
                 key={supplier.id}
                 onClick={() => setSelectedSupplierId(supplier.id)}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  selectedSupplierId === supplier.id 
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800' 
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${selectedSupplierId === supplier.id
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800'
                     : 'text-foreground hover:bg-muted border border-transparent'
-                }`}
+                  }`}
               >
                 {supplier.name}
               </button>
@@ -403,9 +408,9 @@ export default function SupplierHistoryPage() {
                 <div className="absolute top-0 right-0 p-6 opacity-5">
                   <Building2 className="w-48 h-48" />
                 </div>
-                
+
                 <h2 className="text-xl font-bold text-foreground mb-6 relative z-10">{supplierData.generalInfo.businessName}</h2>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Person</p>
@@ -416,7 +421,7 @@ export default function SupplierHistoryPage() {
                       {supplierData.generalInfo.contactPerson}
                     </p>
                   </div>
-                  
+
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</p>
                     <p className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -466,7 +471,7 @@ export default function SupplierHistoryPage() {
                     <MapPin className="w-5 h-5 text-indigo-500" />
                     Saved Addresses
                   </h3>
-                  <button 
+                  <button
                     onClick={() => setIsAddressModalOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg text-sm font-medium transition-colors"
                   >
@@ -497,7 +502,7 @@ export default function SupplierHistoryPage() {
                             Primary {addr.type === 'invoice_to' ? 'Invoice' : 'Ship'} Address
                           </span>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => handleSetDefaultAddress(addr.id, addr.type)}
                             className="text-indigo-600 dark:text-indigo-400 hover:underline"
                           >
@@ -530,7 +535,7 @@ export default function SupplierHistoryPage() {
                     Export Ledger
                   </button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
@@ -624,38 +629,38 @@ export default function SupplierHistoryPage() {
 
             <div className="p-6 overflow-y-auto flex-1">
               <form id="add-supplier-form" onSubmit={handleAddSupplier} className="space-y-8">
-                
+
                 {/* A. Basic Info */}
                 <section>
                   <h3 className="text-sm font-bold text-indigo-600 uppercase tracking-wider mb-4">A. Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Company / Supplier Name *</label>
-                      <input required type="text" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Apex Textiles" />
+                      <input required type="text" value={formData.companyName} onChange={e => setFormData({ ...formData, companyName: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Apex Textiles" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Contact Person</label>
-                      <input type="text" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="e.g. John Doe" />
+                      <input type="text" value={formData.contactPerson} onChange={e => setFormData({ ...formData, contactPerson: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="e.g. John Doe" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Phone / Mobile *</label>
-                      <input required type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="+91..." />
+                      <input required type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="+91..." />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
-                      <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="contact@company.com" />
+                      <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="contact@company.com" />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-foreground mb-1">Registered Address</label>
-                      <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="123 Industrial Area..." />
+                      <input type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="123 Industrial Area..." />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">GSTIN / Tax ID</label>
-                      <input type="text" value={formData.gstin} onChange={e => setFormData({...formData, gstin: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="27AA..." />
+                      <input type="text" value={formData.gstin} onChange={e => setFormData({ ...formData, gstin: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500" placeholder="27AA..." />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1">Payment Terms</label>
-                      <select value={formData.paymentTerms} onChange={e => setFormData({...formData, paymentTerms: e.target.value})} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500">
+                      <select value={formData.paymentTerms} onChange={e => setFormData({ ...formData, paymentTerms: e.target.value })} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-500">
                         <option value="Advance">Advance</option>
                         <option value="COD">COD (Cash on Delivery)</option>
                         <option value="Net 30 Days">Net 30 Days</option>
@@ -679,13 +684,13 @@ export default function SupplierHistoryPage() {
                       <div className="space-y-2">
                         {['Fabric (Cotton, Polyester)', 'Allied Materials (Trims, Buttons)', 'Both Fabric & Allied'].map(cap => (
                           <label key={cap} className="flex items-center gap-2 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={rawMaterials.includes(cap)} 
+                            <input
+                              type="checkbox"
+                              checked={rawMaterials.includes(cap)}
                               onChange={() => {
                                 setRawMaterials(prev => prev.includes(cap) ? prev.filter(c => c !== cap) : [...prev, cap]);
-                              }} 
-                              className="rounded border-border text-indigo-600 focus:ring-indigo-500 bg-background" 
+                              }}
+                              className="rounded border-border text-indigo-600 focus:ring-indigo-500 bg-background"
                             />
                             <span className="text-sm text-foreground">{cap}</span>
                           </label>
@@ -702,13 +707,13 @@ export default function SupplierHistoryPage() {
                       <div className="space-y-2">
                         {['Shirt', 'Pant', 'T-Shirt', 'Jacket', 'Kurta', 'Salwar'].map(cap => (
                           <label key={cap} className="flex items-center gap-2 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={finishedGoods.includes(cap)} 
+                            <input
+                              type="checkbox"
+                              checked={finishedGoods.includes(cap)}
                               onChange={() => {
                                 setFinishedGoods(prev => prev.includes(cap) ? prev.filter(c => c !== cap) : [...prev, cap]);
-                              }} 
-                              className="rounded border-border text-indigo-600 focus:ring-indigo-500 bg-background" 
+                              }}
+                              className="rounded border-border text-indigo-600 focus:ring-indigo-500 bg-background"
                             />
                             <span className="text-sm text-foreground">{cap}</span>
                           </label>
@@ -756,28 +761,28 @@ export default function SupplierHistoryPage() {
               <form id="add-addr-form" onSubmit={handleAddAddress} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Company / Location Name *</label>
-                  <input required type="text" value={addressFormData.name} onChange={e => setAddressFormData({...addressFormData, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Acme Factory 1" />
+                  <input required type="text" value={addressFormData.name} onChange={e => setAddressFormData({ ...addressFormData, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Acme Factory 1" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-1">Line 1 *</label>
-                    <input required type="text" value={addressFormData.line1} onChange={e => setAddressFormData({...addressFormData, line1: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Street address..." />
+                    <input required type="text" value={addressFormData.line1} onChange={e => setAddressFormData({ ...addressFormData, line1: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Street address..." />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-1">Line 2</label>
-                    <input type="text" value={addressFormData.line2} onChange={e => setAddressFormData({...addressFormData, line2: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Suite, floor, etc." />
+                    <input type="text" value={addressFormData.line2} onChange={e => setAddressFormData({ ...addressFormData, line2: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Suite, floor, etc." />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-1">City, State, Zip *</label>
-                    <input required type="text" value={addressFormData.city} onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Pune, MH 411001" />
+                    <input required type="text" value={addressFormData.city} onChange={e => setAddressFormData({ ...addressFormData, city: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Pune, MH 411001" />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-1">Contact Details</label>
-                    <input type="text" value={addressFormData.contact} onChange={e => setAddressFormData({...addressFormData, contact: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Phone: +91... | GSTIN: ..." />
+                    <input type="text" value={addressFormData.contact} onChange={e => setAddressFormData({ ...addressFormData, contact: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Phone: +91... | GSTIN: ..." />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Address Type</label>
-                    <select value={addressFormData.type} onChange={e => setAddressFormData({...addressFormData, type: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background">
+                    <select value={addressFormData.type} onChange={e => setAddressFormData({ ...addressFormData, type: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background">
                       <option value="consignee">Consignee (Ship To)</option>
                       <option value="invoice_to">Invoice To</option>
                       <option value="billing">Billing / Supplier Base</option>
@@ -786,7 +791,7 @@ export default function SupplierHistoryPage() {
                   </div>
                   <div className="flex items-end pb-2">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={addressFormData.isDefault} onChange={e => setAddressFormData({...addressFormData, isDefault: e.target.checked})} className="rounded" />
+                      <input type="checkbox" checked={addressFormData.isDefault} onChange={e => setAddressFormData({ ...addressFormData, isDefault: e.target.checked })} className="rounded" />
                       <span className="text-sm font-medium">Set as Default</span>
                     </label>
                   </div>
@@ -817,7 +822,7 @@ export default function SupplierHistoryPage() {
               <form id="add-company-addr-form" onSubmit={handleAddCompanyAddress} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Address Type</label>
-                  <select required value={companyAddressFormData.type} onChange={e => setCompanyAddressFormData({...companyAddressFormData, type: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background">
+                  <select required value={companyAddressFormData.type} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, type: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background">
                     <option value="Invoice To / Billing">Invoice To / Billing</option>
                     <option value="Consignee / Ship To">Consignee / Ship To</option>
                     <option value="Branch / Warehouse">Branch / Warehouse</option>
@@ -825,37 +830,37 @@ export default function SupplierHistoryPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Company / Entity Name *</label>
-                  <input required type="text" value={companyAddressFormData.entityName} onChange={e => setCompanyAddressFormData({...companyAddressFormData, entityName: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Sasons Works Wear Pvt Ltd" />
+                  <input required type="text" value={companyAddressFormData.entityName} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, entityName: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Sasons Works Wear Pvt Ltd" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Full Street Address *</label>
-                  <textarea required value={companyAddressFormData.fullAddress} onChange={e => setCompanyAddressFormData({...companyAddressFormData, fullAddress: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px]" placeholder="123 Industrial Area..." />
+                  <textarea required value={companyAddressFormData.fullAddress} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, fullAddress: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px]" placeholder="123 Industrial Area..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Email ID</label>
-                    <input type="email" value={companyAddressFormData.email} onChange={e => setCompanyAddressFormData({...companyAddressFormData, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="contact@domain.com" />
+                    <input type="email" value={companyAddressFormData.email} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, email: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="contact@domain.com" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Phone Number</label>
-                    <input type="text" value={companyAddressFormData.phone} onChange={e => setCompanyAddressFormData({...companyAddressFormData, phone: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="+91..." />
+                    <input type="text" value={companyAddressFormData.phone} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="+91..." />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">GSTIN</label>
-                    <input type="text" value={companyAddressFormData.gstin} onChange={e => setCompanyAddressFormData({...companyAddressFormData, gstin: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="27XXXX..." />
+                    <input type="text" value={companyAddressFormData.gstin} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, gstin: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="27XXXX..." />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">PAN / UN</label>
-                    <input type="text" value={companyAddressFormData.panUn} onChange={e => setCompanyAddressFormData({...companyAddressFormData, panUn: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="ABCDE1234F" />
+                    <input type="text" value={companyAddressFormData.panUn} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, panUn: e.target.value })} className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="ABCDE1234F" />
                   </div>
                 </div>
                 <div className="pt-2 space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={companyAddressFormData.isDefaultInvoice} onChange={e => setCompanyAddressFormData({...companyAddressFormData, isDefaultInvoice: e.target.checked})} className="rounded" />
+                    <input type="checkbox" checked={companyAddressFormData.isDefaultInvoice} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, isDefaultInvoice: e.target.checked })} className="rounded" />
                     <span className="text-sm font-medium">Set as Default for Invoice To</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={companyAddressFormData.isDefaultConsignee} onChange={e => setCompanyAddressFormData({...companyAddressFormData, isDefaultConsignee: e.target.checked})} className="rounded" />
+                    <input type="checkbox" checked={companyAddressFormData.isDefaultConsignee} onChange={e => setCompanyAddressFormData({ ...companyAddressFormData, isDefaultConsignee: e.target.checked })} className="rounded" />
                     <span className="text-sm font-medium">Set as Default for Consignee (Ship To)</span>
                   </label>
                 </div>

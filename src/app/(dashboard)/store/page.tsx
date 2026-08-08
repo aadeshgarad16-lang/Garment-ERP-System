@@ -216,16 +216,30 @@ function StoreOrdersModule() {
     const fetchLiveOrders = async () => {
       try {
         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-        const res = await fetch(`${BACKEND_URL}/procurement/view`, {
+        const res = await fetch(`${BACKEND_URL}/api/store/orders`, {
           headers: { 'X-API-Key': 'sasons_read_only_key_2026_abc' }
         });
-        
+
         if (res.ok) {
-          const rawData = await res.json();
+          const text = await res.text();
+          let rawData;
+          try {
+            rawData = JSON.parse(text);
+          } catch (e) {
+            console.error("Invalid JSON from live orders API:", text.substring(0, 100));
+            return;
+          }
+          // Extract array safely regardless of response wrapper shape
+          let dataArray = Array.isArray(rawData) ? rawData : (rawData.data || rawData.orders || []);
+          if (!Array.isArray(dataArray)) {
+            console.warn("Expected array for live orders, received:", rawData);
+            dataArray = [];
+          }
+
           // Group by po_number
           const grouped: { [key: string]: any } = {};
-          rawData.forEach((row: any) => {
-            const po = row.po_number;
+          dataArray.forEach((row: any) => {
+            const po = row.po_number || row.order_number;
             if (!grouped[po]) {
               grouped[po] = {
                 id: po,
@@ -244,19 +258,25 @@ function StoreOrdersModule() {
             grouped[po].items += 1;
             grouped[po].details.push(row);
           });
-          
+
           const parsed = Object.values(grouped);
-          setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
-          setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
-          setIssueOrders(parsed.filter((o: any) => o.status.includes('Action Required') || o.status.includes('Delayed')));
+          setActiveOrders(parsed.filter((o: any) => {
+            const status = o?.status || '';
+            return status === 'In Process' || status === 'Partially Received' || status === 'In Transit' || status === 'Awaiting Dispatch';
+          }));
+          setCompletedOrders(parsed.filter((o: any) => (o?.status || '') === 'Completed / Received'));
+          setIssueOrders(parsed.filter((o: any) => {
+            const status = o?.status || '';
+            return status.includes('Action Required') || status.includes('Delayed');
+          }));
         }
       } catch (e) {
         console.error("Failed to fetch live orders", e);
       }
     };
-    
+
     fetchLiveOrders();
-    
+
     const handleStorage = () => fetchLiveOrders();
     window.addEventListener('storage', handleStorage);
     window.addEventListener('orders-updated', handleStorage);
@@ -285,18 +305,18 @@ function StoreOrdersModule() {
   const submitGrn = () => {
     if (!selectedGrnPo) return;
     const stored = JSON.parse(localStorage.getItem('sharedPurchaseOrders') || '[]');
-    
+
     const updated = stored.map((o: any) => {
       if (o.id === selectedGrnPo.id) {
         const newReceivedQty = (o.receivedQty || 0) + Number(grnReceivedQty);
         const newGrnId = `GRN-${o.id}-${Date.now().toString().slice(-4)}`;
         const today = new Date().toLocaleDateString();
-        
+
         const grnNumbers = [...(o.grnNumbers || []), newGrnId];
         const receivingDates = [...(o.receivingDates || []), today];
-        
+
         const isFull = newReceivedQty >= o.items;
-        
+
         return {
           ...o,
           receivedQty: newReceivedQty,
@@ -311,7 +331,7 @@ function StoreOrdersModule() {
 
     updateSharedOrders(updated);
     setShowGrnModal(false);
-    
+
     // Show success alert
     alert(`GRN GENERATED SUCCESSFULLY!\n\nDocument: GRN for ${selectedGrnPo.id}\nReceived Qty: ${grnReceivedQty}\nStatus: ${updated.find((o: any) => o.id === selectedGrnPo.id).status}`);
   };
@@ -319,10 +339,10 @@ function StoreOrdersModule() {
   const handleFlagIssue = (orderId: string) => {
     const note = prompt("Please enter the issue details (e.g., damaged, partial delivery):");
     if (note === null) return;
-    
+
     const order = activeOrders.find(o => o.id === orderId);
     if (!order) return;
-    
+
     setActiveOrders(prev => prev.filter(o => o.id !== orderId));
     setIssueOrders(prev => [...prev, { ...order, status: `Action Required: ${note}`, receivedDate: 'Issue Flagged' }]);
   };
@@ -351,21 +371,20 @@ function StoreOrdersModule() {
                   <td className="px-6 py-4 text-center text-muted-foreground">{order.receivedDate}</td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex justify-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                        order.status.includes('Pending') || order.status.includes('Awaiting') ? 'bg-amber-500/10 text-amber-500' :
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${order.status.includes('Pending') || order.status.includes('Awaiting') ? 'bg-amber-500/10 text-amber-500' :
                         order.status.includes('Action Required') || order.status.includes('Delayed') ? 'bg-red-500/10 text-red-500' :
-                        order.status.includes('In Transit') ? 'bg-blue-500/10 text-blue-500' :
-                        'bg-emerald-500/10 text-emerald-500'
-                      }`}>
+                          order.status.includes('In Transit') ? 'bg-blue-500/10 text-blue-500' :
+                            'bg-emerald-500/10 text-emerald-500'
+                        }`}>
                         {order.status}
                       </span>
                     </div>
                   </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
                       {tableType === 'active' ? (
                         <>
-                          <button 
+                          <button
                             onClick={() => handleConfirm(order.id)}
                             className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 transition-colors flex items-center gap-1"
                             title="Generate GRN"
@@ -373,7 +392,7 @@ function StoreOrdersModule() {
                             <FileText className="h-3.5 w-3.5" />
                             Generate GRN
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleFlagIssue(order.id)}
                             className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
                             title="Flag Issue"
@@ -383,7 +402,7 @@ function StoreOrdersModule() {
                         </>
                       ) : tableType === 'issue' ? (
                         <>
-                          <button 
+                          <button
                             onClick={() => handleConfirm(order.id)}
                             className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded text-xs font-semibold hover:bg-indigo-100 transition-colors flex items-center gap-1"
                             title="Generate GRN"
@@ -391,7 +410,7 @@ function StoreOrdersModule() {
                             <FileText className="h-3.5 w-3.5" />
                             Generate GRN
                           </button>
-                          <button 
+                          <button
                             className="px-2.5 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 rounded text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1"
                             title="View Issues"
                           >
@@ -413,8 +432,8 @@ function StoreOrdersModule() {
                       ) : (
                         <span className="text-muted-foreground text-sm flex justify-center">-</span>
                       )}
-                      </div>
-                    </td>
+                    </div>
+                  </td>
                 </tr>
               )) : (
                 <tr>
@@ -434,13 +453,12 @@ function StoreOrdersModule() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-        <div 
+        <div
           onClick={() => setActiveOrderTab('active')}
-          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
-            activeOrderTab === 'active' 
-              ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] bg-blue-500/10' 
-              : 'border-blue-500/30 hover:bg-blue-500/5'
-          }`}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${activeOrderTab === 'active'
+            ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] bg-blue-500/10'
+            : 'border-blue-500/30 hover:bg-blue-500/5'
+            }`}
         >
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-500/10 mr-4 flex-shrink-0">
             <List className="h-6 w-6 text-blue-500" />
@@ -454,13 +472,12 @@ function StoreOrdersModule() {
           </div>
         </div>
 
-        <div 
+        <div
           onClick={() => setActiveOrderTab('issue')}
-          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
-            activeOrderTab === 'issue' 
-              ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)] bg-orange-500/10' 
-              : 'border-orange-500/30 hover:bg-orange-500/5'
-          }`}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${activeOrderTab === 'issue'
+            ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)] bg-orange-500/10'
+            : 'border-orange-500/30 hover:bg-orange-500/5'
+            }`}
         >
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-orange-500/10 mr-4 flex-shrink-0">
             <AlertCircle className="h-6 w-6 text-orange-500" />
@@ -474,13 +491,12 @@ function StoreOrdersModule() {
           </div>
         </div>
 
-        <div 
+        <div
           onClick={() => setActiveOrderTab('completed')}
-          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${
-            activeOrderTab === 'completed' 
-              ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] bg-emerald-500/10' 
-              : 'border-emerald-500/30 hover:bg-emerald-500/5'
-          }`}
+          className={`flex items-center p-4 bg-background border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer ${activeOrderTab === 'completed'
+            ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] bg-emerald-500/10'
+            : 'border-emerald-500/30 hover:bg-emerald-500/5'
+            }`}
         >
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-emerald-500/10 mr-4 flex-shrink-0">
             <CheckCircle2 className="h-6 w-6 text-emerald-500" />
@@ -610,7 +626,7 @@ function StoreOrdersModule() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
@@ -633,13 +649,13 @@ function StoreOrdersModule() {
                         </td>
                         <td className="px-4 py-3 font-medium text-foreground">{(selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)).toFixed(2)}</td>
                         <td className="px-4 py-3">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             min="0"
                             max={selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)}
                             value={grnReceivedQty}
                             onChange={(e) => setGrnReceivedQty(Number(e.target.value))}
-                            className="w-24 px-2 py-1.5 border border-border rounded bg-background text-sm text-foreground outline-none focus:border-indigo-500" 
+                            className="w-24 px-2 py-1.5 border border-border rounded bg-background text-sm text-foreground outline-none focus:border-indigo-500"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -664,7 +680,7 @@ function StoreOrdersModule() {
                     </tbody>
                   </table>
                 </div>
-                
+
                 <div className="bg-muted/10 border-t border-border p-4 flex flex-wrap justify-end gap-8">
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Expected Total Qty</p>
@@ -800,7 +816,7 @@ function StockOverviewModule() {
       if (USE_MOCK_DATA) {
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         let activeData = MOCK_STOCK_DATA.filter((item: any) => item.is_archived !== true);
         if (materialType === "raw") {
           activeData = activeData.filter((item: any) => item.type === "article");
@@ -1044,26 +1060,26 @@ function StockOverviewModule() {
               {isDatePickerOpen && (
                 <div className="absolute top-full left-0 mt-2 p-4 bg-[#1A1F2C] border border-neutral-700/50 rounded-xl shadow-2xl z-50 w-[280px]">
                   <div className="flex items-center justify-between mb-4">
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) - 10).toString()); }}
                       className="p-1 text-neutral-400 hover:text-white transition-colors"
                     >
                       «
                     </button>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) - 1).toString()); }}
                       className="p-1 text-neutral-400 hover:text-white transition-colors"
                     >
                       ‹
                     </button>
                     <span className="text-white font-semibold">{selectedYear}</span>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) + 1).toString()); }}
                       className="p-1 text-neutral-400 hover:text-white transition-colors"
                     >
                       ›
                     </button>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); setSelectedYear((parseInt(selectedYear) + 10).toString()); }}
                       className="p-1 text-neutral-400 hover:text-white transition-colors"
                     >
@@ -1322,12 +1338,17 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
 
   // Fetch metrics & dropdown dynamic filtering criteria from DB configuration endpoints
   const fetchDashboardMeta = useCallback(() => {
-    fetch(`${BACKEND_URL}/store_materials/dashboard`, { headers: getAuthHeaders() })
-      .then(r => r.json())
-      .then(setMetrics)
+    fetch(`${BACKEND_URL}/api/store/material-master/dashboard`, { headers: getAuthHeaders() })
+      .then(async r => JSON.parse(await r.text()))
+      .then(res => setMetrics({
+        total: res?.data?.totalMaterials ?? res?.total ?? 0,
+        available: res?.data?.availableItems ?? res?.available ?? 0,
+        low_stock: res?.data?.lowStockItems ?? res?.low_stock ?? 0,
+        out_of_stock: res?.data?.outOfStockItems ?? res?.out_of_stock ?? 0
+      }))
       .catch(console.error);
-    fetch(`${BACKEND_URL}/store_materials/filters`, { headers: getAuthHeaders() })
-      .then(r => r.json())
+    fetch(`${BACKEND_URL}/api/store/material-master/filters`, { headers: getAuthHeaders() })
+      .then(async r => JSON.parse(await r.text()))
       .then(setFilterOptions)
       .catch(console.error);
   }, []);
@@ -1346,10 +1367,13 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
       sortOrder
     });
 
-    fetch(`${BACKEND_URL}/store_materials/view?${params.toString()}`, {
+    fetch(`${BACKEND_URL}/api/store/material-master?${params.toString()}`, {
       headers: getAuthHeaders()
     })
-      .then(res => res.json())
+      .then(async res => {
+        const text = await res.text();
+        return JSON.parse(text);
+      })
       .then(data => {
         const activeData = Array.isArray(data.data) ? data.data.filter((item: any) =>
           item.is_archived !== true &&
@@ -1371,6 +1395,7 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
         setMaterials(mappedData);
         setTotalRecords(data.totalRecords || 0);
         setLoading(false);
+        setUiError(null);
       })
       .catch(err => {
         console.error("Failed to fetch materials:", err);
@@ -1522,6 +1547,17 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
       });
   };
 
+  const totalMaterials = materials?.length || 0;
+  const availableItems = (materials || []).filter(
+    item => Number(item.availableQty || 0) > Number(item.minimumRequired || 0)
+  ).length;
+  const lowStockItems = (materials || []).filter(
+    item => Number(item.availableQty || 0) > 0 && Number(item.availableQty || 0) <= Number(item.minimumRequired || 0)
+  ).length;
+  const outOfStockItems = (materials || []).filter(
+    item => Number(item.availableQty || 0) === 0
+  ).length;
+
   return (
     <div className="space-y-6">
       {uiError && (
@@ -1530,12 +1566,12 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
           <span>{uiError}</span>
         </div>
       )}
-      {/* Cards driven completely live by API Metrics variable */}
+      {/* Cards driven completely live by fetched data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <MetricCard
           title="Total Materials"
-          value={metrics.total}
-          subtitle={metrics.total === 1 ? "Material" : "Materials"}
+          value={totalMaterials}
+          subtitle={totalMaterials === 1 ? "Material" : "Materials"}
           icon={Layers}
           variant="blue"
           onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
@@ -1544,8 +1580,8 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
 
         <MetricCard
           title="Available"
-          value={metrics.available}
-          subtitle={metrics.available === 1 ? "Item" : "Items"}
+          value={availableItems}
+          subtitle={availableItems === 1 ? "Item" : "Items"}
           icon={CheckCircle2}
           variant="green"
           onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
@@ -1554,8 +1590,8 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
 
         <MetricCard
           title="Low Stock"
-          value={metrics.low_stock}
-          subtitle={metrics.low_stock === 1 ? "Item" : "Items"}
+          value={lowStockItems}
+          subtitle={lowStockItems === 1 ? "Item" : "Items"}
           icon={AlertTriangle}
           variant="amber"
           onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
@@ -1564,8 +1600,8 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
 
         <MetricCard
           title="Out of Stock"
-          value={metrics.out_of_stock}
-          subtitle={metrics.out_of_stock === 1 ? "Item" : "Items"}
+          value={outOfStockItems}
+          subtitle={outOfStockItems === 1 ? "Item" : "Items"}
           icon={AlertCircle}
           variant="red"
           onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
@@ -2156,12 +2192,17 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
   const [uiError, setUiError] = useState<string | null>(null);
 
   const fetchDashboardMeta = useCallback(() => {
-    fetch(`${BACKEND_URL}/store_garments/dashboard`, { headers: getAuthHeaders() })
-      .then(r => r.json())
-      .then(setMetrics)
+    fetch(`${BACKEND_URL}/api/store/finished-goods/dashboard`, { headers: getAuthHeaders() })
+      .then(async r => JSON.parse(await r.text()))
+      .then(res => setMetrics({
+        total: res?.data?.totalGarments ?? res?.total ?? 0,
+        available: res?.data?.availableItems ?? res?.available ?? 0,
+        low_stock: res?.data?.lowStockItems ?? res?.low_stock ?? 0,
+        out_of_stock: res?.data?.outOfStockItems ?? res?.out_of_stock ?? 0
+      }))
       .catch(console.error);
-    fetch(`${BACKEND_URL}/store_garments/filters`, { headers: getAuthHeaders() })
-      .then(r => r.json())
+    fetch(`${BACKEND_URL}/api/store/finished-goods/filters`, { headers: getAuthHeaders() })
+      .then(async r => JSON.parse(await r.text()))
       .then(setFilterOptions)
       .catch(console.error);
   }, []);
@@ -2181,10 +2222,13 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       sortOrder
     });
 
-    fetch(`${BACKEND_URL}/store_garments/view?${params.toString()}`, {
+    fetch(`${BACKEND_URL}/api/store/finished-goods?${params.toString()}`, {
       headers: getAuthHeaders()
     })
-      .then(res => res.json())
+      .then(async res => {
+        const text = await res.text();
+        return JSON.parse(text);
+      })
       .then(data => {
         const activeData = Array.isArray(data.data) ? data.data.filter((item: any) =>
           item.is_archived !== true &&
@@ -2207,6 +2251,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
         setGarments(mappedData);
         setTotalRecords(data.totalRecords || 0);
         setLoading(false);
+        setUiError(null);
       })
       .catch(err => {
         console.error("Failed to fetch garments:", err);
@@ -2317,7 +2362,6 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       !formData.category ||
       !formData.gender ||
       !effectiveSize ||
-      !formData.colour ||
       !effectiveAvailableQty ||
       !formData.unitPrice ||
       (!isMultiSize && !formData.minimumRequired)
@@ -2343,7 +2387,7 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       pattern: formData.pattern,
       category: formData.category,
       gender: formData.gender,
-      colour: formData.colour,
+      colour: formData.colour || 'N/A',
       blockedQty: Number(formData.blockedQty || 0),
       minimumRequired: Number(formData.minimumRequired),
       unitPrice: Number(formData.unitPrice),
@@ -2357,8 +2401,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
       };
 
       const targetUrl = editingId
-        ? `${BACKEND_URL}/store_garments/edit/${editingId}`
-        : `${BACKEND_URL}/store_garments/add`;
+        ? `${BACKEND_URL}/api/store/finished-goods/edit/${editingId}`
+        : `${BACKEND_URL}/api/store/finished-goods/add`;
 
       fetch(targetUrl, {
         method: editingId ? 'PUT' : 'POST',
@@ -2383,8 +2427,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
           setUiError(err.message || "Unable to connect to the server. Working in offline mode.");
         });
     } else {
-      const targetUrl = `${BACKEND_URL}/store_garments/add`;
-      
+      const targetUrl = `${BACKEND_URL}/api/store/finished-goods/add`;
+
       const items = formData.sizes.map(sz => ({
         size: sz,
         availableQty: Number(sizeQuantities[sz]?.availableQty || 0),
@@ -2407,18 +2451,29 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
         }
         return res.json();
       })
-      .then(() => {
-        fetchGarments();
-        fetchDashboardMeta();
-        setShowModal(false);
-        setEditingId(null);
-      })
-      .catch((err) => {
-        console.error(err);
-        setUiError(err.message || "Failed to batch create garments");
-      });
+        .then(() => {
+          fetchGarments();
+          fetchDashboardMeta();
+          setShowModal(false);
+          setEditingId(null);
+        })
+        .catch((err) => {
+          console.error(err);
+          setUiError(err.message || "Failed to batch create garments");
+        });
     }
   };
+  const totalGarments = garments?.length || 0;
+  const availableItems = (garments || []).filter(
+    item => Number(item.availableQty || 0) > Number(item.minimumRequired || 0)
+  ).length;
+  const lowStockItems = (garments || []).filter(
+    item => Number(item.availableQty || 0) > 0 && Number(item.availableQty || 0) <= Number(item.minimumRequired || 0)
+  ).length;
+  const outOfStockItems = (garments || []).filter(
+    item => Number(item.availableQty || 0) === 0
+  ).length;
+
   return (
     <div className="space-y-6">
       {uiError && (
@@ -2427,12 +2482,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
           <span>{uiError}</span>
         </div>
       )}
-      {/* Dynamic DB Status Metrics Cards */}
+      {/* Cards driven completely live by fetched data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <MetricCard
           title="Total Garments"
-          value={metrics.total}
-          subtitle={metrics.total === 1 ? "Garment" : "Garments"}
+          value={totalGarments}
+          subtitle={totalGarments === 1 ? "Garment" : "Garments"}
           icon={Package}
           variant="blue"
           onClick={() => { setSelectedCard("all"); setStatusFilter("all"); }}
@@ -2441,8 +2496,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <MetricCard
           title="Available"
-          value={metrics.available}
-          subtitle={metrics.available === 1 ? "Item" : "Items"}
+          value={availableItems}
+          subtitle={availableItems === 1 ? "Item" : "Items"}
           icon={CheckCircle2}
           variant="green"
           onClick={() => { setSelectedCard("available"); setStatusFilter("available"); }}
@@ -2451,8 +2506,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <MetricCard
           title="Low Stock"
-          value={metrics.low_stock}
-          subtitle={metrics.low_stock === 1 ? "Item" : "Items"}
+          value={lowStockItems}
+          subtitle={lowStockItems === 1 ? "Item" : "Items"}
           icon={AlertTriangle}
           variant="amber"
           onClick={() => { setSelectedCard("low"); setStatusFilter("low"); }}
@@ -2461,8 +2516,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
 
         <MetricCard
           title="Out of Stock"
-          value={metrics.out_of_stock}
-          subtitle={metrics.out_of_stock === 1 ? "Item" : "Items"}
+          value={outOfStockItems}
+          subtitle={outOfStockItems === 1 ? "Item" : "Items"}
           icon={AlertCircle}
           variant="red"
           onClick={() => { setSelectedCard("out"); setStatusFilter("out"); }}
@@ -2749,12 +2804,12 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                                 gender: item.gender || "Male",
                                 size: item.size || "M",
                                 sizes: [],
-                                colour: item.colour || "",
+                                colour: item.colour || item.color || "",
                                 availableQty: item.availableQty ? item.availableQty.toString() : "",
                                 blockedQty: item.blockedQty ? item.blockedQty.toString() : "",
                                 minimumRequired: item.minimumRequired ? item.minimumRequired.toString() : (item.min_required ? item.min_required.toString() : ""),
                                 unitPrice: item.unitPrice ? item.unitPrice.toString() : "",
-                                image: item.image || "",
+                                image: item.image || item.image_url || null,
                               });
                               setShowModal(true);
                             }}
@@ -2937,8 +2992,8 @@ function PreStitchedModule({ editRequest, onEditConsumed }: { editRequest?: any,
                   onClick={() => setActiveDropdown(activeDropdown === 'size' ? null : 'size')}
                 >
                   <span className="truncate">
-                    {!editingId && formData.sizes && formData.sizes.length > 0 
-                      ? formData.sizes.join(", ") 
+                    {!editingId && formData.sizes && formData.sizes.length > 0
+                      ? formData.sizes.join(", ")
                       : formData.size || "Select Size"}
                   </span>
                   <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${activeDropdown === 'size' ? 'rotate-180' : ''}`} />
@@ -3305,10 +3360,13 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
 
   const fetchItems = useCallback(() => {
     setLoading(true);
-    fetch(`${BACKEND_URL}/store_items/view?page=${page}&limit=${limit}&search=${encodeURIComponent(searchTerm)}`, {
+    fetch(`${BACKEND_URL}/api/store/stock-overview`, {
       headers: getAuthHeaders()
     })
-      .then(res => res.json())
+      .then(async res => {
+        const text = await res.text();
+        return JSON.parse(text);
+      })
       .then(data => {
         setItems(data.data || []);
         setTotalPages(data.totalPages || 1);
@@ -3375,35 +3433,35 @@ function MaterialListModule({ onEdit }: { onEdit: (type: string, item: any) => v
                 const displayType = item.type === 'Material' ? 'Article' : item.type === 'Garment' ? 'Finished Goods' : item.type;
                 const isShortage = (Number(item.available_qty) < Number(item.min_required)) || Number(item.available_qty) === 0;
                 const sku = item.hsn_code || item.code || item.sku || `SKU-${item.id || item.material_id}`;
-                
-                return (
-                <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 text-left">
-                    <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {displayType}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-foreground text-center">{item.hsn_code || item.name}</td>
-                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.name}</td>
-                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.category}</td>
-                  <td className="px-4 py-3 text-center font-medium">{item.available_qty}</td>
-                  <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
-                  <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
 
-                  <td className="px-4 py-3 text-center">
-                    {userRole === 'Super Admin' && (
-                      <button
-                        onClick={() => onEdit(item.type, item)}
-                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })
+                return (
+                  <tr key={`${item.type}-${item.id}-${index}`} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-4 py-3 text-left">
+                      <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 text-xs font-medium rounded-full ${item.type === 'Garment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {displayType}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-foreground text-center">{item.hsn_code || item.name}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.name}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 text-left">{item.category}</td>
+                    <td className="px-4 py-3 text-center font-medium">{item.available_qty}</td>
+                    <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">{item.min_required}</td>
+                    <td className="px-4 py-3 text-center text-neutral-600 dark:text-neutral-300">₹{item.unit_price}</td>
+
+                    <td className="px-4 py-3 text-center">
+                      {userRole === 'Super Admin' && (
+                        <button
+                          onClick={() => onEdit(item.type, item)}
+                          className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

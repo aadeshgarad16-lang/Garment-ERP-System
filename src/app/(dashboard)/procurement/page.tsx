@@ -329,7 +329,7 @@ export default function ProcurementPage() {
       try {
         console.log("Fetching suppliers from API...");
         const res = await fetch('/api/suppliers');
-        
+
         if (!res.ok) {
           console.error(`Failed to fetch suppliers: ${res.status}`);
           setSuppliersList([]);
@@ -376,14 +376,14 @@ export default function ProcurementPage() {
     try {
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
       const targetUrl = `${BACKEND_URL}/api/store-articles/shortages`;
-      
+
       const res = await fetch(targetUrl, {
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': 'sasons_read_only_key_2026_abc'
         }
       });
-      
+
       if (!res.ok) {
         console.error(`Store materials fetch failed with status: ${res.status}`);
         return [];
@@ -411,69 +411,36 @@ export default function ProcurementPage() {
         const activeData = data.data;
         return activeData
           .filter((item: any) => {
-            const deficit = Number(item.deficit ?? 0);
-            const status = String(item.status || '');
-            const itemName = (item.article_name || item.name || '').toLowerCase();
-            const hsn = item.hsn_code || '';
-
+            const itemName = String(item.item_name || item.name || '').toLowerCase();
+            const hsn = item.sku_code || item.hsn_code || '';
             if (itemName.includes('metal button') || hsn === '960621') {
               return false;
             }
-
-            const hasShortage = deficit > 0 && status.toUpperCase() !== 'FULFILLED';
-            return hasShortage;
+            return true;
           })
           .map((item: any, index: number) => {
-            const available = Number(item.available_qty ?? 0);
-            const minRequired = Number(item.min_required_qty ?? 0);
-            const shortageQty = Number(item.deficit ?? 0);
-            const materialName = item.article_name || item.name || item.material_name || item.description || 'Unknown Item';
-            const hsn = item.hsn_code;
-            const materialStr = hsn ? `${materialName} (HSN: ${hsn})` : materialName;
-
-            const supplierMappingRaw = item.supplier_ids || item.available_suppliers || item.suppliers || item.preferred_supplier_ids || item.supplier_mapping || item.supplier_name || item.supplier || item.supplier_id;
-            let supplierArray = [];
-
-            if (Array.isArray(supplierMappingRaw)) {
-              supplierArray = supplierMappingRaw.map(v => String(v));
-            } else if (typeof supplierMappingRaw === 'string') {
-              try {
-                const parsed = JSON.parse(supplierMappingRaw);
-                if (Array.isArray(parsed)) supplierArray = parsed.map(v => String(v));
-                else supplierArray = [supplierMappingRaw];
-              } catch {
-                supplierArray = [supplierMappingRaw];
-              }
-            } else if (supplierMappingRaw != null) {
-              supplierArray = [String(supplierMappingRaw)];
-            } else {
-              supplierArray = ['Store Restock'];
-            }
-
-            const supplierNames = supplierArray.map(supp => {
-              const strSupp = String(supp).trim();
-              const matchedSupplier = (data.suppliers || []).find((v: any) => String(v.id) === strSupp || String(v.name).toLowerCase() === strSupp.toLowerCase());
-              return matchedSupplier ? matchedSupplier.name : strSupp;
-            });
-
-            const itemId = item.id || item.article_id || item.material_id || item.garment_id || index;
-            const itemType = item.type || 'Material';
-
+            const materialStr = item.sku_code ? `${item.item_name} (HSN/SKU: ${item.sku_code})` : item.item_name;
+            const uniqueKey = item.unique_key || `PR-${item.item_type || 'ITEM'}-${item.id || index}`;
+            
             return {
-              id: `PR-STORE-${itemType}-${itemId}`,
-              storeId: itemId,
-              itemType: itemType === 'Garment' ? 'Stock Good' : 'Material',
+              id: uniqueKey,
+              unique_key: uniqueKey,
+              pr_id: item.source_id,
+              storeId: item.source_id,
+              itemType: item.item_type,
+              item_type: item.item_type,
               material: materialStr,
               category: item.category || 'General',
-              required: minRequired,
-              available: available,
-              shortage: shortageQty,
+              description: item.item_description || '',
+              required: Number(item.min_required ?? 0),
+              available: Number(item.available_qty ?? 0),
+              shortage: Number(item.deficit_qty ?? 0),
               unit: item.unit || 'units',
-              supplier: supplierNames[0] || 'Store Restock',
-              allSuppliers: supplierNames,
-              cost: shortageQty * (Number(item.unit_price) || 0),
-              priority: available === 0 ? 'Critical' : 'High',
-              status: 'Pending Procurement',
+              supplier: item.supplier_name || 'Store Restock',
+              allSuppliers: item.supplier_name ? [item.supplier_name] : ['Store Restock'],
+              cost: Number(item.deficit_qty ?? 0) * (Number(item.unit_price) || 0),
+              priority: Number(item.available_qty) === 0 ? 'Critical' : 'High',
+              status: item.stock_status || 'Pending Procurement',
               linkedPO: null
             };
           });
@@ -917,8 +884,8 @@ export default function ProcurementPage() {
             <AlertTriangle className="h-6 w-6 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Pending</p>
-            <p className="text-2xl font-bold text-foreground">{totalShortages}</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Procurement Requests</p>
+            <p className="text-2xl font-bold text-foreground">{mockShortages.filter(i => String(i.status).toUpperCase() === 'PENDING').length}</p>
           </div>
         </div>
 
@@ -930,8 +897,8 @@ export default function ProcurementPage() {
             <Truck className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">In Process</p>
-            <p className="text-2xl font-bold text-foreground">{inProcessPOs.length}</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Active PO's</p>
+            <p className="text-2xl font-bold text-foreground">{mockShortages.filter(i => String(i.status).toUpperCase() === 'IN_PROCESS' || String(i.status).toUpperCase() === 'PO_CREATED').length}</p>
           </div>
         </div>
 
@@ -943,8 +910,8 @@ export default function ProcurementPage() {
             <CheckCircle2 className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Completed / Received</p>
-            <p className="text-2xl font-bold text-foreground">{completedPOs.length}</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Completed PO's</p>
+            <p className="text-2xl font-bold text-foreground">{mockShortages.filter(i => String(i.status).toUpperCase() === 'RESOLVED').length}</p>
           </div>
         </div>
 
@@ -998,11 +965,11 @@ export default function ProcurementPage() {
 
                   {isSupplierDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-64 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl z-50 p-2 flex flex-col gap-2">
-                      
+
                       {/* Search Input */}
-                      <input 
-                        type="text" 
-                        placeholder="Search suppliers..." 
+                      <input
+                        type="text"
+                        placeholder="Search suppliers..."
                         value={supplierSearchTerm}
                         onChange={(e) => setSupplierSearchTerm(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
@@ -1070,7 +1037,8 @@ export default function ProcurementPage() {
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                 {filteredShortages.length > 0 ? (
-                  filteredShortages.map((item) => {
+                  filteredShortages.map((item, index) => {
+                    const uniqueKey = `PR-${item.item_type || item.itemType || 'ITEM'}-${item.id || item.sku_code || 'no-id'}-${index}`;
                     const splits = articleSplits.filter(s => s.parentId === item.id);
                     const totalRows = splits.length > 0 ? splits.length + 2 : 1;
 
@@ -1098,18 +1066,22 @@ export default function ProcurementPage() {
                     const dynamicShortage = Math.max(0, (item.shortage ?? item.required) - totalAllocated);
 
                     return (
-                      <React.Fragment key={item.id}>
+                      <React.Fragment key={uniqueKey}>
                         <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ease-in-out ${editModeSupplier && Object.values(selectedSuppliers).includes(editModeSupplier) ? 'bg-indigo-50/20 dark:bg-indigo-900/10' : ''}`}>
                           <td className="px-4 py-3 align-top border-r border-border/50" rowSpan={totalRows}>
                             <div className="flex flex-col">
                               <span className={`text-sm font-medium ${dynamicShortage > 0 ? 'bg-red-50 text-red-700 px-2 py-1 rounded-lg inline-block font-semibold border border-red-100' : 'text-foreground'}`}>{item.material}</span>
                               <span className="text-xs text-muted-foreground mt-1">
-                                {item.itemType ? (
-                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mr-2 ${item.itemType === 'Stock Good' || item.itemType === 'FINISHED GOODS' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {item.itemType === 'Stock Good' || item.itemType === 'STOCK_GOOD' || item.itemType === 'STOCK GOOD' ? 'FINISHED GOODS' : item.itemType === 'Material' || item.itemType === 'MATERIAL' ? 'ARTICLE' : item.itemType}
+                                {item.itemType === 'FINISHED_GOODS' ? (
+                                  <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 mr-2 uppercase tracking-wider">
+                                    FINISHED GOODS
                                   </span>
-                                ) : null}
-                                {item.category} • {item.id.split(',')[0]}
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 mr-2 uppercase tracking-wider">
+                                    ARTICLE
+                                  </span>
+                                )}
+                                {item.category} • {item.description || 'General'}
                               </span>
                             </div>
                           </td>
@@ -1580,141 +1552,7 @@ export default function ProcurementPage() {
         </div>
       )}
 
-      {/* Lower Section: Grid layout for Suppliers & Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Supplier Summary */}
-        <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-6 py-5 bg-neutral-50/50 dark:bg-card/30">
-            <h2 className="text-lg font-semibold text-card-foreground flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-muted-foreground" />
-              {t('procurement.supplierSummary') || 'Supplier Directory Summary'}
-            </h2>
-          </div>
-          <div className="w-full">
-            <table className="w-full text-left border-collapse table-fixed">
-              <thead>
-                <tr className="bg-card border-b border-neutral-100 dark:border-border text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                  <th className="px-2 py-3 w-[22%] break-words">{t('bom.customer') || 'Supplier Name'}</th>
-                  <th className="px-2 py-3 w-[25%] break-words">{t('inventoryVal.materialsHeader') || 'Materials Supplied'}</th>
-                  <th className="px-2 py-3 w-[15%] break-words">{t('leadTime') || 'Lead Time'}</th>
-                  <th className="px-2 py-3 w-[18%] break-words">{t('performance') || 'Rating'}</th>
-                  <th className="px-2 py-3 w-[20%] break-words">{t('dashboard.recentOrders.headers.status') || 'Status & Contact'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-                {suppliers.length > 0 ? (
-                  suppliers.map((supplier, idx) => (
-                    <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-2 py-3 break-words">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground flex items-center gap-1 flex-wrap">
-                            {supplier.name}
-                            {supplier.preferred && <span title={t('procurement.preferredSupplier') || 'Preferred Supplier'}><Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" /></span>}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3 text-[13px] text-muted-foreground break-words">{supplier.materials}</td>
-                      <td className="px-2 py-3 text-[13px] text-muted-foreground break-words">{supplier.leadTime}</td>
-                      <td className="px-2 py-3">
-                        <div className="flex flex-col xl:flex-row items-start xl:items-center gap-2">
-                          <div className="w-full max-w-[40px] xl:max-w-[60px] bg-muted rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className={`h-1.5 rounded-full ${supplier.performance >= 95 ? 'bg-emerald-500' : supplier.performance >= 90 ? 'bg-amber-500' : 'bg-red-500'}`}
-                              style={{ width: `${supplier.performance}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{supplier.performance}%</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-2 text-sm">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-normal text-center ${supplier.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                            {supplier.status === 'Active' ? (t('dashboard.stockAlerts.severity.low') || 'Active') : (t('dashboard.stockAlerts.severity.low') || 'Under Review')}
-                          </span>
-                          <div className="flex gap-1.5 text-neutral-400 mt-1 xl:mt-0">
-                            <button className="hover:text-blue-600 transition-colors" title={`Email ${supplier.contact}`}><Mail className="h-3.5 w-3.5" /></button>
-                            <button className="hover:text-blue-600 transition-colors" title="Call Supplier"><Phone className="h-3.5 w-3.5" /></button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center">
-                        <Building2 className="h-8 w-8 text-neutral-300 mb-2" />
-                        <p>No suppliers linked to selected materials.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Workflow Progression */}
-        <div className="lg:col-span-1 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-900/30 rounded-xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 overflow-hidden flex flex-col">
-          <div className="border-b border-indigo-100 dark:border-indigo-800/50 px-6 py-5 bg-white/50 dark:bg-card/50 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              {t('procurement.procCompletion') || 'Procurement Completion'}
-            </h2>
-            <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80 mt-1">{t('procurement.nextSteps') || 'Next steps after shortage resolution'}</p>
-          </div>
-          <div className="p-6 flex-1 flex flex-col justify-between">
-            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px before:h-full before:w-0.5 before:bg-indigo-200">
-              <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-indigo-600 text-indigo-600">
-                  <div className="w-2 h-2 bg-indigo-600 rounded-full" />
-                </div>
-                <div className="ml-4">
-                  <span className="text-sm font-semibold text-foreground">{t('orderInitiation.tracker.procurement') || 'Procurement'}</span>
-                  <p className="text-xs text-muted-foreground">{t('procurement.shortageItems') || 'Shortage resolution'}</p>
-                </div>
-              </div>
-              <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-indigo-400 text-indigo-400" />
-                <div className="ml-4">
-                  <span className="text-sm font-semibold text-muted-foreground">{t('orderInitiation.tracker.materialAllocation') || 'Material Allocation'}</span>
-                  <p className="text-xs text-neutral-400">{t('Allocate Warehouse') || 'Allocate from warehouse'}</p>
-                </div>
-              </div>
-              <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-border text-transparent" />
-                <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">{t('Freeze Materials') || 'Freeze Materials'}</span>
-                  <p className="text-xs text-neutral-400">{t('Lock Stock') || 'Lock stock for PO'}</p>
-                </div>
-              </div>
-              <div className="relative flex items-center group">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-card flex-shrink-0 z-10 border-border text-transparent" />
-                <div className="ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">{t('orderInitiation.tracker.production') || 'Production'}</span>
-                  <p className="text-xs text-neutral-400">{t('Begin Manufacturing') || 'Begin manufacturing'}</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => advanceStage('/procurement/review-po', 'Material Allocation')}
-              className="mt-8 w-full px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors font-medium text-sm flex items-center justify-center gap-2 group"
-            >
-              {t('procurement.continueAllocation')}
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button
-              onClick={() => router.push('/procurement/create-po')}
-              className="mt-3 w-full px-4 py-3 bg-card border border-border text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm hover:bg-muted transition-colors font-medium text-sm flex items-center justify-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              {t('procurement.createRequest')}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Archive Box */}
       {archivedRequests.length > 0 && (

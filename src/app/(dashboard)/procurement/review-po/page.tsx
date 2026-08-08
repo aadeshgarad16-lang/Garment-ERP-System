@@ -22,10 +22,10 @@ interface SupplierGroup {
 
 export default function ReviewPurchaseOrdersPage() {
   const router = useRouter();
-  
+
   const [sessionData, setSessionData] = useState<SupplierGroup[]>([]);
   const [supplierStatus, setSupplierStatus] = useState<Record<string, { status: 'pending' | 'success', poNumber?: string }>>({});
-  
+
   const [branch, setBranch] = useState('Main Plant');
   const [transportMode, setTransportMode] = useState('Road Transport');
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
@@ -51,7 +51,7 @@ export default function ReviewPurchaseOrdersPage() {
         }
       }
     };
-    
+
     loadSession();
     window.addEventListener('storage', loadSession);
     return () => window.removeEventListener('storage', loadSession);
@@ -61,7 +61,7 @@ export default function ReviewPurchaseOrdersPage() {
     // 1. Generate Official PO Record in sharedPurchaseOrders
     const sharedOrdersStr = localStorage.getItem('sharedPurchaseOrders');
     let sharedOrders = sharedOrdersStr ? JSON.parse(sharedOrdersStr) : [];
-    
+
     const totalCost = group.items.reduce((sum, item) => sum + item.orderCost, 0);
     const materials = group.items.map(item => ({
       itemDescription: item.material,
@@ -137,14 +137,14 @@ export default function ReviewPurchaseOrdersPage() {
     if (!group) return;
 
     const fakePoNumber = `PO-${supplierName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
-    
+
     processCreatePO(group, fakePoNumber);
-    
+
     setSupplierStatus(prev => ({
       ...prev,
       [supplierName]: { status: 'success', poNumber: fakePoNumber }
     }));
-    
+
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('orders-updated'));
   };
@@ -152,7 +152,7 @@ export default function ReviewPurchaseOrdersPage() {
   const handleCreateAll = () => {
     const newStatus = { ...supplierStatus };
     let anyCreated = false;
-    
+
     sessionData.forEach(group => {
       if (newStatus[group.supplierName]?.status === 'pending') {
         const fakePoNumber = `PO-${group.supplierName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
@@ -161,7 +161,7 @@ export default function ReviewPurchaseOrdersPage() {
         anyCreated = true;
       }
     });
-    
+
     if (anyCreated) {
       setSupplierStatus(newStatus);
       window.dispatchEvent(new Event('storage'));
@@ -178,7 +178,7 @@ export default function ReviewPurchaseOrdersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
         <div>
-          <button 
+          <button
             onClick={() => router.push('/procurement')}
             className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
           >
@@ -190,7 +190,7 @@ export default function ReviewPurchaseOrdersPage() {
             Batch process your pending purchase orders across {sessionData.length} suppliers.
           </p>
         </div>
-        
+
         {sessionData.length > 0 && (
           <div className="flex items-center gap-3">
             <button
@@ -234,11 +234,11 @@ export default function ReviewPurchaseOrdersPage() {
           sessionData.map((group, index) => {
             const statusInfo = supplierStatus[group.supplierName];
             const isSuccess = statusInfo?.status === 'success';
-            
+
             // Calculate totals
             const totalItems = group.items.reduce((sum, item) => sum + item.orderQty, 0);
             const totalCost = group.items.reduce((sum, item) => sum + item.orderCost, 0);
-            
+
             return (
               <div key={index} className={`bg-card border rounded-xl shadow-sm overflow-hidden transition-all duration-300 ${isSuccess ? 'border-emerald-200' : 'border-border'}`}>
                 <div className={`px-6 py-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${isSuccess ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100' : 'bg-neutral-50 dark:bg-card/30'}`}>
@@ -248,7 +248,7 @@ export default function ReviewPurchaseOrdersPage() {
                       {group.items.length} materials • {totalItems} total items • Estimated: Rs. {totalCost.toFixed(2)}
                     </p>
                   </div>
-                  
+
                   {isSuccess ? (
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col items-end">
@@ -268,7 +268,7 @@ export default function ReviewPurchaseOrdersPage() {
                         className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
                         title={expandedMap[group.supplierName] === true ? "Collapse" : "Expand"}
                       >
-                        {expandedMap[group.supplierName] === true ? <ChevronUp className="w-5 h-5"/> : <ChevronDown className="w-5 h-5"/>}
+                        {expandedMap[group.supplierName] === true ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
                     </div>
                   ) : (
@@ -290,12 +290,12 @@ export default function ReviewPurchaseOrdersPage() {
                         className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted ml-2"
                         title={expandedMap[group.supplierName] === true ? "Collapse" : "Expand"}
                       >
-                        {expandedMap[group.supplierName] === true ? <ChevronUp className="w-5 h-5"/> : <ChevronDown className="w-5 h-5"/>}
+                        {expandedMap[group.supplierName] === true ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
                     </div>
                   )}
                 </div>
-                
+
                 {expandedMap[group.supplierName] === true && (
                   <div className="p-0 overflow-x-auto">
                     <table className="w-full text-left border-collapse">

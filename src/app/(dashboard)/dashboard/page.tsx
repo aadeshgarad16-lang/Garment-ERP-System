@@ -108,17 +108,37 @@ export default function DashboardHomePage({
   React.useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-        const res = await fetch(`${BACKEND_URL}/api/dashboard/summary`);
-        if (!res.ok) throw new Error(`Server status ${res.status}`);
+        const [summaryRes, poRes, customerRes] = await Promise.all([
+          fetch('/api/dashboard/summary').catch(e => { console.error("Summary fetch error", e); return null; }),
+          fetch('/api/purchase-orders').catch(e => { console.error("PO fetch error", e); return null; }),
+          fetch('/api/customers').catch(e => { console.error("Customers fetch error", e); return null; })
+        ]);
 
-        const data = await res.json();
-        if (data.success) {
-          setStatsData(data.statsData);
-          setRecentOrders(data.recentOrders);
+        if (summaryRes) {
+          const contentType = summaryRes.headers.get("content-type");
+          if (summaryRes.ok && contentType && contentType.includes("application/json")) {
+            try {
+              const summaryData = await summaryRes.json();
+              setStatsData(summaryData.statsData || summaryData.data || summaryData);
+            } catch (e) { console.error("Summary parse error", e); }
+          } else {
+            console.error(`Summary endpoint returned status: ${summaryRes.status}`);
+          }
+        }
+
+        if (poRes) {
+          const contentType = poRes.headers.get("content-type");
+          if (poRes.ok && contentType && contentType.includes("application/json")) {
+            try {
+              const poData = await poRes.json();
+              setRecentOrders(poData.data || poData);
+            } catch (e) { console.error("PO parse error", e); }
+          } else {
+            console.error(`PO endpoint returned status: ${poRes.status}`);
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
+        console.error("Dashboard fetch error:", err);
       }
     };
     fetchDashboardData();
@@ -173,29 +193,36 @@ export default function DashboardHomePage({
       );
     }
 
-    return recentOrders.map((order) => {
+    return recentOrders.map((order, index) => {
+      const rowKey = order.id || order.po_number || order.poNumber || `row-${index}`;
       const delayDays = order.delayDays || null;
-      const reason = order.delayReason || delayReasons[order.poNumber] || '';
+      const poNum = order.po_number || order.poNumber || order.id || 'N/A';
+      const custName = order.customerName || order.customer_name || `Customer ${order.customer_id || 'N/A'}`;
+      const stage = order.stage || order.currentStage || 'Initiation';
+      const pDate = order.po_date || order.order_date || order.poDate || order.created_at;
+      const dDate = order.delivery_date || order.deliveryDate || pDate;
+      const amt = Number(order.total_value || order.grand_total || order.amount || 0);
+      const reason = order.delayReason || delayReasons[poNum] || '';
 
       return (
-        <tr key={order.poNumber} className="hover:bg-neutral-50/30 dark:hover:bg-white/[0.02] transition-colors">
-          <td className="px-3 py-[18px] text-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate align-middle" title={order.poNumber}>{order.poNumber}</td>
-          <td className="px-3 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 truncate align-middle" title={order.customerName}>{order.customerName}</td>
+        <tr key={rowKey} className="hover:bg-neutral-50/30 dark:hover:bg-white/[0.02] transition-colors">
+          <td className="px-3 py-[18px] text-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate align-middle" title={poNum}>{poNum}</td>
+          <td className="px-3 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 truncate align-middle" title={custName}>{custName}</td>
           <td className="px-3 py-[18px] align-middle text-center">
-            <span className={`inline-block max-w-full truncate px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[order.currentStage] || STATUS_THEME_MAP.pending}`}>
-              {STAGE_DISPLAY_MAP[order.currentStage] || order.currentStage}
+            <span className={`inline-block max-w-full truncate px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_THEME_MAP[stage] || STATUS_THEME_MAP.pending}`}>
+              {STAGE_DISPLAY_MAP[stage] || stage}
             </span>
           </td>
           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
             <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{order.poDate ? order.poDate.split('T')[0] : '—'}</span>
+              <span>{pDate ? String(pDate).split('T')[0] : '—'}</span>
             </div>
           </td>
           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
             <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{order.deliveryDate ? order.deliveryDate.split(' ')[0].split('T')[0] : '—'}</span>
+              <span>{dDate ? String(dDate).split(' ')[0].split('T')[0] : '—'}</span>
             </div>
           </td>
           <td className="px-2 py-[18px] text-center text-sm font-medium whitespace-nowrap align-middle">
@@ -208,7 +235,7 @@ export default function DashboardHomePage({
             )}
           </td>
           <td className="px-2 py-[18px] text-center text-sm text-neutral-600 dark:text-neutral-400 align-middle">
-            {editingReasonId === order.poNumber ? (
+            {editingReasonId === poNum ? (
               <div className="flex flex-col gap-2">
                 <input
                   type="text"
@@ -224,7 +251,7 @@ export default function DashboardHomePage({
                     Save this Reason for later?
                   </label>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleSaveReason(order.poNumber)} className="p-1 text-green-600 hover:bg-green-100 rounded-md"><Check className="h-4 w-4" /></button>
+                    <button onClick={() => handleSaveReason(poNum)} className="p-1 text-green-600 hover:bg-green-100 rounded-md"><Check className="h-4 w-4" /></button>
                     <button onClick={handleCancelReason} className="p-1 text-red-600 hover:bg-red-100 rounded-md"><XIcon className="h-4 w-4" /></button>
                   </div>
                 </div>
@@ -234,9 +261,9 @@ export default function DashboardHomePage({
                 value={reason || ""}
                 onChange={(e) => {
                   if (e.target.value === "Other...") {
-                    handleEditReason(order.id, "");
+                    handleEditReason(poNum, "");
                   } else {
-                    setDelayReasons(prev => ({ ...prev, [order.id]: e.target.value }));
+                    setDelayReasons(prev => ({ ...prev, [poNum]: e.target.value }));
                   }
                 }}
                 className="w-full truncate text-center px-3 py-1.5 text-sm border border-neutral-200 dark:border-border rounded-lg dark:bg-card focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-slate-600 transition-colors bg-white cursor-pointer"
@@ -254,7 +281,7 @@ export default function DashboardHomePage({
             )}
           </td>
           <td className="px-2 py-[18px] text-center font-medium text-neutral-900 dark:text-neutral-100 whitespace-nowrap align-middle">
-            {indianCurrencyFormatter.format(order.amount)}
+            {indianCurrencyFormatter.format(amt)}
           </td>
         </tr>
       );

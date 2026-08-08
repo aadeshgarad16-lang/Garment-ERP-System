@@ -75,7 +75,7 @@ function handleNetworkError(error: any): never {
  */
 export async function fetchCustomersAPI(): Promise<Customer[]> {
   try {
-    const res = await fetch(`${BASE_URL}/customers/view`, {
+    const res = await fetch(`/api/customers`, {
       method: "GET",
       headers: {
         "X-API-Key": READ_KEY,

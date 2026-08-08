@@ -1032,7 +1032,7 @@ function GarmentSpecsContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           poNumber: currentPoNumber,
-          items: validItems.map(row => ({
+          items: validItems.map((row: any) => ({
             category: row.category || '',
             sleeveType: row.sleeveType || row.sleeve_type || '',
             gender: row.gender || '',

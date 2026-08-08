@@ -79,16 +79,28 @@ export default function InventoryPage() {
 
   React.useEffect(() => {
     const fetchAvailablePOs = async () => {
-      const res = await apiFetch(`/api/inventory-check/pos`);
-      if (res.success) {
-        // apiFetch wraps response: { success, data: BACKEND_RESPONSE }
-        // backend returns: { success, pos: [...], data: [...] }
-        const backendData = res.data || {};
-        const poList = Array.isArray(backendData.pos) ? backendData.pos
-          : Array.isArray(backendData.data) ? backendData.data
-          : Array.isArray(backendData) ? backendData
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${BACKEND_URL}/api/inventory-check/pos`, { headers });
+        const json = await response.json();
+
+        console.log('[InventoryPage] /api/inventory-check/pos raw response:', json);
+
+        // Backend returns: { success: true, pos: [...], data: [...] }
+        const poList: {po_number: string, customer_name: string}[] =
+          Array.isArray(json.pos) && json.pos.length > 0 ? json.pos
+          : Array.isArray(json.data) && json.data.length > 0 ? json.data
           : [];
+
+        console.log('[InventoryPage] Dropdown PO list set:', poList);
         setAvailablePOs(poList);
+      } catch (err) {
+        console.error('[InventoryPage] Failed to load POs in inventory dropdown:', err);
+        setAvailablePOs([]);
       }
     };
     fetchAvailablePOs();
@@ -125,7 +137,14 @@ export default function InventoryPage() {
         return { success: false, data: [], error: `Server error ${response.status}` };
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error(`[JSON Parse Error] Invalid JSON from ${endpoint}:`, text.substring(0, 200));
+        return { success: false, data: [], error: 'Invalid JSON response from server' };
+      }
       return { success: true, data };
     } catch (networkError) {
       // THIS PREVENTS THE RED SCREEN OF DEATH:
@@ -205,7 +224,7 @@ export default function InventoryPage() {
   React.useEffect(() => {
     // Fetch real store materials for fallback display
     const fetchStoreMaterials = async () => {
-      const res = await apiFetch(`/store_materials/view?limit=1000`, {
+      const res = await apiFetch(`/api/store/material-master`, {
         headers: {
           'X-API-Key': 'sasons_read_only_key_2026_abc'
         },

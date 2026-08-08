@@ -135,7 +135,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/language");
+      window.location.href = '/dashboard';
     },
     [formData, login, router]
   );

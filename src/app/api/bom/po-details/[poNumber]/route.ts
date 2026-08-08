@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
-export async function GET(request: Request, context: { params: { poNumber: string } }) {
+export async function GET(request: Request, context: { params: Promise<{ poNumber: string }> }) {
   try {
-    const { params } = context;
+    const params = await context.params;
     let rawPoNumber = params.poNumber;
     
     if (!rawPoNumber) {

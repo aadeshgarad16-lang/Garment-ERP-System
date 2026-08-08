@@ -22,23 +22,45 @@ const ProcurementStepper: React.FC<ProcurementStepperProps> = ({ dashboardCount,
   const router = useRouter();
   const [counts, setCounts] = useState({ dashboard: 0, review: 0, create: 0 });
 
-  // Fetch pending procurement counts (replace with real data source as needed)
   useEffect(() => {
-    const fetchCounts = async () => {
+    const fetchGlobalCounts = async () => {
       try {
-        const res = await fetch('/api/procurement-requests?status=PENDING');
+        const res = await fetch('/api/procurement/stage-counts');
         const data = await res.json();
-        const pending = Array.isArray(data?.procurementRequests)
-          ? data.procurementRequests.length || data.data?.length || 0
-          : 0;
-        // For demonstration, use same count for all steps
-        setCounts({ dashboard: pending, review: pending, create: pending });
+        if (data.success) {
+          let rCount = data.reviewCount;
+          let cCount = data.createCount;
+
+          const sessionStr = sessionStorage.getItem('procurement_po_drafts');
+          if (sessionStr) {
+            const session = JSON.parse(sessionStr);
+            rCount = session.length;
+          }
+          
+          if (window.location.pathname.includes('/create-po')) {
+            cCount = 1;
+          }
+
+          setCounts({
+            dashboard: data.pendingCount,
+            review: rCount,
+            create: cCount
+          });
+        }
       } catch (e) {
-        console.error('Failed to fetch procurement counts', e);
+        console.error('Failed to fetch global stage counts', e);
       }
     };
-    fetchCounts();
-  }, []);
+
+    fetchGlobalCounts();
+    
+    // Listen for storage changes to refresh counts
+    const handleStorageChange = () => {
+      fetchGlobalCounts();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [pathname]);
 
   const steps: Step[] = [
     {
@@ -70,7 +92,7 @@ const ProcurementStepper: React.FC<ProcurementStepperProps> = ({ dashboardCount,
   };
 
   return (
-    <div className="w-full bg-[#101725] border border-slate-800/80 rounded-xl py-4 px-6 mb-8 shadow-sm">
+    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-sm rounded-xl p-4 mb-8">
       <div className="flex items-center justify-around w-full max-w-3xl mx-auto gap-8">
         {steps.map((step, idx) => {
           const active = isActive(step.href);
@@ -83,10 +105,10 @@ const ProcurementStepper: React.FC<ProcurementStepperProps> = ({ dashboardCount,
                 <div className={`transition-all duration-300 ${active ? `${step.color} scale-110 drop-shadow-[0_0_8px_currentColor]` : 'text-slate-500 group-hover:text-slate-400'}`}>
                   {step.icon}
                 </div>
-                <div className={`text-sm transition-colors ${active ? 'text-white font-semibold' : 'text-slate-400 group-hover:text-slate-200 font-medium'}`}>
+                <div className={`text-sm transition-colors ${active ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 font-medium'}`}>
                   {step.name}
                 </div>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${active ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30' : 'bg-[#1e293b] text-slate-400 border border-transparent group-hover:text-slate-300'}`}>
+                <span className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${active ? 'bg-indigo-100 dark:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30' : 'bg-slate-100 dark:bg-[#1e293b] text-slate-500 dark:text-slate-400 border border-transparent group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
                   {step.count} Pending
                 </span>
               </div>

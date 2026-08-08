@@ -65,26 +65,29 @@ export default function ManageUsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
-            const res = await fetch(`${BACKEND_URL}/users/view`, {
-                headers: getAuthHeaders()
+            const res = await fetch(`/api/users`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" }
             });
             if (res.ok) {
-                const data = await res.json();
+                const json = await res.json();
+                const data = json.data || [];
                 const mappedUsers = data.map((u: any) => ({
-                    id: u.user_id,
-                    employeeId: u.contact_number,
+                    id: u.id,
+                    employeeId: u.employee_id,
                     fullName: u.full_name,
-                    username: u.username || u.contact_number,
+                    username: u.username,
                     role: u.role,
-                    email: u.email_id,
-                    mobileNumber: u.contact_number,
+                    email: u.email,
+                    mobileNumber: u.contact_number || u.username,
                     lastLogin: u.last_login || "Never",
                     modules: u.modules_access || [],
                     designation: u.designation || "",
                     status: u.status || "Active",
                 }));
                 setUsers(mappedUsers);
+            } else {
+                console.error("Failed to fetch users, status:", res.status);
             }
         } catch (e) {
             console.error("Failed to fetch users", e);
@@ -99,11 +102,13 @@ export default function ManageUsersPage() {
         setIsViewLoading(true);
         setViewingUser({ ...user, isLoading: true });
         try {
-            const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
-            const res = await fetch(`${BACKEND_URL}/users/view/${user.id}`, {
-                headers: getAuthHeaders()
+            const res = await fetch(`/api/users/${user.id}`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" }
             });
-            if (res.ok) {
+            
+            const contentType = res.headers.get("content-type");
+            if (res.ok && contentType && contentType.includes("application/json")) {
                 const data = await res.json();
                 if (data.success && data.user) {
                     setViewingUser(data.user);
@@ -181,17 +186,24 @@ export default function ManageUsersPage() {
                     status: "Active"
                 };
 
-                const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
-                const url = editingUserId ? `${BACKEND_URL}/users/update/${editingUserId}` : `${BACKEND_URL}/users/add`;
+                const url = editingUserId ? `/api/users/${editingUserId}` : `/api/users`;
                 const method = editingUserId ? "PUT" : "POST";
-                const headers = getAuthHeaders(true);
 
                 const res = await fetch(url, {
                     method,
-                    headers,
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
+                
+                const contentType = res.headers.get("content-type");
+                let data: any = {};
+                if (contentType && contentType.includes("application/json")) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    console.error("Non-JSON Response:", text);
+                    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+                }
 
                 if (res.ok && data.success) {
                     alert(`User ${editingUserId ? "updated" : "saved"} successfully!`);
@@ -314,28 +326,29 @@ export default function ManageUsersPage() {
 
         setIsResetLoading(true);
         try {
-            const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
-            const url = `${BACKEND_URL}/users/update/${resettingPasswordUserId}`;
-            const headers = getAuthHeaders(true);
+            const url = `/api/users/reset-password`;
 
             const payload = {
-                fullName: targetUser.fullName,
-                contactNumber: targetUser.mobileNumber,
-                email_id: targetUser.email,
-                designation: targetUser.designation,
-                role: targetUser.role,
-                username: targetUser.username,
-                password: newPassword,
-                modulesAccess: targetUser.modules,
-                status: targetUser.status
+                userId: resettingPasswordUserId,
+                newPassword: newPassword,
+                confirmPassword: confirmNewPassword
             };
 
             const res = await fetch(url, {
-                method: "PUT",
-                headers,
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
+            
+            const contentType = res.headers.get("content-type");
+            let data: any = {};
+            if (contentType && contentType.includes("application/json")) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                console.error("Non-JSON Response:", text);
+                if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+            }
 
             if (res.ok && data.success) {
                 alert("Password reset successfully by Super Admin!");
@@ -587,7 +600,6 @@ export default function ManageUsersPage() {
                                 <table className="w-full text-left border-collapse table-fixed min-w-full">
                                     <thead>
                                         <tr className="bg-neutral-50 dark:bg-card/70 border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                                            <th className="px-3 py-4 w-[110px]">Employee ID</th>
                                             <th className="px-3 py-4 w-[140px]">Full Name</th>
                                             <th className="px-3 py-4 w-[120px]">Username</th>
                                             <th className="px-3 py-4 w-[100px]">Role</th>
@@ -607,7 +619,6 @@ export default function ManageUsersPage() {
                                         ) : (
                                             filteredUsers.map((user, idx) => (
                                                 <tr key={idx} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                                    <td className="px-3 py-4 text-sm font-medium text-foreground truncate" title={user.employeeId}>{user.employeeId}</td>
                                                     <td className="px-3 py-4 text-sm text-neutral-700 dark:text-neutral-300 truncate" title={user.fullName}>{user.fullName}</td>
                                                     <td className="px-3 py-4 text-sm text-muted-foreground truncate" title={user.username}>{user.username}</td>
                                                     <td className="px-3 py-4 text-sm text-muted-foreground">

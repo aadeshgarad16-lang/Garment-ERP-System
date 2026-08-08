@@ -125,7 +125,7 @@ async function getOrCreateCustomerId(customerInput: Partial<Order> | string): Pr
   
   try {
     // 1. Fetch current customer list
-    const res = await fetch(`${BACKEND_URL}/customers/view`, {
+    const res = await fetch(`/api/customers`, {
       method: "GET",
       headers: getAuthHeaders()
     });
@@ -267,8 +267,8 @@ export const getAllOrdersAPI = async (): Promise<Order[]> => {
   }
   try {
     const [ordersRes, customersRes] = await Promise.all([
-      fetch(`${BACKEND_URL}/purchase_orders/view`, { headers: getAuthHeaders() }),
-      fetch(`${BACKEND_URL}/customers/view`, { headers: getAuthHeaders() })
+      fetch(`/api/purchase-orders`, { headers: getAuthHeaders() }),
+      fetch(`/api/customers`, { headers: getAuthHeaders() })
     ]);
 
     if (!ordersRes.ok) {
@@ -279,14 +279,21 @@ export const getAllOrdersAPI = async (): Promise<Order[]> => {
     const dbOrders = await ordersRes.json();
     const dbCustomers = customersRes.ok ? await customersRes.json() : [];
 
-    return dbOrders.map((po: any) => {
-      const matchCust = dbCustomers.find((c: any) => c.customer_id === po.customer_id);
+    const ordersArray = Array.isArray(dbOrders) ? dbOrders : (dbOrders?.data || dbOrders?.orders || []);
+    const customersArray = Array.isArray(dbCustomers) ? dbCustomers : (dbCustomers?.data || dbCustomers?.customers || []);
+
+    const mapped = ordersArray.map((po: any) => {
+      const matchCust = customersArray.find((c: any) => c.customer_id === po.customer_id);
+      
+      const poNum = po.po_number || po.poNumber || po.id;
+      const custName = matchCust ? matchCust.customer_name : (po.customer_name || po.customer || `Customer ID ${po.customer_id || 'N/A'}`);
+      
       return {
-        id: po.po_number,
-        poNumber: po.po_number,
-        customerName: matchCust ? matchCust.customer_name : `Customer ID ${po.customer_id}`,
-        poDate: po.order_date,
-        deliveryDate: po.delivery_date || po.order_date,
+        id: poNum,
+        poNumber: poNum,
+        customerName: custName,
+        poDate: po.po_date || po.created_at || po.createdAt || po.order_date,
+        deliveryDate: po.delivery_date || po.expected_delivery || po.order_date,
         contactPerson: po.contact_person,
         contactPhone: po.contact_phone,
         contactEmail: po.contact_email,
@@ -304,10 +311,10 @@ export const getAllOrdersAPI = async (): Promise<Order[]> => {
         paymentTerm: po.payment_term,
         advanceAmount: po.advance_amount,
         advancedAmount: po.advance_amount,
-        poAmount: po.total_value,
-        totalAmount: po.total_value,
+        poAmount: Number(po.total_value || po.total_amount || po.amount || po.grand_total || 0),
+        totalAmount: Number(po.total_value || po.total_amount || po.amount || po.grand_total || 0),
         specs: [],
-        status: po.status,
+        status: po.status || po.order_status || 'Initiated',
         stage: po.stage,
         date: po.created_at
       } as Order;
