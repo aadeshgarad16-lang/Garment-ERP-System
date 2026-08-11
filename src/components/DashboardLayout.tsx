@@ -89,7 +89,7 @@ const navItems = [
       { tKey: 'preStitched', label: 'Finished Goods', href: '/store?tab=pre', module: 'Store' },
       { tKey: 'materialList', label: 'Material Master', href: '/store?tab=list', module: 'Store' },
       { tKey: 'stockOverview', label: 'Stock Overview', href: '/store?tab=overview', module: 'Store' },
-      { tKey: 'orders', label: 'Orders', href: '/store?tab=orders', icon: Package, module: 'Store' },
+      { tKey: 'orders', label: 'Procurement Order Status', href: '/store?tab=orders', icon: Package, module: 'Store' },
       { tKey: 'storeReports', label: 'Reports', href: '/reports/store', icon: BarChart3, module: 'Store' }
     ]
   },
@@ -433,14 +433,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-card/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
-                  {(user as any)?.fullName ? (user as any).fullName.charAt(0).toUpperCase() : (user?.name ? user.name.charAt(0).toUpperCase() : 'U')}
+                <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center overflow-hidden">
+                  {(user as any)?.avatarUrl ? (
+                    <img src={(user as any).avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    (user as any)?.fullName ? (user as any).fullName.charAt(0).toUpperCase() : 'A'
+                  )}
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 leading-tight">{(user as any)?.fullName || user?.name || "User"}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.role || "Role"}</p>
+                  <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 leading-tight">
+                    {(user as any)?.fullName && !/^\d{10,}$/.test((user as any).fullName) ? (user as any).fullName : ((user as any)?.name && !/^\d{10,}$/.test((user as any).name) ? (user as any).name : 'Aadesh Garad')}
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {user?.role || 'Super Admin'}
+                  </p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-neutral-400 hidden sm:block" />
               </button>

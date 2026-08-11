@@ -195,8 +195,10 @@ export default function InventoryPage() {
       ? `/api/inventory/available-materials?poNumber=${poNumber}`
       : `/api/inventory/available-materials`;
     const res = await apiFetch(endpoint);
-    if (res.success && res.data && res.data.success && res.data.data) {
-      setApiAvailableMaterials(res.data.data);
+    if (res?.success && res?.data) {
+      const rawMaterials = res.data.materials || res.data.data || res.data || [];
+      const materialsArray = Array.isArray(rawMaterials) ? rawMaterials : [];
+      setApiAvailableMaterials(materialsArray);
     } else {
       setApiAvailableMaterials([]);
     }
@@ -231,8 +233,11 @@ export default function InventoryPage() {
         cache: 'no-store'
       });
 
-      if (res.success && res.data && res.data.success && res.data.data) {
-        const formatted = res.data.data.map((item: any, index: number) => ({
+      if (res?.success && res?.data) {
+        const rawMaterials = res.data.materials || res.data.data || res.data || [];
+        const materialsArray = Array.isArray(rawMaterials) ? rawMaterials : [];
+
+        const formatted = materialsArray.map((item: any, index: number) => ({
           id: item.id || item.material_id || `MAT-${Math.floor(Math.random() * 1000)}`,
           name: item.material_name || item.name || `Item #${index + 1}`,
           category: item.category || 'Fabric',

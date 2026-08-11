@@ -320,18 +320,7 @@ export const getAllOrdersAPI = async (): Promise<Order[]> => {
       } as Order;
     });
 
-    // Workflow UI Override for PO-SHIRT-2026
-    return mapped.map((o: Order) => {
-      if (o.poNumber === "PO-SHIRT-2026") {
-        return {
-          ...o,
-          stage: "Inventory Check",
-          customerName: "Aadesh Apparel Co.",
-          bom_done: true
-        };
-      }
-      return o;
-    });
+    return mapped;
   } catch (err) {
     console.warn("Failed to fetch orders from backend, returning empty list:", err);
     return [];
@@ -389,20 +378,9 @@ export const getOrderByIdAPI = async (id: string): Promise<Order | null> => {
         }));
       }
     } catch (specErr) {
-      console.warn("Failed to load specifications from backend, returning order with default/empty specs:", specErr);
-      if (match.specs.length === 0) {
-        match.specs = [
-          {
-            id: "1",
-            itemDescription: "Cotton T-Shirt",
-            size: "M",
-            pattern: "Solid Navy",
-            quantity: 500,
-            stockAvailable: 250,
-            unitPrice: 150,
-            photoName: null
-          }
-        ];
+      console.warn("Failed to load specifications from backend, returning order with empty specs:", specErr);
+      if (!match.specs) {
+        match.specs = [];
       }
     }
 

@@ -81,11 +81,44 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   const updateOrderState = (poNumber: string, updates: Partial<Order>) => {
     setOrders(prev => {
-      const updated = prev.map(o => o.poNumber === poNumber ? { ...o, ...updates } : o);
+      const updated = prev.map(o => {
+        // Support multiple poNumber property variants for resilience
+        const currentId = o.poNumber || (o as any).po_number || o.id;
+        if (currentId === poNumber) {
+          return {
+            ...o,
+            ...updates,
+            // If updating stage, mirror it to legacy stage fields
+            ...(updates.stage ? {
+              current_stage: updates.stage,
+              status: updates.stage
+            } : {})
+          };
+        }
+        return o;
+      });
       localStorage.setItem('savedOrders', JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
       return updated;
     });
+  };
+
+  const updatePOStageInState = (poNumber: string, newStage: string) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) => {
+        const orderId = order.poNumber || (order as any).po_number || order.id;
+        if (orderId === poNumber) {
+          const updated = {
+            ...order,
+            current_stage: newStage,
+            stage: newStage,
+            status: newStage
+          };
+          return updated;
+        }
+        return order;
+      })
+    );
   };
 
   return (

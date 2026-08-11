@@ -10,15 +10,15 @@ interface ProofOfDeliveryProps {
 export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
-  const [podImage, setPodImage] = useState<string | null>(null);
+  const [podImages, setPodImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSimulateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
-      const fileName = e.target.files[0].name;
+      const fileNames = Array.from(e.target.files).map(f => f.name);
       setTimeout(() => {
-        setPodImage(fileName);
+        setPodImages(prev => [...prev, ...fileNames]);
         setIsUploading(false);
       }, 1200);
     }
@@ -41,7 +41,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
           
           <div 
             className={`border-2 border-dashed rounded-xl transition-colors flex flex-col items-center justify-center p-10 text-center cursor-pointer group ${
-              podImage ? 'border-emerald-300 bg-emerald-50' : 'border-border bg-neutral-50 dark:bg-card hover:bg-neutral-100 dark:hover:bg-slate-700'
+              podImages.length > 0 ? 'border-emerald-300 bg-emerald-50' : 'border-border bg-neutral-50 dark:bg-card hover:bg-neutral-100 dark:hover:bg-slate-700'
             }`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -51,15 +51,18 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
               className="hidden" 
               onChange={handleSimulateUpload}
               accept="image/*,.pdf"
+              multiple
             />
             
-            {podImage ? (
+            {podImages.length > 0 ? (
               <>
                 <div className="h-14 w-14 bg-emerald-100 rounded-full flex items-center justify-center shadow-sm border border-emerald-200 mb-4">
                   <FileCheck className="h-7 w-7 text-emerald-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-emerald-800 mb-1">{t('logistics.podSuccess') || 'POD Uploaded Successfully'}</h3>
-                <p className="text-xs text-emerald-600 font-medium">{podImage}</p>
+                {podImages.map((img, idx) => (
+                  <p key={idx} className="text-xs text-emerald-600 font-medium">{img}</p>
+                ))}
               </>
             ) : (
               <>
@@ -82,7 +85,7 @@ export default function ProofOfDelivery({ onComplete }: ProofOfDeliveryProps) {
           <div className="pt-4 flex items-center gap-4">
             <button
               onClick={() => onComplete()}
-              disabled={!podImage}
+              disabled={podImages.length === 0}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="h-4 w-4" />

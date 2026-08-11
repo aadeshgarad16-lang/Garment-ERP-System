@@ -14,6 +14,7 @@ export type User = {
   status?: string;
   password?: string;
   name?: string; // fallback for legacy code
+  avatarUrl?: string;
 };
 
 type AuthContextType = {

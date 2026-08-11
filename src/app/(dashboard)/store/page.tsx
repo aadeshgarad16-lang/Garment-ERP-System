@@ -79,29 +79,41 @@ import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 export default function StorePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const defaultTab = searchParams.get('tab') || 'raw';
+  const defaultTab = searchParams.get('tab') || 'article';
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [editRequest, setEditRequest] = useState<{ type: string, item: any } | null>(null);
 
+  const TAB_KEYS = {
+    ARTICLE: 'article',
+    FINISHED_GOODS: 'finished_goods',
+    MATERIAL_MASTER: 'material_master',
+    STOCK_OVERVIEW: 'stock_overview',
+    ORDERS: 'orders'
+  };
+
   // Sync tab state if the URL parameter changes directly
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && (tab === 'raw' || tab === 'pre' || tab === 'list' || tab === 'overview' || tab === 'orders')) {
-      setActiveTab(tab);
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl === 'article' || tabFromUrl === 'raw') {
+      setActiveTab(TAB_KEYS.ARTICLE);
+    } else if (tabFromUrl === 'finished_goods' || tabFromUrl === 'pre') {
+      setActiveTab(TAB_KEYS.FINISHED_GOODS);
+    } else if (tabFromUrl === 'material_master' || tabFromUrl === 'list') {
+      setActiveTab(TAB_KEYS.MATERIAL_MASTER);
+    } else if (tabFromUrl === 'stock_overview' || tabFromUrl === 'overview') {
+      setActiveTab(TAB_KEYS.STOCK_OVERVIEW);
+    } else if (tabFromUrl === 'orders') {
+      setActiveTab(TAB_KEYS.ORDERS);
     }
   }, [searchParams]);
 
   // Sync state back to URL
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
     // Replace URL without full page reload
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.set('tab', tab);
-    const search = current.toString();
-    const query = search ? `?${search}` : '';
-    router.replace(`/store${query}`);
+    router.push(`/store?tab=${newTab}`, undefined, { shallow: true } as any);
   };
 
   return (
@@ -111,7 +123,7 @@ export default function StorePage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Store className="h-6 w-6 text-indigo-600" />
-            {activeTab === 'raw' ? 'Article' : activeTab === 'pre' ? 'Finished Goods' : activeTab === 'overview' ? 'Stock Overview' : activeTab === 'orders' ? 'Order Status' : 'Material Master'}
+            {activeTab === 'article' ? 'Article' : activeTab === 'finished_goods' ? 'Finished Goods' : activeTab === 'stock_overview' ? 'Stock Overview' : activeTab === 'orders' ? 'Procurement Order Status' : 'Material Master'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {activeTab === 'orders' ? 'Track and verify store material deliveries' : 'Manage inventory and stock availability'}
@@ -121,8 +133,8 @@ export default function StorePage() {
         {/* Tabs */}
         <div className="flex flex-row items-center gap-1.5 flex-nowrap">
           <button
-            onClick={() => handleTabChange("raw")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "raw"
+            onClick={() => handleTabChange("article")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "article"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -131,8 +143,8 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => handleTabChange("pre")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "pre"
+            onClick={() => handleTabChange("finished_goods")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "finished_goods"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -141,8 +153,8 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => handleTabChange("list")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "list"
+            onClick={() => handleTabChange("material_master")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "material_master"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -151,8 +163,8 @@ export default function StorePage() {
           </button>
 
           <button
-            onClick={() => handleTabChange("overview")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "overview"
+            onClick={() => handleTabChange("stock_overview")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0 ${activeTab === "stock_overview"
               ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
@@ -167,7 +179,7 @@ export default function StorePage() {
               : "bg-card text-neutral-700 dark:text-neutral-300 border-border hover:bg-muted"
               }`}
           >
-            Orders
+            Procurement Order Status
           </button>
 
           <button
@@ -181,13 +193,13 @@ export default function StorePage() {
       </div>
 
       {/* Dynamic Module Rendering */}
-      {activeTab === "raw" && <Articlemodule editRequest={editRequest?.type === 'Material' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
-      {activeTab === "pre" && <PreStitchedModule editRequest={editRequest?.type === 'Garment' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
-      {activeTab === "list" && <MaterialListModule onEdit={(type, item) => {
+      {activeTab === "article" && <Articlemodule editRequest={editRequest?.type === 'Material' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
+      {activeTab === "finished_goods" && <PreStitchedModule editRequest={editRequest?.type === 'Garment' ? editRequest.item : null} onEditConsumed={() => setEditRequest(null)} />}
+      {activeTab === "material_master" && <MaterialListModule onEdit={(type, item) => {
         setEditRequest({ type, item });
-        setActiveTab(type === 'Material' ? 'raw' : 'pre');
+        setActiveTab(type === 'Material' ? 'article' : 'finished_goods');
       }} />}
-      {activeTab === "overview" && <StockOverviewModule />}
+      {activeTab === "stock_overview" && <StockOverviewModule />}
       {activeTab === "orders" && <StoreOrdersModule />}
 
       {isArchiveModalOpen && <ArchiveModal onClose={() => setIsArchiveModalOpen(false)} />}
@@ -203,18 +215,77 @@ function StoreOrdersModule() {
   const [issueOrders, setIssueOrders] = useState<any[]>([]);
   const [completedOrders, setCompletedOrders] = useState<any[]>([]);
 
+  // Mock Data for Active POs (Mirrored from Procurement)
+  const MOCK_ACTIVE_PURCHASE_ORDERS = [
+    {
+      id: 'PO-PROC-2026-01',
+      items: 2,
+      date: '2026-08-02',
+      receivedDate: '-',
+      status: 'In Transit'
+    },
+    {
+      id: 'PO-PROC-2026-02',
+      items: 1,
+      date: '2026-08-05',
+      receivedDate: '-',
+      status: 'In Process'
+    },
+    {
+      id: 'PO-FG-2026-03',
+      items: 4,
+      date: '2026-08-06',
+      receivedDate: '-',
+      status: 'In Process'
+    }
+  ];
+
+  const hasInteracted = activeOrders.length > 0 || completedOrders.length > 0 || issueOrders.length > 0;
+  const activeOrdersList = hasInteracted ? activeOrders : MOCK_ACTIVE_PURCHASE_ORDERS;
+
   // State for Orders Tab Navigation
   const [activeOrderTab, setActiveOrderTab] = useState<'active' | 'issue' | 'completed'>('active');
 
-  // State for GRN Modal
   const [showGrnModal, setShowGrnModal] = useState(false);
   const [selectedGrnPo, setSelectedGrnPo] = useState<any>(null);
-  const [grnReceivedQty, setGrnReceivedQty] = useState<number>(0);
+  const [grnItems, setGrnItems] = useState<any[]>([]);
+
+  const handleQuantityChange = (itemId: string, field: string, value: string) => {
+    const numVal = Math.max(0, Number(value) || 0);
+    setGrnItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.id === itemId) {
+          const updatedItem = { ...item, [field]: field === 'reason' ? value : numVal };
+          
+          if (field !== 'reason') {
+            const totalInput = (field === 'accepted' ? numVal : updatedItem.accepted || 0) +
+                               (field === 'short' ? numVal : updatedItem.short || 0) +
+                               (field === 'damaged' ? numVal : updatedItem.damaged || 0);
+
+            updatedItem.isValid = totalInput === Number(item.total_qty || item.orderedQty);
+          }
+          return updatedItem;
+        }
+        return item;
+      })
+    );
+  };
 
   // Fetch from database
   useEffect(() => {
     const fetchLiveOrders = async () => {
       try {
+        const stored = localStorage.getItem('sharedPurchaseOrders');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.length > 0) {
+            setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
+            setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
+            setIssueOrders(parsed.filter((o: any) => o.status?.includes('Action Required') || o.status?.includes('Delayed')));
+            return;
+          }
+        }
+
         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
         const res = await fetch(`${BACKEND_URL}/api/store/orders`, {
           headers: { 'X-API-Key': 'sasons_read_only_key_2026_abc' }
@@ -295,27 +366,146 @@ function StoreOrdersModule() {
   };
 
   const handleConfirm = (orderId: string) => {
-    const order = activeOrders.find(o => o.id === orderId) || issueOrders.find(o => o.id === orderId);
+    const order = activeOrdersList.find(o => o.id === orderId) || issueOrders.find(o => o.id === orderId);
     if (!order) return;
     setSelectedGrnPo(order);
-    setGrnReceivedQty(order.items - (order.receivedQty || 0));
+    
+    const remainingQty = order.items - (order.receivedQty || 0);
+    
+    // Check if we have actual details
+    const orderDetails = order.details && order.details.length > 0 ? order.details : [
+      {
+        id: 'ST-0012',
+        item_name: 'ST-0012 - Industrial Steel Girders',
+        total_qty: remainingQty
+      }
+    ];
+
+    setGrnItems(orderDetails.map((it: any, index: number) => {
+      const qty = Number(it.total_qty || remainingQty);
+      return {
+        ...it,
+        id: it.id || `item-${index}`,
+        item_name: it.item_name || it.material_name || it.name || `Item ${index + 1}`,
+        total_qty: qty,
+        accepted: qty,
+        short: 0,
+        damaged: 0,
+        reason: '',
+        isValid: true
+      };
+    }));
+    
     setShowGrnModal(true);
   };
+  const downloadGrnPdf = (grnData: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
 
-  const submitGrn = () => {
+    const content = `
+      <html>
+        <head>
+          <title>Goods Receipt Note - ${grnData.grnNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+            .info-table, .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .info-table td { padding: 6px; }
+            .items-table th, .items-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f2f2f2; }
+            .status { font-weight: bold; color: ${grnData.totalDamaged > 0 ? '#d9534f' : '#5cb85c'}; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>GOODS RECEIPT NOTE (GRN)</h2>
+            <p>GRN No: <strong>${grnData.grnNumber}</strong> | Date: ${grnData.grnDate}</p>
+          </div>
+          <table class="info-table">
+            <tr>
+              <td><strong>Purchase Order No:</strong> ${grnData.poNumber}</td>
+              <td><strong>Vendor Delivery Note:</strong> ${grnData.deliveryNote || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Warehouse Location:</strong> Zone B, Bin 04</td>
+              <td><strong>Status:</strong> <span class="status">${grnData.totalDamaged > 0 ? 'ISSUE DETECTED' : 'COMPLETED'}</span></td>
+            </tr>
+          </table>
+          <h3>Received Items Validation</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>Ordered Qty</th>
+                <th>Accepted Qty</th>
+                <th>Damaged Qty</th>
+                <th>Damage Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(grnData.items || []).map((item: any) => `
+                <tr>
+                  <td>${item.name || item.item_name || 'Item'}</td>
+                  <td>${item.orderedQty || item.total_qty || 1}</td>
+                  <td>${item.acceptedQty || 1}</td>
+                  <td>${item.damagedQty || 0}</td>
+                  <td>${item.damageReason || 'N/A'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  const submitGrn = async () => {
     if (!selectedGrnPo) return;
-    const stored = JSON.parse(localStorage.getItem('sharedPurchaseOrders') || '[]');
+    
+    let totalOrderedQty = 0;
+    let totalAcceptedQty = 0;
+    let totalDamagedQty = 0;
+    let totalShortQty = 0;
+    
+    grnItems.forEach(item => {
+      totalOrderedQty += Number(item.total_qty || 0);
+      totalAcceptedQty += Number(item.accepted || 0);
+      totalDamagedQty += Number(item.damaged || 0);
+      totalShortQty += Number(item.short || 0);
+    });
 
+    let newStatus = 'Completed / Received';
+    if (totalDamagedQty > 0) {
+      newStatus = 'Action Required: Damaged Items';
+    } else if (totalShortQty > 0) {
+      newStatus = 'Partially Received';
+    }
+    
+    console.log(`[FRONTEND GRN SUBMIT] PO: ${selectedGrnPo.id}, Total Damaged: ${totalDamagedQty}, Total Short: ${totalShortQty}, New Status: ${newStatus}`);
+
+    let stored = JSON.parse(localStorage.getItem('sharedPurchaseOrders') || '[]');
+    if (stored.length === 0) {
+      stored = activeOrdersList; // Bootstrap with mock data to enable sync on first interaction
+    }
+    
     const updated = stored.map((o: any) => {
-      if (o.id === selectedGrnPo.id) {
-        const newReceivedQty = (o.receivedQty || 0) + Number(grnReceivedQty);
+      const currentPoKey = o.po_number || o.poNumber || o.order_number || o.id;
+      const targetPoNo = selectedGrnPo.po_number || selectedGrnPo.poNumber || selectedGrnPo.order_number || selectedGrnPo.id;
+      
+      if (String(currentPoKey).trim().toLowerCase() === String(targetPoNo).trim().toLowerCase()) {
+        const newReceivedQty = (o.receivedQty || 0) + Number(totalAcceptedQty);
         const newGrnId = `GRN-${o.id}-${Date.now().toString().slice(-4)}`;
         const today = new Date().toLocaleDateString();
 
         const grnNumbers = [...(o.grnNumbers || []), newGrnId];
         const receivingDates = [...(o.receivingDates || []), today];
-
-        const isFull = newReceivedQty >= o.items;
 
         return {
           ...o,
@@ -323,17 +513,40 @@ function StoreOrdersModule() {
           grnNumbers,
           receivingDates,
           deliveredOn: today,
-          status: isFull ? 'Completed / Received' : 'Partially Received'
+          status: newStatus
         };
       }
       return o;
     });
 
-    updateSharedOrders(updated);
+    updateSharedOrders([...updated]); // Create fresh reference
+
+
     setShowGrnModal(false);
 
-    // Show success alert
-    alert(`GRN GENERATED SUCCESSFULLY!\n\nDocument: GRN for ${selectedGrnPo.id}\nReceived Qty: ${grnReceivedQty}\nStatus: ${updated.find((o: any) => o.id === selectedGrnPo.id).status}`);
+    if (totalDamagedQty > 0) {
+      alert(`GRN Generated with ${totalDamagedQty} damaged items! Order moved to "Issue / Action Required".`);
+    } else if (totalShortQty > 0) {
+      alert(`GRN Generated with ${totalShortQty} short items! Order stays in "Active / In Process" as Partially Received.`);
+    } else {
+      alert("GRN Generated successfully! Order moved to 'Completed Orders'.");
+    }
+
+    // Trigger PDF download
+    downloadGrnPdf({
+      grnNumber: `GRN-${selectedGrnPo.id}-${Date.now().toString().slice(-4)}`,
+      grnDate: new Date().toLocaleDateString(),
+      poNumber: selectedGrnPo.id,
+      deliveryNote: '',
+      totalDamaged: totalDamagedQty,
+      items: grnItems.map(it => ({
+        name: it.item_name,
+        orderedQty: it.total_qty,
+        acceptedQty: it.accepted,
+        damagedQty: it.damaged,
+        damageReason: it.reason
+      }))
+    });
   };
 
   const handleFlagIssue = (orderId: string) => {
@@ -466,7 +679,7 @@ function StoreOrdersModule() {
           <div>
             <p className="text-sm font-medium text-blue-500 mb-1">Active / In Process</p>
             <div className="flex items-baseline gap-2">
-              <h2 className="text-2xl font-bold text-foreground">{activeOrders.length}</h2>
+              <h2 className="text-2xl font-bold text-foreground">{activeOrdersList.length}</h2>
               <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Orders</span>
             </div>
           </div>
@@ -511,7 +724,7 @@ function StoreOrdersModule() {
         </div>
       </div>
 
-      {activeOrderTab === 'active' && renderTable(activeOrders, 'active')}
+      {activeOrderTab === 'active' && renderTable(activeOrdersList, 'active')}
       {activeOrderTab === 'issue' && renderTable(issueOrders, 'issue')}
       {activeOrderTab === 'completed' && renderTable(completedOrders, 'completed')}
 
@@ -534,7 +747,7 @@ function StoreOrdersModule() {
                 </button>
                 <button
                   onClick={submitGrn}
-                  disabled={grnReceivedQty <= 0}
+                  disabled={!grnItems.every(item => item.isValid)}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   <CheckCircle2 className="h-4 w-4" />
@@ -542,6 +755,15 @@ function StoreOrdersModule() {
                 </button>
               </div>
             </div>
+
+            {!grnItems.every(item => item.isValid) && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 m-6">
+                <p className="text-sm text-red-700 font-bold">
+                  <AlertTriangle className="inline w-4 h-4 mr-2" />
+                  Validation Error: Total breakdown (Accepted + Short + Damaged) must equal Total Ordered Qty for all items.
+                </p>
+              </div>
+            )}
 
             <div className="p-6 space-y-6">
               {/* TOP LAYOUT */}
@@ -627,56 +849,81 @@ function StoreOrdersModule() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                <div className="w-full overflow-hidden">
+                  <table className="w-full text-left table-fixed border-collapse">
+                    <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                       <tr>
-                        <th className="px-4 py-3">SKU / Item Name</th>
-                        <th className="px-4 py-3">PO Qty</th>
-                        <th className="px-4 py-3">Delivered Qty</th>
-                        <th className="px-4 py-3">Rejected Qty</th>
-                        <th className="px-4 py-3">UOM</th>
-                        <th className="px-4 py-3">Condition</th>
-                        <th className="px-4 py-3">Storage Bin</th>
-                        <th className="px-4 py-3 text-right">Action</th>
+                        <th className="w-[28%] py-2.5 px-2">Item Details</th>
+                        <th className="w-[10%] py-2.5 px-2 text-center">Ordered</th>
+                        <th className="w-[12%] py-2.5 px-2 text-center text-emerald-500">Accepted</th>
+                        <th className="w-[12%] py-2.5 px-2 text-center text-amber-500">Short</th>
+                        <th className="w-[12%] py-2.5 px-2 text-center text-red-500">Damaged</th>
+                        <th className="w-[26%] py-2.5 px-2">Remarks</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
-                      <tr className="hover:bg-muted/10 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-bold text-foreground">ST-0012</p>
-                          <p className="text-xs text-muted-foreground">Industrial Steel Girders</p>
-                        </td>
-                        <td className="px-4 py-3 font-medium text-foreground">{(selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)).toFixed(2)}</td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            max={selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)}
-                            value={grnReceivedQty}
-                            onChange={(e) => setGrnReceivedQty(Number(e.target.value))}
-                            className="w-24 px-2 py-1.5 border border-border rounded bg-background text-sm text-foreground outline-none focus:border-indigo-500"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input type="number" defaultValue="0.00" className="w-24 px-2 py-1.5 border border-red-500/50 rounded bg-red-500/5 text-red-500 font-medium text-sm outline-none focus:border-red-500" />
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs font-medium">Units</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 bg-green-500/20 text-green-500 text-[10px] font-bold rounded">GOOD</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select className="bg-transparent text-xs font-medium text-foreground outline-none border border-border rounded py-1 px-2">
-                            <option>BIN-A1-01</option>
-                            <option>BIN-B2-04</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button className="text-muted-foreground hover:text-foreground p-1">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
+                    <tbody className="divide-y divide-border text-xs">
+                      {grnItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                          {/* ITEM NAME & SKU - PREVENT TEXT OVERLAP */}
+                          <td className="py-2.5 px-2">
+                            <div className="truncate font-medium text-foreground max-w-[180px]" title={item.item_name}>
+                              {item.item_name}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground font-mono truncate">
+                              {item.sku || 'SKU-0012'}
+                            </div>
+                          </td>
+
+                          {/* ORDERED QTY */}
+                          <td className="py-2.5 px-2 text-center font-bold text-muted-foreground">
+                            {Number(item.total_qty).toFixed(2)}
+                          </td>
+
+                          {/* ACCEPTED INPUT */}
+                          <td className="py-2.5 px-1 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.accepted}
+                              onChange={(e) => handleQuantityChange(item.id, 'accepted', e.target.value)}
+                              className={`w-full text-center px-1 py-1 border ${!item.isValid ? 'border-red-500' : 'border-emerald-500/30'} rounded bg-background text-xs text-emerald-500 font-bold outline-none focus:border-emerald-500`}
+                            />
+                          </td>
+
+                          {/* SHORT INPUT */}
+                          <td className="py-2.5 px-1 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.short}
+                              onChange={(e) => handleQuantityChange(item.id, 'short', e.target.value)}
+                              className={`w-full text-center px-1 py-1 border ${!item.isValid ? 'border-red-500' : 'border-amber-500/30'} rounded bg-background text-xs text-amber-500 font-bold outline-none focus:border-amber-500`}
+                            />
+                          </td>
+
+                          {/* DAMAGED INPUT */}
+                          <td className="py-2.5 px-1 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.damaged}
+                              onChange={(e) => handleQuantityChange(item.id, 'damaged', e.target.value)}
+                              className={`w-full text-center px-1 py-1 border ${!item.isValid ? 'border-red-500' : 'border-red-500/30'} rounded bg-background text-xs text-red-500 font-bold outline-none focus:border-red-500`}
+                            />
+                          </td>
+
+                          {/* REMARKS INPUT */}
+                          <td className="py-2.5 px-1">
+                            <input 
+                              type="text" 
+                              placeholder="Notes..."
+                              value={item.reason}
+                              onChange={(e) => handleQuantityChange(item.id, 'reason', e.target.value)}
+                              className="w-full px-2 py-1 border border-border rounded bg-background text-[11px] text-foreground outline-none focus:border-indigo-500" 
+                            />
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -684,15 +931,19 @@ function StoreOrdersModule() {
                 <div className="bg-muted/10 border-t border-border p-4 flex flex-wrap justify-end gap-8">
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Expected Total Qty</p>
-                    <p className="font-bold text-foreground text-lg">{(selectedGrnPo.items - (selectedGrnPo.receivedQty || 0)).toFixed(2)}</p>
+                    <p className="font-bold text-foreground text-lg">{grnItems.reduce((acc, it) => acc + Number(it.total_qty || 0), 0).toFixed(2)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Received Total Qty</p>
-                    <p className="font-bold text-indigo-500 text-lg">{grnReceivedQty.toFixed(2)}</p>
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Accepted Total Qty</p>
+                    <p className="font-bold text-indigo-500 text-lg">{grnItems.reduce((acc, it) => acc + Number(it.accepted || 0), 0).toFixed(2)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-0.5">Total Rejections</p>
-                    <p className="font-bold text-red-500 text-lg">0.00</p>
+                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-0.5">Total Short Qty</p>
+                    <p className="font-bold text-amber-500 text-lg">{grnItems.reduce((acc, it) => acc + Number(it.short || 0), 0).toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-0.5">Total Damaged Qty</p>
+                    <p className="font-bold text-red-500 text-lg">{grnItems.reduce((acc, it) => acc + Number(it.damaged || 0), 0).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -1353,56 +1604,92 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
       .catch(console.error);
   }, []);
 
-  const fetchMaterials = useCallback(() => {
-    setLoading(true);
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      search: debouncedSearchTerm,
-      hsnCode: filters.hsnCode,
-      materialName: filters.materialName,
-      quantityRange: filters.quantityRange,
-      status: statusFilter !== "all" ? statusFilter : selectedCard,
-      sortBy,
-      sortOrder
-    });
+  const fetchMaterials = useCallback(async () => {
+    try {
+      setLoading(true);
+      setUiError(null);
 
-    fetch(`${BACKEND_URL}/api/store/material-master?${params.toString()}`, {
-      headers: getAuthHeaders()
-    })
-      .then(async res => {
-        const text = await res.text();
-        return JSON.parse(text);
-      })
-      .then(data => {
-        const activeData = Array.isArray(data.data) ? data.data.filter((item: any) =>
-          item.is_archived !== true &&
-          item.is_archived !== 1 &&
-          item.status !== 'archived' &&
-          item.isArchived !== true &&
-          String(item.is_archived).toLowerCase() !== 'true'
-        ) : [];
-        const mappedData = activeData.map((item: any) => ({
-          ...item,
-          hsnCode: item.hsn_code !== undefined ? item.hsn_code : (item.hsnCode || ""),
-          materialName: item.material_name !== undefined ? item.material_name : (item.materialName || ""),
-          availableQty: item.available_qty !== undefined ? item.available_qty : (item.availableQty || 0),
-          blockedQty: item.blocked_qty !== undefined ? item.blocked_qty : (item.blockedQty || 0),
-          unitPrice: item.unit_price !== undefined ? item.unit_price : (item.unitPrice || 0),
-          minimumRequired: item.min_required !== undefined ? item.min_required : (item.minimumRequired || 0),
-          totalPrice: item.total_price !== undefined ? item.total_price : (item.totalPrice || 0),
-        }));
-        setMaterials(mappedData);
-        setTotalRecords(data.totalRecords || 0);
-        setLoading(false);
-        setUiError(null);
-      })
-      .catch(err => {
-        console.error("Failed to fetch materials:", err);
-        setMaterials([]);
-        setLoading(false);
-        setUiError("Unable to connect to the server. Working in offline mode.");
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search: debouncedSearchTerm,
+        hsnCode: filters.hsnCode,
+        materialName: filters.materialName,
+        quantityRange: filters.quantityRange,
+        status: statusFilter !== "all" ? statusFilter : selectedCard,
+        sortBy,
+        sortOrder
       });
+
+      // 1. Hit the backend endpoint (store/articles)
+      const response = await fetch(`/api/store/articles?${params.toString()}`, {
+        headers: getAuthHeaders()
+      });
+      
+      console.log("--> API HTTP Status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP status ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("--> RAW BACKEND API RESPONSE:", result);
+
+      // 2. Safe Array Extraction (Handles result.data, result.articles, or direct arrays)
+      let rawArticles = [];
+      if (Array.isArray(result.data)) {
+        rawArticles = result.data;
+      } else if (Array.isArray(result.articles)) {
+        rawArticles = result.articles;
+      } else if (Array.isArray(result)) {
+        rawArticles = result;
+      }
+
+      console.log("--> UNWRAPPED ARTICLES ARRAY:", rawArticles);
+
+      // 3. Normalize property names for table rendering
+      const activeData = rawArticles.filter((item: any) =>
+        item.is_archived !== true &&
+        item.is_archived !== 1 &&
+        item.status !== 'archived' &&
+        item.isArchived !== true &&
+        String(item.is_archived).toLowerCase() !== 'true'
+      );
+
+      const formatted = activeData.map((item: any) => ({
+        ...item,
+        id: item.id || item.l_id || Math.random(),
+        hsnCode: item.hsnCode || item.hsn_code || '—',
+        materialName: item.materialName || item.material_name || item.name || 'Unnamed Material',
+        description: item.description || '—',
+        unit: item.unit || 'units',
+        availableQty: Number(item.availableQty ?? item.available_qty ?? 0),
+        blockedQty: Number(item.blockedQty ?? item.blocked_qty ?? 0),
+        unitPrice: Number(item.unitPrice ?? item.unit_price ?? 0),
+        totalPrice: Number(item.totalPrice ?? item.total_price ?? ((item.availableQty || item.available_qty || 0) * (item.unitPrice || item.unit_price || 0))),
+        minimumRequired: Number(item.minimumRequired ?? item.min_required ?? 0),
+        status: item.status || 'Active'
+      }));
+
+      setMaterials(formatted);
+      setTotalRecords(result.totalRecords || formatted.length);
+      
+      // Local Metrics Update fallback if Dashboard fetch fails
+      setMetrics(prev => ({
+        ...prev,
+        total: formatted.length,
+        available: formatted.filter((a: any) => a.availableQty > 0).length,
+        low_stock: formatted.filter((a: any) => a.availableQty > 0 && a.availableQty <= a.minimumRequired).length,
+        out_of_stock: formatted.filter((a: any) => a.availableQty === 0).length
+      }));
+
+    } catch (err: any) {
+      console.error("--> FRONTEND FETCH ERROR:", err);
+      setUiError(err.message || "Unable to connect to the server.");
+      setMaterials([]);
+    } finally {
+      setLoading(false);
+    }
   }, [page, limit, debouncedSearchTerm, statusFilter, selectedCard, filters, sortBy, sortOrder]);
 
   useEffect(() => {
@@ -1480,7 +1767,7 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
     return "available";
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !formData.hsnCode ||
       !formData.materialName ||
@@ -1494,57 +1781,60 @@ function Articlemodule({ editRequest, onEditConsumed }: { editRequest?: any, onE
       return;
     }
     setUiError(null);
-    const payload = {
-      hsn_code: formData.hsnCode,
-      material_name: formData.materialName,
-      description: formData.description,
-      unit: formData.unit,
-      rate: Number(formData.rate || formData.unitPrice),
-      available_qty: Number(formData.availableQty),
-      blocked_qty: Number(formData.blockedQty || 0),
-      unit_price: Number(formData.unitPrice),
-      min_required: Number(formData.minimumRequired),
-      category: formData.category || "Fabric"
-    };
+    
+    try {
+      const payload = {
+        id: editingId,
+        hsn_code: formData.hsnCode,
+        material_name: formData.materialName,
+        description: formData.description,
+        unit: formData.unit,
+        available_qty: Number(formData.availableQty || 0),
+        blocked_qty: Number(formData.blockedQty || 0),
+        unit_price: Number(formData.unitPrice || formData.rate || 0),
+        min_required: Number(formData.minimumRequired || 0),
+        category: formData.category || "Fabric"
+      };
 
-    const targetUrl = editingId
-      ? `${BACKEND_URL}/store_materials/edit/${editingId}`
-      : `${BACKEND_URL}/store_materials/add`;
-
-    fetch(targetUrl, {
-      method: editingId ? 'PUT' : 'POST',
-      headers: getAuthHeaders(true),
-      body: JSON.stringify(payload)
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || errData.message || "Failed to save material");
-        }
-        return res.json();
-      })
-      .then(() => {
-        fetchMaterials();
-        fetchDashboardMeta();
-        setShowModal(false);
-        setEditingId(null);
-        setFormData({
-          hsnCode: "",
-          materialName: "",
-          description: "",
-          unit: "",
-          rate: "",
-          availableQty: "",
-          blockedQty: "",
-          unitPrice: "",
-          minimumRequired: "",
-          category: "Fabric",
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        setUiError("Unable to connect to the server. Working in offline mode.");
+      const response = await fetch('/api/store/articles', {
+        method: editingId ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
       });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || `Failed to save material. Server status: ${response.status}`);
+      }
+
+      await response.json();
+      
+      fetchMaterials();
+      if (typeof fetchDashboardMeta === 'function') {
+        fetchDashboardMeta();
+      }
+      setShowModal(false);
+      setEditingId(null);
+      setFormData({
+        hsnCode: "",
+        materialName: "",
+        description: "",
+        unit: "",
+        rate: "",
+        availableQty: "",
+        blockedQty: "",
+        unitPrice: "",
+        minimumRequired: "",
+        category: "Fabric",
+      });
+      alert("Material saved successfully!");
+    } catch (err: any) {
+      console.error("Error saving material:", err);
+      setUiError(err.message || "Unable to connect to the server. Working in offline mode.");
+      alert(err.message || "Failed to save material");
+    }
   };
 
   const totalMaterials = materials?.length || 0;

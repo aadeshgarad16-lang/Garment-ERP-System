@@ -98,17 +98,36 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
     }
   };
 
+  const normalizeStage = (stage: string) => {
+    if (!stage) return '';
+    return stage.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
   const getOrdersForStage = (stage: string) => {
     if (stage === 'Order Initiation') {
-      return orders.filter(o => o.status === 'DRAFT');
+      return orders.filter(o => {
+        const normStage = normalizeStage(o.current_stage || o.stage || o.status);
+        return o.status === 'DRAFT' || normStage.includes('initiation') || normStage.includes('orderinitiation');
+      });
     }
-    const targetStageIndex = allSteps.indexOf(stage);
+
     return orders.filter(o => {
-      if (o.status !== 'SUBMITTED') return false;
-      const orderStage = o.stage || o.current_stage || 'Order Initiation';
-      const orderStageIndex = allSteps.indexOf(orderStage);
-      if (orderStageIndex === -1) return false;
-      return orderStageIndex <= targetStageIndex;
+      if (o.status === 'DRAFT') return false;
+      const normStage = normalizeStage(o.current_stage || o.stage || o.status);
+      
+      if (stage === 'Order Specifications' && (normStage.includes('spec') || normStage.includes('specifications'))) return true;
+      if (stage === 'Stock Check' && (normStage.includes('stock') || normStage.includes('stockcheck'))) return true;
+      if (stage === 'BOM Calculation' && (normStage.includes('bom') || normStage.includes('bomcalculation'))) return true;
+      if (stage === 'Inventory Check' && (normStage.includes('inventory') || normStage.includes('inventorycheck'))) return true;
+      if (stage === 'Material Allocation' && (normStage.includes('allocation') || normStage.includes('materialallocation'))) return true;
+      if (stage === 'Procurement' && normStage.includes('procurement')) return true;
+      if (stage === 'Material Release' && (normStage.includes('release') || normStage.includes('materialrelease'))) return true;
+      if (stage === 'Production' && normStage.includes('production')) return true;
+      if (stage === 'Quality & Packing' && (normStage.includes('quality') || normStage.includes('packing'))) return true;
+      if (stage === 'Logistics' && normStage.includes('logistics')) return true;
+      if (stage === 'Completed' && (normStage.includes('completed') || normStage.includes('done'))) return true;
+      
+      return false;
     });
   };
 

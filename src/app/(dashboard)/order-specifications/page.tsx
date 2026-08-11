@@ -57,7 +57,7 @@ interface DeliveryAddress {
 
 interface DetailedAllocation {
   id: string;
-  deliveryAddress: string;
+  address: string;
   pinCode?: string;
   itemId: string;
   color?: string;
@@ -328,7 +328,7 @@ function GarmentSpecsContent() {
   const [singlePin, setSinglePin] = useState("");
 
   const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddress[]>([]);
-  const [detailedAllocations, setDetailedAllocations] = useState<DetailedAllocation[]>([{ id: Date.now().toString(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
+  const [detailedAllocations, setDetailedAllocations] = useState<DetailedAllocation[]>([{ id: Date.now().toString(), address: "", itemId: "", color: "", size: "", quantity: 0 }]);
   const [isLiveOrder, setIsLiveOrder] = useState(false);
 
   // --- UI STATE MANAGEMENT ---
@@ -874,7 +874,7 @@ function GarmentSpecsContent() {
   const addAllocationRow = () => {
     setDetailedAllocations((prev) => [
       ...prev,
-      { id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 },
+      { id: generateId(), address: "", itemId: "", color: "", size: "", quantity: 0 },
     ]);
   };
 
@@ -882,7 +882,7 @@ function GarmentSpecsContent() {
     if (detailedAllocations.length > 1) {
       setDetailedAllocations((prev) => prev.filter((alloc) => alloc.id !== id));
     } else {
-      setDetailedAllocations([{ id: generateId(), deliveryAddress: "", itemId: "", color: "", size: "", quantity: 0 }]);
+      setDetailedAllocations([{ id: generateId(), address: "", itemId: "", color: "", size: "", quantity: 0 }]);
     }
   };
 
@@ -893,7 +893,7 @@ function GarmentSpecsContent() {
   const handleOkClick = (spec: GarmentSpec) => {
     if (deliveryType === "multi") {
       setDetailedAllocations((prev) => {
-        const hasEmptyAlloc = prev.some(a => a.itemId === spec.id && a.deliveryAddress === "");
+        const hasEmptyAlloc = prev.some(a => a.itemId === spec.id && a.address === "");
         if (hasEmptyAlloc) return prev;
 
         const colors = spec.color ? safeSplit(spec?.color).map(c => c.trim()).filter(Boolean) : [];
@@ -901,7 +901,7 @@ function GarmentSpecsContent() {
 
         return [
           ...prev,
-          { id: generateId(), deliveryAddress: "", itemId: spec.id, color: autoColor, size: "", quantity: 0 },
+          { id: generateId(), address: "", itemId: spec.id, color: autoColor, size: "", quantity: 0 },
         ];
       });
       setTimeout(() => {
@@ -1007,7 +1007,6 @@ function GarmentSpecsContent() {
         item_description: s.itemDescription,
         sleeve_type: s.sleeveType || ""
       })),
-      deliveryAddresses,
       detailedAllocations,
       stage: "Stock Check",
       status: "SUBMITTED",
@@ -1631,8 +1630,8 @@ function GarmentSpecsContent() {
                                 <span className="font-semibold text-card-foreground">
                                   {alloc.quantity} units {alloc.size ? `(Sz: ${alloc.size})` : ''} {alloc.color ? `(Clr: ${alloc.color})` : ''}
                                 </span>
-                                <span className="text-neutral-500 truncate max-w-[200px]" title={alloc.deliveryAddress}>
-                                  To: {alloc.deliveryAddress || "Unassigned"}
+                                <span className="text-neutral-500 truncate max-w-[200px]" title={alloc.address || ""}>
+                                  To: {alloc.address || "Unassigned"}
                                 </span>
                               </li>
                             ))}
@@ -1656,82 +1655,23 @@ function GarmentSpecsContent() {
           </h2>
           <div className="flex items-center gap-3">
             {deliveryType === "multi" && (
-              <>
-                <select
-                  onChange={(e) => {
-                    const tmpl = customerAddresses.find((t) => t.id === e.target.value);
-                    if (tmpl) {
-                      const targetId = activeDropdownRow || detailedAllocations[detailedAllocations.length - 1]?.id;
-                      if (targetId) {
-                        updateAllocationRow(targetId, "deliveryAddress", `${tmpl.address}${tmpl.pinCode ? ` - PIN: ${tmpl.pinCode}` : ""}`);
-                      } else {
-                        alert("Please add a row or click on an address box first.");
-                      }
-                    }
-                    e.target.value = "";
-                  }}
-                  className="px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-card border-neutral-300 dark:border-border cursor-pointer shadow-sm transition-colors"
-                  
-                >
-                  <option value="" disabled>Address List...</option>
-                  {customerAddresses.length === 0 ? (
-                    <option value="" disabled>No saved addresses</option>
-                  ) : (
-                    customerAddresses.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.address.length > 40 ? t.address.substring(0, 40) + "..." : t.address}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <button
-                  onClick={addAllocationRow}
-                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-card/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Plus className="h-4 w-4" /> Add Row
-                </button>
-              </>
+              <button
+                onClick={addAllocationRow}
+                className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-card/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" /> Add Row
+              </button>
             )}
           </div>
         </div>
 
-        {deliveryType === "single" && (
-          <div className="p-6 border-b border-border bg-card">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#0B132B]/5 dark:bg-[#0B132B]/20 p-5 rounded-xl border border-blue-100 dark:border-blue-900/50">
-              <div>
-                <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" /> Delivery Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={singleAddress || ""}
-                  onChange={(e) => setSingleAddress(e.target.value)}
-                  className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 dark:border-blue-800/50 focus:ring-blue-500`}
-                  placeholder="Enter complete delivery address"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider">
-                  Delivery PIN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={singlePin || ""}
-                  onChange={(e) => setSinglePin(e.target.value)}
-                  className={`${INPUT_STYLE} h-[44px] shadow-sm border-blue-200 dark:border-blue-800/50 focus:ring-blue-500`}
-                  placeholder="e.g. 110001"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Single delivery address block removed */}
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead className="bg-neutral-50 dark:bg-card">
               <tr className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">
                 <th className="px-2 py-3 border-b border-border w-[70px] text-center">Sr. No.</th>
-                <th className={`px-2 py-3 border-b border-border ${deliveryType === "single" ? "w-[35%]" : "w-[22%]"}`}>Address</th>
+                <th className="px-2 py-3 border-b border-border w-[22%]">Address</th>
                 <th className="px-2 py-3 border-b border-border w-[13%]">Item</th>
                 <th className="px-2 py-3 border-b border-border w-[13%]">Size</th>
                 <th className="px-2 py-3 border-b border-border w-[13%]">Color</th>
@@ -1784,7 +1724,7 @@ function GarmentSpecsContent() {
                     const isExceeding = alloc.itemId && remainingQty < 0;
                     const isExact = alloc.itemId && remainingQty === 0;
 
-                    const rowQuery = alloc.deliveryAddress.trim().toLowerCase();
+                    const rowQuery = alloc.address ? alloc.address.trim().toLowerCase() : "";
                     const rowFilteredAddresses = rowQuery
                       ? customerAddresses.filter(
                         (addr) =>
@@ -1795,83 +1735,17 @@ function GarmentSpecsContent() {
 
                     return (
                       <tr key={alloc.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/50 transition-colors align-top">
-                        <td className="px-2 py-3 font-medium text-foreground text-center w-[70px]">
+                        <td className="px-2 py-3 align-top text-center w-[70px]">
                           {index + 1}.
                         </td>
-                        <td className="px-2 py-3 align-top">
-                          <div className="relative">
-                            <textarea
-                              id={`address-input-${alloc.id}`}
-                              rows={2}
-                              value={deliveryType === "single" ? (singleAddress + (singlePin ? ` - PIN: ${singlePin}` : "")) : alloc.deliveryAddress}
-                              onChange={(e) => {
-                                updateAllocationRow(alloc.id, "deliveryAddress", e.target.value);
-                                if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
-                                  setShowAddressDropdownRowId(alloc.id);
-                                }
-                              }}
-                              onFocus={() => {
-                                setActiveDropdownRow(alloc.id);
-                                if (deliveryType === "multi" && currentCustomerName && customerAddresses.length > 0) {
-                                  setShowAddressDropdownRowId(alloc.id);
-                                }
-                              }}
-                              onBlur={() => {
-                                if (deliveryType === "multi") {
-                                  handleRowAddressBlur(alloc.deliveryAddress);
-                                }
-                              }}
-                              readOnly={deliveryType === "single"}
-                              placeholder="Delivery Location & PIN"
-                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none text-xs ${deliveryType === "single"
-                                ? "bg-muted border-transparent text-muted-foreground cursor-not-allowed"
-                                : "bg-card border-border text-foreground"
-                                }`}
-                            />
-                            {deliveryType === "multi" && showAddressDropdownRowId === alloc.id && currentCustomerName !== "" && typeof document !== "undefined" && createPortal(
-                              <div
-                                ref={addressDropdownRef}
-                                style={{
-                                  position: "fixed",
-                                  top: `${dropdownCoords.top}px`,
-                                  left: `${dropdownCoords.left}px`,
-                                  width: `${dropdownCoords.width}px`,
-                                  zIndex: 9999,
-                                }}
-                                className="bg-card border border-border rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto mt-1"
-                              >
-                                <div className="px-2.5 py-1.5 bg-neutral-50 dark:bg-card text-[10px] font-bold text-muted-foreground border-b border-neutral-100 dark:border-border uppercase tracking-wider">
-                                  Saved Addresses for {currentCustomerName}
-                                </div>
-                                {rowFilteredAddresses.length === 0 ? (
-                                  <div className="px-3 py-2.5 text-[11px] text-muted-foreground text-center">
-                                    No matching saved addresses.
-                                  </div>
-                                ) : (
-                                  <div className="divide-y divide-neutral-100 dark:divide-slate-800">
-                                    {rowFilteredAddresses.map((addr) => (
-                                      <div
-                                        key={addr.id}
-                                        onMouseDown={(e) => {
-                                          e.preventDefault(); // Prevents blur event from firing
-                                          updateAllocationRow(alloc.id, "deliveryAddress", `${addr.address}${addr.pinCode ? ` - PIN: ${addr.pinCode}` : ""}`);
-                                          setShowAddressDropdownRowId(null);
-                                        }}
-                                        className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-700 dark:text-neutral-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer text-xs transition-colors flex items-start gap-2"
-                                      >
-                                        <MapPin className="h-3 w-3 mt-0.5 text-neutral-400 flex-shrink-0" />
-                                        <div className="flex-1">
-                                          <p className="font-medium leading-relaxed">{addr.address}</p>
-                                          <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">PIN: {addr.pinCode}</p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>,
-                              document.body
-                            )}
-                          </div>
+                        <td className="px-2 py-3">
+                          <input 
+                            type="text" 
+                            placeholder="Delivery Location & PIN" 
+                            value={alloc.address || ""} 
+                            onChange={(e) => updateAllocationRow(alloc.id, "address", e.target.value)} 
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none text-xs bg-card border-border text-foreground" 
+                          />
                         </td>
                         <td className="px-2 py-3">
                           <div className="relative">

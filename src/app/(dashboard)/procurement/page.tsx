@@ -59,6 +59,40 @@ export default function ProcurementPage() {
   const { user } = useAuth();
   const { orders } = useOrders();
 
+  // Mock Data for Active POs
+  const MOCK_ACTIVE_PURCHASE_ORDERS = [
+    {
+      id: '1',
+      po_number: 'PO-PROC-2026-01',
+      supplier: 'Vardhman Yarns & Fabrics',
+      order_date: '2026-08-02',
+      est_delivery: '2026-08-15',
+      total_amount: '₹1,85,000.00',
+      status: 'IN TRANSIT',
+      type: 'Articles'
+    },
+    {
+      id: '2',
+      po_number: 'PO-PROC-2026-02',
+      supplier: 'Coats India Buttons & Trims',
+      order_date: '2026-08-05',
+      est_delivery: '2026-08-12',
+      total_amount: '₹42,500.00',
+      status: 'IN TRANSIT',
+      type: 'Articles'
+    },
+    {
+      id: '3',
+      po_number: 'PO-FG-2026-03',
+      supplier: 'Apex Garment Manufacturers',
+      order_date: '2026-08-06',
+      est_delivery: '2026-08-18',
+      total_amount: '₹3,60,000.00',
+      status: 'IN TRANSIT',
+      type: 'Finished Goods'
+    }
+  ];
+
   const advanceStage = async (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -95,7 +129,12 @@ export default function ProcurementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
-  const [supplierFilter, setSupplierFilter] = useState<string[]>([]);
+  const [selectedHeaderSuppliers, setSelectedHeaderSuppliers] = useState<string[]>([]);
+
+  // Aliases for legacy references to prevent ReferenceError crashes
+  const supplierFilter = selectedHeaderSuppliers;
+  const setSupplierFilter = setSelectedHeaderSuppliers;
+
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   const [suppliersList, setSuppliersList] = useState<any[]>([]);
   const [selectedSupplierFilter, setSelectedSupplierFilter] = useState<any>(null);
@@ -118,6 +157,10 @@ export default function ProcurementPage() {
 
   const [inProcessPOs, setInProcessPOs] = useState<any[]>([]);
   const [completedPOs, setCompletedPOs] = useState<any[]>([]);
+  
+  const hasInteractedPOs = inProcessPOs.length > 0 || completedPOs.length > 0;
+  const activePOsList = hasInteractedPOs ? inProcessPOs : MOCK_ACTIVE_PURCHASE_ORDERS;
+  const activePOCount = activePOsList.length;
   const [historyPOs, setHistoryPOs] = useState<any[]>([]);
   const [allocatedItems, setAllocatedItems] = useState<any[]>([]);
   const [editModeSupplier, setEditModeSupplier] = useState<string | null>(null);
@@ -421,7 +464,7 @@ export default function ProcurementPage() {
           .map((item: any, index: number) => {
             const materialStr = item.sku_code ? `${item.item_name} (HSN/SKU: ${item.sku_code})` : item.item_name;
             const uniqueKey = item.unique_key || `PR-${item.item_type || 'ITEM'}-${item.id || index}`;
-            
+
             return {
               id: uniqueKey,
               unique_key: uniqueKey,
@@ -656,11 +699,10 @@ export default function ProcurementPage() {
         item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
       const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
-      const matchesSupplier = supplierFilter.length === 0 || supplierFilter.some(filterStr => item.allSuppliers?.includes(filterStr));
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesSupplier;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [deduplicatedShortages, searchTerm, statusFilter, priorityFilter, supplierFilter]);
+  }, [deduplicatedShortages, searchTerm, statusFilter, priorityFilter]);
 
   const displayRows = React.useMemo(() => {
     const rows: any[] = [];
@@ -746,6 +788,71 @@ export default function ProcurementPage() {
     });
   }, [displayRows, orderQuantities, selectedSuppliers, suppliersList]);
 
+  const downloadPurchaseOrderPdf = (po: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const content = `
+      <html>
+        <head>
+          <title>Purchase Order - ${po.po_number || po.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 25px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .info-table td { padding: 8px; vertical-align: top; }
+            .items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+            .items-table th { background-color: #f8fafc; }
+            .total-box { margin-top: 20px; text-align: right; font-size: 16px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>PURCHASE ORDER</h2>
+            <p>PO Number: <strong>${po.po_number || po.id}</strong> | Date: ${po.order_date || po.po_date || po.date || '2026-08-08'}</p>
+          </div>
+          <table class="info-table">
+            <tr>
+              <td><strong>Supplier:</strong><br/>${po.supplier_name || po.supplier || 'Vendor Partner'}</td>
+              <td><strong>Est. Delivery Date:</strong><br/>${po.est_delivery || po.expected_delivery || po.expectedDelivery || '2026-08-22'}</td>
+              <td><strong>Status:</strong><br/>${po.status || 'Active'}</td>
+            </tr>
+          </table>
+          <h3>Order Items Detail</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item Description</th>
+                <th>Order Qty</th>
+                <th>Unit Price</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${po.item_name || 'Procurement Order Items Batch'}</td>
+                <td>${po.total_items || po.items || 1} Batch</td>
+                <td>${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</td>
+                <td>${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="total-box">
+            <p>Grand Total: ${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
   console.log("Suppliers array in component:", suppliers);
 
   return (
@@ -821,7 +928,7 @@ export default function ProcurementPage() {
           <button
             onClick={() => {
               setEditModeSupplier(null);
-              setSupplierFilter([]);
+              setSelectedHeaderSuppliers([]);
               window.history.replaceState({}, '', '/procurement');
             }}
             className="text-xs font-medium bg-white dark:bg-card px-3 py-1.5 rounded shadow-sm border border-indigo-100 dark:border-indigo-800 text-indigo-600 hover:bg-neutral-50 transition-colors"
@@ -898,7 +1005,7 @@ export default function ProcurementPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Active PO's</p>
-            <p className="text-2xl font-bold text-foreground">{mockShortages.filter(i => String(i.status).toUpperCase() === 'IN_PROCESS' || String(i.status).toUpperCase() === 'PO_CREATED').length}</p>
+            <p className="text-2xl font-bold text-foreground">{activePOCount}</p>
           </div>
         </div>
 
@@ -911,7 +1018,7 @@ export default function ProcurementPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Completed PO's</p>
-            <p className="text-2xl font-bold text-foreground">{mockShortages.filter(i => String(i.status).toUpperCase() === 'RESOLVED').length}</p>
+            <p className="text-2xl font-bold text-foreground">{completedPOs.length}</p>
           </div>
         </div>
 
@@ -958,7 +1065,11 @@ export default function ProcurementPage() {
                     onClick={() => setIsSupplierDropdownOpen(!isSupplierDropdownOpen)}
                   >
                     <span className="truncate text-foreground font-medium">
-                      {supplierFilter.length === 0 ? 'All Suppliers' : `${supplierFilter.length} Supplier(s) Selected`}
+                      {selectedHeaderSuppliers.length === 0
+                        ? 'Select Suppliers'
+                        : selectedHeaderSuppliers.length === 1
+                          ? selectedHeaderSuppliers[0]
+                          : `${selectedHeaderSuppliers.length} Suppliers Selected`}
                     </span>
                     <ChevronRight className={`h-4 w-4 text-neutral-400 transition-transform ${isSupplierDropdownOpen ? 'rotate-90' : ''}`} />
                   </div>
@@ -975,17 +1086,17 @@ export default function ProcurementPage() {
                         className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
                       />
 
-                      {/* Explicit Scrollable Supplier List - THIS WAS MISSING */}
+                      {/* Explicit Scrollable Supplier List */}
                       <div className="max-h-48 overflow-y-auto flex flex-col gap-1 pr-1">
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedSupplierFilter(null);
+                            setSelectedHeaderSuppliers([]);
                             setIsSupplierDropdownOpen(false);
                           }}
                           className="w-full text-left px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded transition-colors"
                         >
-                          All Suppliers
+                          Clear Selection
                         </button>
 
                         {suppliersList && suppliersList.length > 0 ? (
@@ -996,18 +1107,28 @@ export default function ProcurementPage() {
                             })
                             .map((sup) => {
                               const displayName = sup.name || sup.supplier_name || sup.company_name || 'Unnamed';
+                              const isSelected = selectedHeaderSuppliers.includes(displayName);
                               return (
-                                <button
+                                <div
                                   key={sup.id || displayName}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedSupplierFilter(sup);
-                                    setIsSupplierDropdownOpen(false);
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setSelectedHeaderSuppliers(prev =>
+                                      prev.includes(displayName)
+                                        ? prev.filter(name => name !== displayName)
+                                        : [...prev, displayName]
+                                    );
                                   }}
-                                  className="w-full text-left px-3 py-2 text-xs text-white hover:bg-slate-800 rounded transition-colors flex items-center justify-between"
+                                  className="w-full text-left px-3 py-2 text-xs text-white hover:bg-slate-800 rounded transition-colors flex items-center gap-2 cursor-pointer"
                                 >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    readOnly
+                                    className="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 pointer-events-none"
+                                  />
                                   <span>{displayName}</span>
-                                </button>
+                                </div>
                               );
                             })
                         ) : (
@@ -1056,11 +1177,11 @@ export default function ProcurementPage() {
                         .filter(Boolean);
 
                       return suppliersList.filter(
-                        v => supplierFilter.includes(v.name) && !selectedSupplierNames.includes(v.name)
+                        v => selectedHeaderSuppliers.includes(v.name) && !selectedSupplierNames.includes(v.name)
                       );
                     };
 
-                    const isMaxSplitsReached = supplierFilter.length > 0 && getAvailableSuppliers('new-split-check').length === 0;
+                    const isMaxSplitsReached = selectedHeaderSuppliers.length > 0 && getAvailableSuppliers('new-split-check').length === 0;
 
                     const totalAllocated = allRowIds.reduce((sum, id) => sum + (Number(orderQuantities[id]) || 0), 0);
                     const dynamicShortage = Math.max(0, (item.shortage ?? item.required) - totalAllocated);
@@ -1112,7 +1233,7 @@ export default function ProcurementPage() {
                               value={selectedSuppliers[item.id] || (item.supplier === 'Store Restock' || item.supplier === 'Pending Assignment' ? '' : item.supplier)}
                               onChange={(e) => setSelectedSuppliers(prev => ({ ...prev, [item.id]: e.target.value }))}
                             >
-                              {supplierFilter.length === 0 ? (
+                              {selectedHeaderSuppliers.length === 0 ? (
                                 <option value="" disabled>Select Suppliers above first</option>
                               ) : (
                                 <>
@@ -1191,7 +1312,7 @@ export default function ProcurementPage() {
                                 value={selectedSuppliers[split.id] || ''}
                                 onChange={(e) => setSelectedSuppliers(prev => ({ ...prev, [split.id]: e.target.value }))}
                               >
-                                {supplierFilter.length === 0 ? (
+                                {selectedHeaderSuppliers.length === 0 ? (
                                   <option value="" disabled>Select Suppliers above first</option>
                                 ) : (
                                   <>
@@ -1429,20 +1550,20 @@ export default function ProcurementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {inProcessPOs.map((po) => (
+                {activePOsList.map((po) => (
                   <tr key={po.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 font-medium">{po.id}</td>
+                    <td className="px-6 py-4 font-medium">{po.po_number || po.id}</td>
                     <td className="px-6 py-4">{po.supplier}</td>
-                    <td className="px-6 py-4">{po.date}</td>
-                    <td className="px-6 py-4">{po.expectedDelivery}</td>
-                    <td className="px-6 py-4">₹{po.total.toLocaleString()}</td>
+                    <td className="px-6 py-4">{po.order_date || po.date}</td>
+                    <td className="px-6 py-4">{po.est_delivery || po.expectedDelivery}</td>
+                    <td className="px-6 py-4">{po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '-')}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${po.status === 'Partially Received' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${po.status === 'Partially Received' || po.status === 'PROCESSING' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {po.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 flex items-center justify-center gap-2">
-                      <button className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Export PDF">
+                      <button onClick={() => downloadPurchaseOrderPdf(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Download PO PDF">
                         <Download className="h-4 w-4" />
                       </button>
                     </td>
@@ -1531,7 +1652,7 @@ export default function ProcurementPage() {
                     <td className="px-6 py-4">{po.supplier}</td>
                     <td className="px-6 py-4">{po.deliveredOn}</td>
                     <td className="px-6 py-4">{po.items}</td>
-                    <td className="px-6 py-4">₹{po.total.toLocaleString()}</td>
+                    <td className="px-6 py-4">{po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '-')}</td>
                     <td className="px-6 py-4 flex items-center justify-center gap-2">
                       <button
                         className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"

@@ -4,24 +4,45 @@ import { FileText, UploadCloud, CheckCircle2, FileCheck } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface ComplianceDocsProps {
+  order?: any;
   onComplete: () => void;
 }
 
-export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
+export default function ComplianceDocs({ order, onComplete }: ComplianceDocsProps) {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize with existing documents from Accounts if any
+  React.useEffect(() => {
+    if (order && order.documents) {
+      setUploadedDocs(order.documents);
+    }
+  }, [order]);
 
   const handleSimulateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
-      const fileName = e.target.files[0].name;
+      const newFiles = Array.from(e.target.files).map(file => ({
+        id: `DOC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        fileName: file.name,
+        fileType: 'Dispatch Document',
+        uploadedBy: 'Dispatch Department',
+        uploadedAt: new Date().toISOString(),
+        statement: 'This document was uploaded by the Dispatch Department',
+        fileUrl: '#'
+      }));
+      
       setTimeout(() => {
-        setUploadedDocs(prev => [...prev, fileName]);
+        setUploadedDocs(prev => [...prev, ...newFiles]);
         setIsUploading(false);
       }, 1000);
     }
+  };
+
+  const handleRemoveDoc = (docId: string) => {
+    setUploadedDocs(prev => prev.filter(doc => doc.id !== docId));
   };
 
   const hasRequiredDocs = uploadedDocs.length > 0;
@@ -52,6 +73,7 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
                 className="hidden" 
                 onChange={handleSimulateUpload}
                 accept=".pdf,.doc,.docx,.jpg,.png"
+                multiple
               />
               <div className="h-12 w-12 bg-card rounded-full flex items-center justify-center shadow-sm border border-border mb-4 group-hover:scale-110 transition-transform">
                 <UploadCloud className="h-6 w-6 text-indigo-500" />
@@ -78,12 +100,22 @@ export default function ComplianceDocs({ onComplete }: ComplianceDocsProps) {
                 </div>
               ) : (
                 uploadedDocs.map((doc, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-card border border-neutral-100 dark:border-border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileCheck className="h-5 w-5 text-emerald-500" />
-                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">{doc}</span>
+                  <div key={doc.id || idx} className="flex flex-col p-3 bg-neutral-50 dark:bg-card border border-neutral-100 dark:border-border rounded-lg gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileCheck className="h-5 w-5 text-emerald-500" />
+                        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[180px]">{doc.fileName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">{t('orderInitiation.header.saveOrder') || 'Verified'}</span>
+                        <button onClick={() => handleRemoveDoc(doc.id)} className="text-red-500 hover:text-red-600 text-xs">Remove</button>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">{t('orderInitiation.header.saveOrder') || 'Verified'}</span>
+                    {doc.statement && (
+                      <div className="text-[10px] text-gray-500 italic px-8">
+                        {doc.statement} ({new Date(doc.uploadedAt).toLocaleDateString()})
+                      </div>
+                    )}
                   </div>
                 ))
               )}

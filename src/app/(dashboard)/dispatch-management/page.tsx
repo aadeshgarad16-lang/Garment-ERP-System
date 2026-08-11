@@ -43,6 +43,14 @@ export default function DispatchManagementPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [dispatchFilter, setDispatchFilter] = useState('AWAITING');
+
+  const kpiCards = [
+    { id: 'AWAITING', label: 'Awaiting Dispatch', count: '24 POs', color: 'blue' },
+    { id: 'IN_TRANSIT', label: 'In Transit', count: '56 Shipments', color: 'amber' },
+    { id: 'DELAYED', label: 'Delayed Shipments', count: '03 Shipments', color: 'rose' },
+    { id: 'COMPLETED', label: "Completed PO's", count: '142 Orders', color: 'emerald' },
+  ];
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -161,7 +169,7 @@ export default function DispatchManagementPage() {
       case 2:
         return <ApprovalSection onComplete={() => handleStepComplete(2)} />;
       case 3:
-        return <ComplianceDocs onComplete={() => handleStepComplete(3)} />;
+        return <ComplianceDocs order={currentOrder} onComplete={() => handleStepComplete(3)} />;
       case 4:
         return <DispatchSection onComplete={() => handleStepComplete(4)} />;
       case 5:
@@ -179,7 +187,7 @@ export default function DispatchManagementPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Awaiting Dispatch */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-blue-500/30 shadow-sm flex items-center gap-4">
+        <div onClick={() => setDispatchFilter('AWAITING')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-blue-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-blue-500">
           <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
             <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
@@ -192,22 +200,8 @@ export default function DispatchManagementPage() {
           </div>
         </div>
 
-        {/* Card 2: Completed PO's */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-emerald-500/30 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Completed PO's</div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">142</span>
-              <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Orders</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: In Transit */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-amber-500/30 shadow-sm flex items-center gap-4">
+        {/* Card 2: In Transit */}
+        <div onClick={() => setDispatchFilter('IN_TRANSIT')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-amber-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-amber-500">
           <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
             <Truck className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
@@ -220,8 +214,8 @@ export default function DispatchManagementPage() {
           </div>
         </div>
 
-        {/* Card 4: Delayed Shipments */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-rose-500/30 shadow-sm flex items-center gap-4">
+        {/* Card 3: Delayed Shipments */}
+        <div onClick={() => setDispatchFilter('DELAYED')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-rose-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-rose-500">
           <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center flex-shrink-0">
             <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
           </div>
@@ -234,23 +228,59 @@ export default function DispatchManagementPage() {
           </div>
         </div>
 
+        {/* Card 4: Completed PO's */}
+        <div onClick={() => setDispatchFilter('COMPLETED')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-emerald-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-emerald-500">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Completed PO's</div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-2xl font-bold text-slate-900 dark:text-white">142</span>
+              <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Orders</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Dispatch Orders Table */}
-      <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-neutral-200 dark:border-border overflow-hidden">
-
-      <div className="p-4 border-b border-neutral-200 dark:border-border flex items-center justify-between bg-neutral-50 dark:bg-slate-800/50">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
-          <Package className="w-5 h-5 text-indigo-500" />
-          Active Dispatch Orders
-        </h2>
-        {selectedRows.length > 0 && (
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium text-sm rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
-            <CheckSquare className="w-4 h-4" />
-            Process Selected ({selectedRows.length})
-          </button>
-        )}
-      </div>
+      <div className="bg-[#131B2E] rounded-xl border border-gray-800 p-6 space-y-4">
+        {/* SECTION HEADER WITH MOVED & STYLED BUTTONS */}
+        <div className="flex justify-between items-center pb-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+            📦 Active Dispatch Orders
+          </h2>
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => alert("Generate Delivery Challan functionality placeholder.")}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow"
+            >
+              📄 Generate Delivery Challan
+            </button>
+            <button 
+              onClick={() => {
+                if (selectedRows.length === 1) {
+                  router.push(`/dispatch-goods?poNumber=${selectedRows[0]}`);
+                } else if (selectedRows.length > 1) {
+                  alert("Please select only one PO for dispatch.");
+                } else {
+                  alert("Please select a PO first to dispatch goods.");
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow"
+            >
+              🚚 Dispatch Goods
+            </button>
+            {selectedRows.length > 0 && (
+              <button className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium text-sm rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+                <CheckSquare className="w-4 h-4" />
+                Process Selected ({selectedRows.length})
+              </button>
+            )}
+          </div>
+        </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-50/50 dark:bg-slate-800/30 uppercase border-b border-neutral-200 dark:border-border">
@@ -355,33 +385,10 @@ export default function DispatchManagementPage() {
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => alert("Generate Delivery Challan functionality placeholder.")}
-            className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-neutral-700 dark:text-neutral-300 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-          >
-            <FileText className="w-4 h-4" />
-            Generate Delivery Challan
-          </button>
-          <button 
             onClick={() => router.push('/vendors')}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
           >
-            <UserPlus className="w-4 h-4" />
-            Manage Vendors
-          </button>
-          <button 
-            onClick={() => {
-              if (selectedRows.length === 1) {
-                router.push(`/dispatch-goods?poNumber=${selectedRows[0]}`);
-              } else if (selectedRows.length > 1) {
-                alert("Please select only one PO for dispatch.");
-              } else {
-                alert("Please select a PO first to dispatch goods.");
-              }
-            }}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Package className="w-4 h-4" />
-            Dispatch Goods
+            👥 Manage Vendors
           </button>
         </div>
       </div>

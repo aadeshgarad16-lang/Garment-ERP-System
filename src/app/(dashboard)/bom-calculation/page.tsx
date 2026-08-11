@@ -242,6 +242,21 @@ class BOMErrorBoundary extends React.Component<
   }
 }
 
+function formatDate(dateString?: string) {
+  if (!dateString || dateString === '—' || dateString === 'N/A') return 'N/A';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  } catch (e) {
+    return dateString;
+  }
+}
+
 function BOMCalculationView() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -413,8 +428,9 @@ function BOMCalculationView() {
     }))
   }));
 
-  const targetKeywords = ['bom calculation', 'bom', 'stage 4'];
-  const activeOrders = ordersList.filter(o => isStageMatch(o.activeStage, targetKeywords) && o.status === 'SUBMITTED');
+  const activeOrders = ordersList.filter(
+    (o) => o.activeStage === 'BOM Calculation' || o.status === 'BOM Calculation'
+  );
 
   const customerOptions: DropdownOption[] = Array.from(
     new Set(activeOrders.map(o => o.customerName).filter(Boolean))
@@ -431,8 +447,8 @@ function BOMCalculationView() {
   );
 
   const poDateOptions: DropdownOption[] = Array.from(
-    new Set(filteredOrdersForCustomer.map(o => o.poDate).filter(Boolean))
-  ).sort();
+    new Set(filteredOrdersForCustomer.map(o => formatDate(o.poDate)).filter(Boolean))
+  ).sort().map(d => ({ label: d, value: d }));
 
   const handlePODateChange = (poDate: string) => {
     setSelectedPODate(poDate);
@@ -441,7 +457,7 @@ function BOMCalculationView() {
 
   const filteredOrders = activeOrders.filter(o =>
     (!selectedCustomer || o.customerName === selectedCustomer) &&
-    (!selectedPODate || o.poDate === selectedPODate)
+    (!selectedPODate || formatDate(o.poDate) === selectedPODate)
   );
 
   const poNumbers = Array.from(new Set(filteredOrders.map(o => o.poNumber))).filter(Boolean) as string[];
@@ -453,20 +469,6 @@ function BOMCalculationView() {
   const baseOrder = filteredOrders.find(o => o.poNumber === selectedPONumber);
   const currentOrder = detailedOrder ? { ...baseOrder, ...detailedOrder } : baseOrder;
   const activeSpecs = currentOrder ? (currentOrder.specs || currentOrder.garmentDetails || []) : [];
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '—';
-    try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) {
-        const parts = dateString.split(/[T ]/);
-        return parts[0];
-      }
-      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-    } catch {
-      return dateString.split(/[T ]/)[0];
-    }
-  };
 
   const activeGarment = (activeSpecs || [])[selectedGarmentIndex] || (activeSpecs || [])[0];
 
@@ -563,21 +565,23 @@ function BOMCalculationView() {
         setSelectedCustomer(match.customerName);
       }
       if (match.poDate) {
-        setSelectedPODate(match.poDate);
+        setSelectedPODate(formatDate(match.poDate));
       }
+      setDetailedOrder(match);
     }
   };
 
   // Recalculate totals dynamically if wastage changes
   React.useEffect(() => {
     setArticles(prev => (Array.isArray(prev) ? prev : []).map(art => {
-      const sizesArray = art?.sizes || art?.size_breakdown || [];
+      const sizesArray = art?.sizes || art?.size_breakdown || art?.breakdown || (art?.perPieceQty !== undefined ? [art] : []);
       const sizes = sizesArray.map((sz: SizeRow) => {
         const numericQty = parseFloat(String(sz?.per_piece_qty ?? sz?.perPieceQty ?? 0)) || 0;
-        const numericPrice = parseFloat(String(sz?.per_unit_price ?? sz?.perUnitPrice ?? 0)) || 0;
-        const orderQ = sz?.orderQty || sz?.garment_qty || 0;
-
-        const newTotalQty = (numericQty * orderQ) * (1 + (wastage || 0) / 100);
+        const numericPrice = parseFloat(String(sz?.per_unit_price ?? sz?.perUnitPrice ?? sz?.unitPrice ?? 0)) || 0;
+        const orderQ = sz?.orderQty || sz?.garment_qty;
+        
+        const baseQty = orderQ !== undefined ? (numericQty * orderQ) : (sz?.total_qty ?? sz?.totalQty ?? numericQty);
+        const newTotalQty = baseQty * (1 + (wastage || 0) / 100);
         const newFinalPrice = newTotalQty * numericPrice;
 
         return {
@@ -593,6 +597,7 @@ function BOMCalculationView() {
         ...art,
         sizes,
         size_breakdown: sizes,
+        breakdown: sizes,
         article_combined_qty: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2)),
         totalCombinedQty: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.total_qty_inc_wastage ?? s?.totalQty) || 0), 0).toFixed(2)),
         totalCombinedAmount: Number(sizes.reduce((sum: number, s: SizeRow) => sum + (Number(s?.final_price ?? s?.finalPrice) || 0), 0).toFixed(2))
@@ -606,9 +611,9 @@ function BOMCalculationView() {
     let grandTotalCost = 0;
 
     (articles || []).forEach((art) => {
-      const name = (art?.article_name || art?.articleName || art?.materialName || '').toLowerCase();
+      const name = (art?.inventory || art?.article_name || art?.articleName || art?.materialName || '').toLowerCase();
       const isFabric = name.includes('fabric') || name.includes('cotton');
-      const sizesArray = art?.sizes || art?.size_breakdown || [];
+      const sizesArray = art?.sizes || art?.size_breakdown || art?.breakdown || (art?.perPieceQty !== undefined ? [art] : []);
 
       sizesArray.forEach((s: any) => {
         const qty = parseFloat(String(s?.total_qty_inc_wastage ?? s?.total_qty ?? s?.totalQty ?? 0)) || 0;
@@ -871,17 +876,25 @@ function BOMCalculationView() {
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">{bomApiData?.category || 'N/A'}</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
+                        {bomApiData?.category || bomApiData?.specifications?.item || 'N/A'}
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                          {typeof bomApiData?.sleeve_type === 'string' && bomApiData.sleeve_type
-                            ? bomApiData.sleeve_type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                          {typeof (bomApiData?.sleeve_type || bomApiData?.specifications?.sleeveType || bomApiData?.specifications?.sleeve_type) === 'string'
+                            ? String(bomApiData?.sleeve_type || bomApiData?.specifications?.sleeveType || bomApiData?.specifications?.sleeve_type).split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
                             : 'N/A'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300">{bomApiData?.sizes || 'N/A'}</td>
-                      <td className="py-3.5 px-4 text-center font-semibold text-slate-900 dark:text-white">{bomApiData?.total_po_qty ?? '—'} pcs</td>
-                      <td className="py-3.5 px-4 text-center font-bold text-amber-600 dark:text-amber-400">{bomApiData?.target_production_qty ?? '—'} pcs</td>
+                      <td className="py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300">
+                        {bomApiData?.sizes || (bomApiData?.specifications?.sizes ? JSON.stringify(bomApiData.specifications.sizes).replace(/["{}]/g, '').replace(/:/g, ': ') : 'N/A')}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-semibold text-slate-900 dark:text-white">
+                        {bomApiData?.total_po_qty ?? (bomApiData?.specifications?.sizes ? Object.values(bomApiData.specifications.sizes).reduce((a: any, b: any) => a + Number(b), 0) : '—')} pcs
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-amber-600 dark:text-amber-400">
+                        {bomApiData?.target_production_qty ?? urlNetQty ?? (bomApiData?.specifications?.sizes ? Object.values(bomApiData.specifications.sizes).reduce((a: any, b: any) => a + Number(b), 0) : '—')} pcs
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -958,9 +971,9 @@ function BOMCalculationView() {
               articles.map((art, artIdx) => {
                 const combinedQty = Number(art?.article_combined_qty ?? art?.totalCombinedQty ?? 0);
                 const combinedPrice = Number(art?.totalCombinedAmount ?? 0);
-                const artName = art?.article_name || art?.articleName || art?.materialName || 'Article';
+                const artName = art?.inventory || art?.article_name || art?.articleName || art?.materialName || 'Article';
                 const artKey = `bom-row-${art?.id || artName}-${artIdx}`;
-                const sizesArray = art?.breakdown || art?.size_breakdown || art?.sizes || [];
+                const sizesArray = art?.breakdown || art?.size_breakdown || art?.sizes || (art?.perPieceQty !== undefined ? [art] : []);
 
                 return (
                   <div key={artKey} className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -987,7 +1000,7 @@ function BOMCalculationView() {
                           sizesArray.map((row: SizeRow, sizeIdx: number) => {
                             const perPiece = row?.per_piece_qty ?? row?.perPieceQty ?? 0;
                             const totQty = row?.total_qty_inc_wastage ?? row?.total_qty ?? row?.totalQty ?? 0;
-                            const unitPrice = row?.unit_price ?? row?.per_unit_price ?? row?.perUnitPrice ?? 0;
+                            const unitPrice = row?.unit_price ?? row?.per_unit_price ?? row?.perUnitPrice ?? row?.unitPrice ?? 0;
                             const rowFinalPrice = (parseFloat(String(totQty)) || 0) * (parseFloat(String(unitPrice)) || 0);
                             const finalPrice = rowFinalPrice > 0 ? rowFinalPrice : (row?.final_price ?? row?.finalPrice ?? 0);
 

@@ -169,6 +169,45 @@ function StockCalculationContent() {
   const [allocatedToPacking, setAllocatedToPacking] = useState(false);
   const [allocatedToBOM, setAllocatedToBOM] = useState(false);
   const [localPartialDispatched, setLocalPartialDispatched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleGoToBOM = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    if (!selectedPONumber) {
+      alert("Please select a PO Number first.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const res = await fetch('/api/orders/update-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poNumber: selectedPONumber,
+          currentStage: 'Stock Check',
+          nextStage: 'BOM Calculation'
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        alert(data.message || data.error || "Failed to submit PO stage update.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      window.location.href = `/bom-calculation?po=${encodeURIComponent(selectedPONumber)}&customer=${encodeURIComponent(selectedCustomer || '')}`;
+
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert("Network error while submitting stage update.");
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     setAllocatedToPacking(false);
@@ -194,23 +233,12 @@ function StockCalculationContent() {
   const activeOrders = useMemo(() => {
     if (!orders || !Array.isArray(orders)) return [];
 
-    const filtered = (orders as any[]).filter((o: any) => {
-      // Extract stage from any possible field name
-      const rawStage = String(
-        o.stage || o.activeStage || o.currentStage || o.current_stage || o.step || ''
-      ).toLowerCase().replace(/[\s_]+/g, '');
-
-      // Match 'stockcheck'
-      const isStockCheck = rawStage.includes('stockcheck');
-
-      // Check completion flags
-      const isCompleted = 
-        o.stock_check_completed === true || 
-        o.is_submitted === true || 
-        String(o.status || '').toUpperCase() === 'COMPLETED';
-
-      return isStockCheck && !isCompleted;
-    });
+    const filtered = (orders as any[]).filter(
+      (o: any) => 
+        o.stage === 'Stock Check' || 
+        o.current_stage === 'Stock Check' || 
+        o.status === 'Stock Check'
+    );
 
     const formattedOrders = filtered.map((order: any) => ({
       ...order,
@@ -907,14 +935,14 @@ function StockCalculationContent() {
                   {isUniform ? (
                     canAdvanceBOM ? (
                       <button
-                        onClick={() => handleCalculateBOM('calculate-bom')}
-                        disabled={!selectedOrder}
-                        className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${!selectedOrder
+                        onClick={handleGoToBOM}
+                        disabled={!selectedOrder || isSubmitting}
+                        className={`w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all ${(!selectedOrder || isSubmitting)
                           ? 'bg-muted text-neutral-400 cursor-not-allowed border border-border shadow-none'
                           : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 active:transform active:scale-[0.99]'
                           }`}
                       >
-                        Go to BOM Calculation
+                        {isSubmitting ? 'Updating...' : 'Go to BOM Calculation'}
                         <Calculator className="h-4 w-4" />
                       </button>
                     ) : (
@@ -950,8 +978,8 @@ function StockCalculationContent() {
                             )}
 
                             {stockStatus === 'ZERO' && (
-                              <button onClick={() => handleStageTransition('BOM Calculation')} disabled={!selectedOrder} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]">
-                                Go to BOM Calculation
+                              <button onClick={handleGoToBOM} disabled={!selectedOrder || isSubmitting} className="w-full sm:w-auto px-6 py-2.5 rounded-lg shadow-sm font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-white text-neutral-900 border border-border hover:bg-neutral-50 active:transform active:scale-[0.99]">
+                                {isSubmitting ? 'Updating...' : 'Go to BOM Calculation'}
                               </button>
                             )}
 

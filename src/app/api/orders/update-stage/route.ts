@@ -13,18 +13,17 @@ export async function POST(request: Request) {
     // Update the PO status in the main orders table
     const [updateResult] = await pool.query(
       `UPDATE purchase_orders 
-       SET current_stage = ?, 
-           status = ?, 
-           updated_at = NOW() 
-       WHERE po_number = ? OR id = ?`,
-      [nextStage || 'BOM Calculation', nextStage || 'BOM Calculation', poNumber, poNumber]
+       SET stage = ?, 
+           status = ? 
+       WHERE po_number = ?`,
+      [nextStage || 'BOM Calculation', nextStage || 'BOM Calculation', poNumber]
     );
 
     console.log(`--> PO ${poNumber} ADVANCED FROM ${currentStage} TO ${nextStage}`);
 
     return NextResponse.json({
       success: true,
-      message: `Stage updated successfully`,
+      message: `PO ${poNumber} successfully advanced to ${nextStage}`,
       poNumber: poNumber,
       newStage: nextStage
     }, { status: 200 });

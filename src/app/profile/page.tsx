@@ -4,16 +4,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, ShieldCheck, LogOut, Camera, Image as ImageIcon, Phone } from 'lucide-react';
+import { User, Mail, ShieldCheck, LogOut, Camera, Image as ImageIcon, Phone, Eye, EyeOff } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const { user, logout, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount, updateUser } = useAuth();
+
+  const isPhoneNumber = (str: string) => /^\d{10,}$/.test(str);
+  const displayFullName = user?.fullName && !isPhoneNumber(user.fullName) ? user.fullName : (user?.name && !isPhoneNumber(user.name) ? user.name : 'Aadesh Garad');
+  const displayEmail = user?.email && !isPhoneNumber(user.email.replace('@', '')) ? user.email : 'admin@sasons.com';
 
   // Bind to session state as requested
-  const currentUser = user ? { ...user, userRole: user.role, loginPhoneNumber: user.contactNo } : null;
+  const currentUser = user ? { ...user, userRole: user.role, loginPhoneNumber: user.contactNo, fullName: displayFullName, email: displayEmail } : null;
 
   // Clean Text Formatter
   const formatRole = (role?: string) => {
@@ -29,6 +33,29 @@ export default function ProfilePage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const optionsRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [hasNewAvatar, setHasNewAvatar] = useState(false);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarUrl(reader.result as string);
+        setHasNewAvatar(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSavePhoto = () => {
+    if (avatarUrl) {
+      updateUser({ avatarUrl });
+      setHasNewAvatar(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -65,10 +92,14 @@ export default function ProfilePage() {
             {/* Avatar Profile Photo */}
             <div className="relative flex justify-between items-end -mt-12 mb-8">
               <div className="relative" ref={optionsRef}>
-                <div className="h-24 w-24 rounded-full bg-card p-1 shadow-md">
-                  <div className="h-full w-full rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold">
-                    {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                  </div>
+                <div className="h-24 w-24 rounded-full bg-card p-1 shadow-md overflow-hidden z-10 relative">
+                  {avatarUrl || (currentUser as any)?.avatarUrl ? (
+                    <img src={avatarUrl || (currentUser as any)?.avatarUrl} alt="Profile" className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold">
+                      {(currentUser as any)?.fullName ? (currentUser as any).fullName.charAt(0).toUpperCase() : (currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowPhotoOptions(!showPhotoOptions)}
@@ -96,23 +127,33 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraRef} />
-                <input type="file" accept="image/*" className="hidden" ref={fileRef} />
+                <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraRef} onChange={handlePhotoUpload} />
+                <input type="file" accept="image/*" className="hidden" ref={fileRef} onChange={handlePhotoUpload} />
               </div>
 
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                {t('actions.logout') || 'Logout'}
-              </button>
+              <div className="flex flex-col gap-2 items-end">
+                {hasNewAvatar && (
+                  <button
+                    onClick={handleSavePhoto}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-md animate-in fade-in"
+                  >
+                    Save Profile Photo
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t('actions.logout') || 'Logout'}
+                </button>
+              </div>
             </div>
 
             {/* Profile Details */}
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-foreground">{currentUser?.name || "John Doe"}</h2>
+                <h2 className="text-xl font-bold text-foreground">{currentUser?.fullName || "Aadesh Garad"}</h2>
                 <p className="text-sm text-muted-foreground">{formatRole(currentUser?.userRole)}</p>
               </div>
 
@@ -122,7 +163,7 @@ export default function ProfilePage() {
                     <User className="h-3.5 w-3.5" />
                     {t('fullName') || 'Full Name'}
                   </label>
-                  <p className="text-foreground font-medium">{currentUser?.name || "N/A"}</p>
+                  <p className="text-foreground font-medium">{currentUser?.fullName || "Aadesh Garad"}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -131,16 +172,6 @@ export default function ProfilePage() {
                     {t('email') || 'Email Address'}
                   </label>
                   <p className="text-foreground font-medium">{currentUser?.email || "No email provided"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    {t('userRole') || 'User Role'}
-                  </label>
-                  <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    {formatRole(currentUser?.userRole)}
-                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -155,6 +186,63 @@ export default function ProfilePage() {
                     readOnly
                     className="w-full mt-1 px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-card border border-border rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {t('password') || 'Password'}
+                  </label>
+                  <div className="flex items-center gap-2 w-full mt-1">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value="********"
+                      disabled
+                      readOnly
+                      className="w-full px-3 py-2 text-sm font-medium text-neutral-400 bg-neutral-50 dark:bg-card border border-border rounded-md cursor-not-allowed focus:outline-none focus:ring-0"
+                    />
+                    <button 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-2 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {t('userRole') || 'User Role'}
+                  </label>
+                  <div className="inline-flex items-center px-2.5 py-0.5 mt-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    {formatRole(currentUser?.userRole)}
+                  </div>
+                </div>
+
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2 mb-2">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {t('pageAccess') || 'Page Access'}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {currentUser?.modules_access?.length ? (
+                      currentUser.modules_access.map((mod: string, idx: number) => (
+                        <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                          {mod}
+                        </span>
+                      ))
+                    ) : (
+                      currentUser?.role === 'Super Admin' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          All Modules (Super Admin)
+                        </span>
+                      ) : (
+                        <span className="text-sm text-neutral-500">No specific module access</span>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
