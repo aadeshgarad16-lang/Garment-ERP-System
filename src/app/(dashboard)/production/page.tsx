@@ -284,6 +284,43 @@ export default function ProductionPage() {
     setTrimInjections(prev => ({ ...prev, [mat.id]: { operator: '', qty: '' } }));
   };
 
+  const handleSendToQC = (activePo: string) => {
+    if (!activePo) {
+      alert("No PO selected.");
+      return;
+    }
+    try {
+      // 1. Set Production status for the selected PO to COMPLETED_SENT_TO_QC
+      updateOrderAndLog(activePo, user?.name || 'System', 'Updated', `Production Finished. Sent to QC.`, (orders) => {
+        const orderIndex = orders.findIndex((o: any) => o.poNumber === activePo);
+        if (orderIndex > -1) {
+          orders[orderIndex].status = 'COMPLETED_SENT_TO_QC';
+          orders[orderIndex].productionStatus = 'COMPLETED_SENT_TO_QC';
+        }
+        return orders;
+      });
+      
+      // 2. Push the PO payload to the Quality & Packing intake queue
+      const payload = {
+        id: crypto.randomUUID(),
+        poId: activePo,
+        orderedItems: currentOrder?.garments || [],
+        completedProductionQuantities: currentOrder?.garments || [],
+        timestamp: new Date().toISOString(),
+        status: 'COMPLETED_SENT_TO_QC'
+      };
+
+      const existingQueue = JSON.parse(localStorage.getItem('qc_finished_goods_queue') || '[]');
+      existingQueue.push(payload);
+      localStorage.setItem('qc_finished_goods_queue', JSON.stringify(existingQueue));
+
+      // 3. Show confirmation alert
+      alert(`PO ${activePo} successfully sent to Quality & Packing!`);
+    } catch (err) {
+      console.error("Failed to send to QC:", err);
+    }
+  };
+
   const handleAdvanceToNextStage = async (currentStageId: string) => {
     if (currentStageId === 'cutting') {
       // Convert raw supply units (e.g., fabric tracking in meters) into finished product block inventory counts
@@ -1479,12 +1516,21 @@ export default function ProductionPage() {
 
                       {/* Stage Advancement Flow */}
                       <div className="mt-8 flex justify-end pt-4 border-t border-border">
-                        <button
-                          onClick={() => handleAdvanceToNextStage(stages[activeStageIdx].id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
-                        >
-                          {`Proceed to ${stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1 < stages.length ? stages[stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1].name : 'Next Stage'}`}
-                        </button>
+                        {stages[activeStageIdx].id === 'finishing' ? (
+                          <button
+                            onClick={() => handleSendToQC(poNumber)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-lg text-xs shadow-lg transition-all"
+                          >
+                            🛡 Send to QC
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAdvanceToNextStage(stages[activeStageIdx].id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm inline-flex items-center transition-colors"
+                          >
+                            {`Proceed to ${stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1 < stages.length ? stages[stages.findIndex(s => s.id === stages[activeStageIdx].id) + 1].name : 'Next Stage'}`}
+                          </button>
+                        )}
                       </div>
                     </>
                   );

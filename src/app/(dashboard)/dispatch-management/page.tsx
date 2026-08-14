@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Truck, CheckCircle2, FileText, ArrowRight, Package, Edit, MoreVertical, Archive, CheckSquare, AlertCircle, Download, UserPlus } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
@@ -17,16 +17,10 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 
 // 1. Removable / Toggleable Data Architecture
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" || true;
+const USE_MOCK_DATA = false;
 
 // 2. Mock/Dummy Data for Testing
-const MOCK_DISPATCH_ORDERS = [
-  { poNumber: 'PO-2026-001', customerName: 'Zara Apparel Ltd', stage: 'Pending', logisticsStep: 1 },
-  { poNumber: 'PO-2026-002', customerName: 'H&M Global', stage: 'Quality & Packing', logisticsStep: 2 },
-  { poNumber: 'PO-2026-003', customerName: 'Levis Co', stage: 'In Transit', logisticsStep: 4 },
-  { poNumber: 'PO-2026-004', customerName: 'Uniqlo Essentials', stage: 'Delivered', logisticsStep: 6 },
-  { poNumber: 'PO-2026-005', customerName: 'Nike Sportswear', stage: 'Delayed', logisticsStep: 3 },
-];
+const MOCK_DISPATCH_ORDERS: any[] = [];
 
 export default function DispatchManagementPage() {
   const { t } = useTranslation();
@@ -43,7 +37,29 @@ export default function DispatchManagementPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [dispatchFilter, setDispatchFilter] = useState('AWAITING');
+  const [activeFilter, setActiveFilter] = useState<string>('ALL');
+
+  const filteredDispatchOrders = useMemo(() => {
+    if (!orders || !Array.isArray(orders)) return [];
+    if (activeFilter === 'ALL') return orders;
+
+    return orders.filter((order) => {
+      const status = String(order.stage || order.status || order.dispatchStatus || '').toUpperCase().trim();
+
+      switch (activeFilter) {
+        case 'AWAITING_DISPATCH':
+          return status.includes('PENDING') || status.includes('AWAITING') || status.includes('QUALITY');
+        case 'IN_TRANSIT':
+          return status.includes('TRANSIT');
+        case 'DELAYED':
+          return status.includes('DELAYED');
+        case 'COMPLETED':
+          return status.includes('DELIVERED') || status.includes('COMPLETED');
+        default:
+          return true;
+      }
+    });
+  }, [orders, activeFilter]);
 
   const kpiCards = [
     { id: 'AWAITING', label: 'Awaiting Dispatch', count: '24 POs', color: 'blue' },
@@ -155,10 +171,10 @@ export default function DispatchManagementPage() {
   };
 
   const toggleAllRows = () => {
-    if (selectedRows.length === orders.length) {
+    if (selectedRows.length === filteredDispatchOrders.length) {
       setSelectedRows([]);
     } else {
-      setSelectedRows(orders.map(o => o.poNumber));
+      setSelectedRows(filteredDispatchOrders.map(o => o.poNumber));
     }
   };
 
@@ -187,7 +203,10 @@ export default function DispatchManagementPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Awaiting Dispatch */}
-        <div onClick={() => setDispatchFilter('AWAITING')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-blue-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-blue-500">
+        <div 
+          onClick={() => setActiveFilter(prev => prev === 'AWAITING_DISPATCH' ? 'ALL' : 'AWAITING_DISPATCH')} 
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border shadow-sm flex items-center gap-4 transition-all ${activeFilter === 'AWAITING_DISPATCH' ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-blue-500/10 scale-[1.02]' : 'border-blue-500/30 hover:border-blue-500'}`}
+        >
           <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
             <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
@@ -201,7 +220,10 @@ export default function DispatchManagementPage() {
         </div>
 
         {/* Card 2: In Transit */}
-        <div onClick={() => setDispatchFilter('IN_TRANSIT')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-amber-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-amber-500">
+        <div 
+          onClick={() => setActiveFilter(prev => prev === 'IN_TRANSIT' ? 'ALL' : 'IN_TRANSIT')} 
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border shadow-sm flex items-center gap-4 transition-all ${activeFilter === 'IN_TRANSIT' ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-amber-500/10 scale-[1.02]' : 'border-amber-500/30 hover:border-amber-500'}`}
+        >
           <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
             <Truck className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
@@ -215,7 +237,10 @@ export default function DispatchManagementPage() {
         </div>
 
         {/* Card 3: Delayed Shipments */}
-        <div onClick={() => setDispatchFilter('DELAYED')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-rose-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-rose-500">
+        <div 
+          onClick={() => setActiveFilter(prev => prev === 'DELAYED' ? 'ALL' : 'DELAYED')} 
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border shadow-sm flex items-center gap-4 transition-all ${activeFilter === 'DELAYED' ? 'border-rose-500 ring-2 ring-rose-500/20 shadow-rose-500/10 scale-[1.02]' : 'border-rose-500/30 hover:border-rose-500'}`}
+        >
           <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center flex-shrink-0">
             <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
           </div>
@@ -229,7 +254,10 @@ export default function DispatchManagementPage() {
         </div>
 
         {/* Card 4: Completed PO's */}
-        <div onClick={() => setDispatchFilter('COMPLETED')} className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border border-emerald-500/30 shadow-sm flex items-center gap-4 transition-all hover:border-emerald-500">
+        <div 
+          onClick={() => setActiveFilter(prev => prev === 'COMPLETED' ? 'ALL' : 'COMPLETED')} 
+          className={`cursor-pointer bg-white dark:bg-slate-900 rounded-xl p-5 border shadow-sm flex items-center gap-4 transition-all ${activeFilter === 'COMPLETED' ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-emerald-500/10 scale-[1.02]' : 'border-emerald-500/30 hover:border-emerald-500'}`}
+        >
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
             <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
@@ -288,7 +316,7 @@ export default function DispatchManagementPage() {
               <th className="px-4 py-3 w-12 text-center">
                 <input 
                   type="checkbox" 
-                  checked={selectedRows.length === orders.length && orders.length > 0} 
+                  checked={selectedRows.length === filteredDispatchOrders.length && filteredDispatchOrders.length > 0} 
                   onChange={toggleAllRows}
                   className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
                 />
@@ -301,14 +329,14 @@ export default function DispatchManagementPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.length === 0 ? (
+            {filteredDispatchOrders.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
-                  No active dispatch orders found.
+                  No dispatch orders found matching the filter.
                 </td>
               </tr>
             ) : (
-              orders.map((order, idx) => (
+              filteredDispatchOrders.map((order, idx) => (
                 <tr key={idx} className="border-b border-neutral-100 dark:border-border/50 hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-4 py-3 text-center">
                     <input 

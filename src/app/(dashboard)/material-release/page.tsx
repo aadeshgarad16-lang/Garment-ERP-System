@@ -194,7 +194,7 @@ export default function MaterialReleasePage() {
 
         <div>
           <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1"><FileText className="h-3.5 w-3.5" /> {t('procurement.linkedPO') || 'Linked PO'}</span>
-          <p className="text-sm font-semibold text-foreground py-1.5">PO-2026-004</p>
+          <p className="text-sm font-semibold text-foreground py-1.5">{typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('poNumber') || 'No PO Selected') : 'No PO Selected'}</p>
         </div>
         <div>
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1"><Clock className="h-3.5 w-3.5" /> {t('procurement.releaseDate') || 'Release Date'}</label>
@@ -282,7 +282,7 @@ export default function MaterialReleasePage() {
               </div>
               <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">{t('orderInitiation.orderForm.orderId') || 'Order ID'}</p>
-                <p className="font-semibold text-foreground">PO-2026-004</p>
+                <p className="font-semibold text-foreground">{typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('poNumber') || 'No PO Selected') : 'No PO Selected'}</p>
               </div>
               <div className="p-4 bg-neutral-50 dark:bg-card rounded-lg border border-neutral-100 dark:border-border">
                 <p className="text-xs text-muted-foreground mb-1">Allocate material</p>

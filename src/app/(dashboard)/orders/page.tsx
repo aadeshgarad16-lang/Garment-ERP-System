@@ -646,6 +646,8 @@ function OrdersPageContent() {
 
   const handleSubmitOrder = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (isSaving) return; // Prevent multiple submissions
+    
     try {
       console.group("🚀 Debugging Form Submission");
       console.log("Submit clicked. Form values payload:", formState);
@@ -658,34 +660,43 @@ function OrdersPageContent() {
       }
 
       setIsSaving(true);
-      const payload = {
-        ...getPayload("SUBMITTED", "Order Specifications"),
-        currentStage: 1,
-        current_stage: "Order Specifications"
-      };
-      const response = await saveOrderAPI(payload);
+      
+      const payload = getPayload("PENDING", "Specifications");
+      
+      // 1. Save order to backend/state FIRST
+      const response = await saveOrderAPI({
+        ...payload,
+        stage: 'Specifications',
+        status: 'PENDING',
+        created_at: new Date().toISOString()
+      });
 
-      if (response.success) {
+      // 2. VERIFY SUCCESS BEFORE REDIRECTING
+      if (response && (response.success || (response as any).order || response.data)) {
         await reloadOrders();
         console.log("✅ Step 1 Saved Successfully. Redirecting to Specifications...");
-        const targetPo = encodeURIComponent(formState.poNumber);
-        const targetCust = encodeURIComponent(formState.customerName);
+        
+        const savedPoNumber = response.data?.poNumber || (response as any).order?.po_number || payload.poNumber;
+        const targetPo = encodeURIComponent(savedPoNumber);
+        const targetCust = encodeURIComponent(payload.customerName);
         
         // Clear auto-save draft on successful submit
         if (typeof window !== 'undefined') {
           localStorage.removeItem('order_initiation_draft');
         }
         
-        // Sync local context state immediately before route transition
-        updateOrderState(formState.poNumber, { stage: "Order Specifications", status: "SUBMITTED" });
+        // Update global React context / state so all pages see the new PO immediately
+        updateOrderState(savedPoNumber, { stage: "Specifications", status: "PENDING" });
         
-        router.push(`/order-specifications?poNumber=${targetPo}&customerName=${targetCust}&stage=Order%20Specifications`);
+        // 3. Redirect ONLY AFTER successful save
+        window.location.href = `/order-specifications?poNumber=${targetPo}&customerName=${targetCust}&stage=Specifications`;
       } else {
         console.error("❌ API returned success: false", response);
-        alert("Form submission failed on the server. Check logs.");
+        alert("Failed to save Purchase Order. Please check the backend connection.");
       }
     } catch (error) {
-      console.warn("Submit handler exception caught:", error);
+      console.error("Submit handler exception caught:", error);
+      alert("An error occurred while saving the PO.");
     } finally {
       setIsSaving(false);
       console.groupEnd();

@@ -103,31 +103,40 @@ export default function WorkflowIndicator({ currentStep }: { currentStep: string
     return stage.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
   };
 
-  const getOrdersForStage = (stage: string) => {
-    if (stage === 'Order Initiation') {
-      return orders.filter(o => {
-        const normStage = normalizeStage(o.current_stage || o.stage || o.status);
-        return o.status === 'DRAFT' || normStage.includes('initiation') || normStage.includes('orderinitiation');
-      });
-    }
+  const getOrdersForStage = (targetStageName: string) => {
+    if (!orders || !Array.isArray(orders)) return [];
 
-    return orders.filter(o => {
-      if (o.status === 'DRAFT') return false;
-      const normStage = normalizeStage(o.current_stage || o.stage || o.status);
-      
-      if (stage === 'Order Specifications' && (normStage.includes('spec') || normStage.includes('specifications'))) return true;
-      if (stage === 'Stock Check' && (normStage.includes('stock') || normStage.includes('stockcheck'))) return true;
-      if (stage === 'BOM Calculation' && (normStage.includes('bom') || normStage.includes('bomcalculation'))) return true;
-      if (stage === 'Inventory Check' && (normStage.includes('inventory') || normStage.includes('inventorycheck'))) return true;
-      if (stage === 'Material Allocation' && (normStage.includes('allocation') || normStage.includes('materialallocation'))) return true;
-      if (stage === 'Procurement' && normStage.includes('procurement')) return true;
-      if (stage === 'Material Release' && (normStage.includes('release') || normStage.includes('materialrelease'))) return true;
-      if (stage === 'Production' && normStage.includes('production')) return true;
-      if (stage === 'Quality & Packing' && (normStage.includes('quality') || normStage.includes('packing'))) return true;
-      if (stage === 'Logistics' && normStage.includes('logistics')) return true;
-      if (stage === 'Completed' && (normStage.includes('completed') || normStage.includes('done'))) return true;
-      
-      return false;
+    const targetStageNormalized = targetStageName.toLowerCase().replace(/[\s_]+/g, '');
+    const targetIndex = allSteps.findIndex(
+      s => s.toLowerCase().replace(/[\s_]+/g, '') === targetStageNormalized
+    );
+
+    if (targetIndex === -1) return [];
+
+    return orders.filter((o) => {
+      if (o.status === 'DRAFT' && targetStageName !== 'Order Initiation') return false;
+
+      let currentStageNormalized = String(
+        o.current_stage || o.stage || o.activeStage || o.status || ''
+      ).toLowerCase().replace(/[\s_]+/g, '');
+
+      // Normalize edge cases to match allSteps exact tokens
+      if (currentStageNormalized.includes('initiation')) currentStageNormalized = 'orderinitiation';
+      if (currentStageNormalized.includes('spec')) currentStageNormalized = 'orderspecifications';
+      if (currentStageNormalized.includes('quality') || currentStageNormalized.includes('packing')) currentStageNormalized = 'qualitypacking';
+
+      const currentIndex = allSteps.findIndex(
+        s => s.toLowerCase().replace(/[\s_]+/g, '') === currentStageNormalized
+      );
+
+      const isCompleted = o.status === 'COMPLETED' || o.is_completed === true || currentStageNormalized === 'completed';
+
+      if (targetStageName === 'Order Initiation' && o.status === 'DRAFT') {
+         return true; 
+      }
+
+      // A PO counts towards this stage if its current stage is AT or BEFORE this stage in the pipeline
+      return currentIndex !== -1 && currentIndex <= targetIndex && !isCompleted;
     });
   };
 

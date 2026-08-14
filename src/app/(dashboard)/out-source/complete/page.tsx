@@ -38,12 +38,8 @@ export default function CompleteOutsourcedTracking() {
     setSupplierAllocations(prev => ({ ...prev, [vid]: qty }));
   };
 
-  // Mock data for the tables
-  const orderProducts = [
-    { id: 'PRD-001', poNumber: 'PO-2026-892A', type: 'Mens Casual Shirt', sku: 'SH-CAS-NVY-M', size: 'M', quantity: 500 },
-    { id: 'PRD-002', poNumber: 'PO-2026-892B', type: 'Mens Casual Shirt', sku: 'SH-CAS-NVY-L', size: 'L', quantity: 600 },
-    { id: 'PRD-003', poNumber: 'PO-2026-892C', type: 'Mens Casual Shirt', sku: 'SH-CAS-NVY-XL', size: 'XL', quantity: 400 },
-  ];
+  // Order products from active orders state
+  const [orderProducts, setOrderProducts] = useState<any[]>([]);
 
 
   return (

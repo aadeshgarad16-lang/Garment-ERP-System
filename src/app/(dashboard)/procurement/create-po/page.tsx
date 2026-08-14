@@ -605,16 +605,33 @@ PAN: ABCDE1234F`;
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-6 font-sans pb-8 relative">
-      <ProcurementStepper />
+      
+      {/* 2. SHARED 3-TAB NAVIGATION HEADER */}
+      <div className="flex gap-3 bg-[#131B2E] p-2 rounded-2xl border border-gray-800 w-fit mb-6 mt-6">
+        <button
+          onClick={() => router.push('/procurement')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+        >
+          📱 Procurement Requests <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">9 Pending</span>
+        </button>
+
+        <button
+          onClick={() => router.push('/procurement/review-po')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+        >
+          📋 Review PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+        </button>
+
+        <button
+          onClick={() => router.push('/procurement/create-po')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
+        >
+          + Create PO <span className="bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+        </button>
+      </div>
 
       {/* Header Section */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.push('/procurement')}
-          className="p-2 bg-card border border-border text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted shadow-sm transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Plus className="h-6 w-6 text-indigo-600" />

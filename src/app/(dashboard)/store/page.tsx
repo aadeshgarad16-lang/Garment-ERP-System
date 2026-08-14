@@ -215,33 +215,10 @@ function StoreOrdersModule() {
   const [issueOrders, setIssueOrders] = useState<any[]>([]);
   const [completedOrders, setCompletedOrders] = useState<any[]>([]);
 
-  // Mock Data for Active POs (Mirrored from Procurement)
-  const MOCK_ACTIVE_PURCHASE_ORDERS = [
-    {
-      id: 'PO-PROC-2026-01',
-      items: 2,
-      date: '2026-08-02',
-      receivedDate: '-',
-      status: 'In Transit'
-    },
-    {
-      id: 'PO-PROC-2026-02',
-      items: 1,
-      date: '2026-08-05',
-      receivedDate: '-',
-      status: 'In Process'
-    },
-    {
-      id: 'PO-FG-2026-03',
-      items: 4,
-      date: '2026-08-06',
-      receivedDate: '-',
-      status: 'In Process'
-    }
-  ];
-
-  const hasInteracted = activeOrders.length > 0 || completedOrders.length > 0 || issueOrders.length > 0;
-  const activeOrdersList = hasInteracted ? activeOrders : MOCK_ACTIVE_PURCHASE_ORDERS;
+  const [loading, setLoading] = useState(true);
+  
+  // Alias to preserve existing references in the component
+  const activeOrdersList = activeOrders;
 
   // State for Orders Tab Navigation
   const [activeOrderTab, setActiveOrderTab] = useState<'active' | 'issue' | 'completed'>('active');
@@ -271,90 +248,66 @@ function StoreOrdersModule() {
     );
   };
 
-  // Fetch from database
+  // Fetch from live database
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Clear stale browser cache keys holding the old mock arrays
+      localStorage.removeItem('procurement_orders');
+      localStorage.removeItem('store_procurement_orders');
+      localStorage.removeItem('procurement_history');
+    }
+  }, []);
+
+  const ENABLE_DEMO_DATA = true;
+
   useEffect(() => {
     const fetchLiveOrders = async () => {
       try {
-        const stored = localStorage.getItem('sharedPurchaseOrders');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && parsed.length > 0) {
-            setActiveOrders(parsed.filter((o: any) => o.status === 'In Process' || o.status === 'Partially Received' || o.status === 'In Transit' || o.status === 'Awaiting Dispatch'));
-            setCompletedOrders(parsed.filter((o: any) => o.status === 'Completed / Received'));
-            setIssueOrders(parsed.filter((o: any) => o.status?.includes('Action Required') || o.status?.includes('Delayed')));
-            return;
-          }
+        setLoading(true);
+
+        if (ENABLE_DEMO_DATA) {
+          const { MASTER_PROCUREMENT_POS } = await import('@/data/centralProcurementStore');
+          const liveOrders = MASTER_PROCUREMENT_POS.map((row: any) => ({
+            ...row,
+            id: row.poNumber || row.id || row.order_number,
+            items: (row.rawMaterials?.length || 0) + (row.finishedGoods?.length || 0) || 1,
+            date: row.orderDate || row.invDate || row.created_at ? new Date(row.created_at).toLocaleDateString() : (row.order_date || '-'),
+            receivedDate: row.deliveryDate || row.deliveredOn || '-',
+            supplier: row.supplier_name || row.supplier || 'Unknown'
+          }));
+          setActiveOrders(liveOrders.filter((o: any) => o.status === 'IN_TRANSIT' || o.status === 'IN_PROCESS' || o.status === 'ACTIVE' || o.status?.toLowerCase().includes('process') || o.status?.toLowerCase().includes('transit') || o.status === 'PARTIALLY PAID'));
+          setCompletedOrders(liveOrders.filter((o: any) => o.status === 'COMPLETED' || o.status?.toLowerCase().includes('completed') || o.status === 'PAID'));
+          setIssueOrders(liveOrders.filter((o: any) => o.status?.includes('Action Required') || o.status?.includes('Delayed') || o.status === 'UNPAID'));
+          return;
         }
 
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
-        const res = await fetch(`${BACKEND_URL}/api/store/orders`, {
-          headers: { 'X-API-Key': 'sasons_read_only_key_2026_abc' }
-        });
+        const res = await fetch('/api/procurement/orders');
 
         if (res.ok) {
-          const text = await res.text();
-          let rawData;
-          try {
-            rawData = JSON.parse(text);
-          } catch (e) {
-            console.error("Invalid JSON from live orders API:", text.substring(0, 100));
-            return;
+          const ordersData = await res.json();
+          if (ordersData.success && Array.isArray(ordersData.data)) {
+            const liveOrders = ordersData.data.map((row: any) => ({
+              ...row,
+              id: row.po_number || row.order_number,
+              items: row.total_items || 0,
+              date: row.created_at ? new Date(row.created_at).toLocaleDateString() : (row.order_date || '-'),
+              receivedDate: row.deliveredOn || '-',
+              supplier: row.supplier_name || 'Unknown'
+            }));
+            setActiveOrders(liveOrders.filter((o: any) => o.status === 'IN_TRANSIT' || o.status === 'ACTIVE' || o.status?.toLowerCase().includes('process') || o.status?.toLowerCase().includes('transit')));
+            setCompletedOrders(liveOrders.filter((o: any) => o.status === 'COMPLETED' || o.status?.toLowerCase().includes('completed')));
+            setIssueOrders(liveOrders.filter((o: any) => o.status?.includes('Action Required') || o.status?.includes('Delayed')));
           }
-          // Extract array safely regardless of response wrapper shape
-          let dataArray = Array.isArray(rawData) ? rawData : (rawData.data || rawData.orders || []);
-          if (!Array.isArray(dataArray)) {
-            console.warn("Expected array for live orders, received:", rawData);
-            dataArray = [];
-          }
-
-          // Group by po_number
-          const grouped: { [key: string]: any } = {};
-          dataArray.forEach((row: any) => {
-            const po = row.po_number || row.order_number;
-            if (!grouped[po]) {
-              grouped[po] = {
-                id: po,
-                supplier: row.supplier_name || 'Unknown',
-                items: 0,
-                total: 0,
-                date: row.expected_delivery_date || new Date().toISOString().split('T')[0],
-                status: row.status === 'IN PROCESS' ? 'In Process' : (row.status === 'DELIVERED' ? 'Completed / Received' : row.status),
-                expectedDelivery: row.expected_delivery_date,
-                receivedQty: 0,
-                grnNumbers: [],
-                receivingDates: [],
-                details: []
-              };
-            }
-            grouped[po].items += 1;
-            grouped[po].details.push(row);
-          });
-
-          const parsed = Object.values(grouped);
-          setActiveOrders(parsed.filter((o: any) => {
-            const status = o?.status || '';
-            return status === 'In Process' || status === 'Partially Received' || status === 'In Transit' || status === 'Awaiting Dispatch';
-          }));
-          setCompletedOrders(parsed.filter((o: any) => (o?.status || '') === 'Completed / Received'));
-          setIssueOrders(parsed.filter((o: any) => {
-            const status = o?.status || '';
-            return status.includes('Action Required') || status.includes('Delayed');
-          }));
+        } else {
+          console.error("Failed to fetch live orders from API, status:", res.status);
         }
-      } catch (e) {
-        console.error("Failed to fetch live orders", e);
+      } catch (err) {
+        console.error("Error fetching live orders:", err);
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchLiveOrders();
-
-    const handleStorage = () => fetchLiveOrders();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('orders-updated', handleStorage);
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('orders-updated', handleStorage);
-    };
   }, []);
 
   const updateSharedOrders = (updatedOrders: any[]) => {
@@ -405,55 +358,124 @@ function StoreOrdersModule() {
     const content = `
       <html>
         <head>
-          <title>Goods Receipt Note - ${grnData.grnNumber}</title>
+          <title>Goods Received Note - ${grnData.grnNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-            .info-table, .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .info-table td { padding: 6px; }
-            .items-table th, .items-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            .items-table th { background-color: #f2f2f2; }
-            .status { font-weight: bold; color: ${grnData.totalDamaged > 0 ? '#d9534f' : '#5cb85c'}; }
+            @page { size: A4; margin: 10mm; }
+            body { font-family: Arial, sans-serif; padding: 0; margin: 0; color: #000; font-size: 12px; }
+            .container { width: 100%; border: 1px solid #000; box-sizing: border-box; }
+            .header-section { position: relative; padding: 15px; text-align: center; border-bottom: 1px solid #000; }
+            .logo-area { position: absolute; left: 20px; top: 15px; text-align: center; }
+            .logo-s { font-size: 40px; font-weight: bold; line-height: 1; letter-spacing: -2px; }
+            .logo-text { font-size: 14px; font-weight: bold; margin-top: 5px; }
+            .logo-subtext { font-size: 8px; }
+            .title-pill { display: inline-block; border: 1px solid #000; border-radius: 15px; padding: 3px 15px; font-size: 14px; font-weight: bold; margin-bottom: 10px; background-color: #f2f2f2; }
+            .company-name { font-size: 24px; font-weight: bold; margin: 5px 0; letter-spacing: 1px; }
+            .cert-text { font-size: 12px; font-weight: bold; margin: 2px 0; }
+            .mfg-text { font-size: 16px; font-weight: bold; margin: 5px 0; }
+            .address-text { font-size: 11px; margin: 2px 0; }
+            
+            .meta-row { display: flex; border-bottom: 1px solid #000; }
+            .meta-cell { padding: 5px 10px; flex: 1; border-right: 1px solid #000; font-weight: bold; }
+            .meta-cell:last-child { border-right: none; }
+            
+            .details-grid { display: flex; border-bottom: 1px solid #000; min-height: 80px; }
+            .supplier-block { width: 70%; padding: 5px 10px; border-right: 1px solid #000; }
+            .supplier-title { font-weight: bold; margin-bottom: 5px; }
+            .po-block { width: 30%; display: flex; flex-direction: column; }
+            .po-header { text-align: center; padding: 5px; border-bottom: 1px solid #000; font-weight: bold; background-color: #f2f2f2; }
+            .po-row { display: flex; border-bottom: 1px solid #000; padding: 5px 10px; font-weight: bold; flex: 1; }
+            .po-row:last-child { border-bottom: none; }
+            .po-val { font-size: 16px; margin-left: auto; }
+            
+            .table-header { text-align: center; padding: 5px; border-bottom: 1px solid #000; font-weight: bold; background-color: #f2f2f2; }
+            .main-table { width: 100%; border-collapse: collapse; text-align: center; }
+            .main-table th, .main-table td { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 5px; }
+            .main-table th { font-weight: bold; background-color: #f9f9f9; }
+            .main-table th:last-child, .main-table td:last-child { border-right: none; }
+            .main-table td { height: 25px; }
+            
+            .footer-section { display: flex; justify-content: space-between; padding: 40px 20px 10px 20px; font-weight: bold; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h2>GOODS RECEIPT NOTE (GRN)</h2>
-            <p>GRN No: <strong>${grnData.grnNumber}</strong> | Date: ${grnData.grnDate}</p>
-          </div>
-          <table class="info-table">
-            <tr>
-              <td><strong>Purchase Order No:</strong> ${grnData.poNumber}</td>
-              <td><strong>Vendor Delivery Note:</strong> ${grnData.deliveryNote || 'N/A'}</td>
-            </tr>
-            <tr>
-              <td><strong>Warehouse Location:</strong> Zone B, Bin 04</td>
-              <td><strong>Status:</strong> <span class="status">${grnData.totalDamaged > 0 ? 'ISSUE DETECTED' : 'COMPLETED'}</span></td>
-            </tr>
-          </table>
-          <h3>Received Items Validation</h3>
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Item Name</th>
-                <th>Ordered Qty</th>
-                <th>Accepted Qty</th>
-                <th>Damaged Qty</th>
-                <th>Damage Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(grnData.items || []).map((item: any) => `
+          <div class="container">
+            <div class="header-section">
+              <div class="logo-area">
+                <div class="logo-s">S</div>
+                <div class="logo-text">SASONS</div>
+                <div class="logo-subtext">WORKS WEAR<br/>A Sumeet Group Enterprise</div>
+              </div>
+              <div class="title-pill">GOODS RECEIVED NOTE</div>
+              <div class="company-name">SASONS WORKS WEAR PRIVATE LIMITED</div>
+              <div class="cert-text">AN ISO 9001 : 2015 Certified Co.</div>
+              <div class="mfg-text">Mfg. : Industrial Garments</div>
+              <div class="address-text">Factory : 1st Floor, Nana Chamber, Above Bank of Maharashtra, Kasarwadi, Pune - 34.</div>
+              <div class="address-text">E-mail : sasons@sumeetdelta.com</div>
+            </div>
+            
+            <div class="meta-row">
+              <div class="meta-cell">Challan No.: ${grnData.deliveryNote || ''}</div>
+              <div class="meta-cell">Invoice No.: </div>
+              <div class="meta-cell">Date: ${grnData.grnDate || ''}</div>
+            </div>
+            
+            <div class="details-grid">
+              <div class="supplier-block">
+                <div class="supplier-title">Supplier's Name & Address :</div>
+                <div>${grnData.supplierName || ''}</div>
+              </div>
+              <div class="po-block">
+                <div class="po-header">P. O. DETAILS</div>
+                <div class="po-row">
+                  <div>P. O. No.:</div>
+                  <div class="po-val">${grnData.poNumber || ''}</div>
+                </div>
+                <div class="po-row">Date :</div>
+              </div>
+            </div>
+            
+            <div class="table-header">Goods Received Inspection Note</div>
+            
+            <table class="main-table">
+              <thead>
                 <tr>
-                  <td>${item.name || item.item_name || 'Item'}</td>
-                  <td>${item.orderedQty || item.total_qty || 1}</td>
-                  <td>${item.acceptedQty || 1}</td>
-                  <td>${item.damagedQty || 0}</td>
-                  <td>${item.damageReason || 'N/A'}</td>
+                  <th rowspan="2" style="width: 5%;">Sr.<br/>No.</th>
+                  <th rowspan="2" style="width: 45%;">Description</th>
+                  <th colspan="3" style="width: 30%;">QUANTITY</th>
+                  <th colspan="2" style="width: 20%;">Q. C. DETAILS</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+                <tr>
+                  <th>Unit</th>
+                  <th>As per Bill /<br/>Challan</th>
+                  <th>Actual<br/>Received</th>
+                  <th>Accepted</th>
+                  <th>Rejected</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Array.from({ length: 15 }).map((_, i) => {
+                  const item = (grnData.items && grnData.items[i]) ? grnData.items[i] : null;
+                  return `
+                    <tr>
+                      <td>${item ? i + 1 : ''}</td>
+                      <td style="text-align: left; padding-left: 10px;">${item ? (item.name || item.item_name) : ''}</td>
+                      <td>${item ? (item.unit || 'Pcs') : ''}</td>
+                      <td>${item ? (item.orderedQty || item.total_qty) : ''}</td>
+                      <td>${item ? (Number(item.acceptedQty || 0) + Number(item.damagedQty || 0)) : ''}</td>
+                      <td>${item ? item.acceptedQty : ''}</td>
+                      <td>${item ? (item.damagedQty || 0) : ''}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+            
+            <div class="footer-section">
+              <div>Purchase Manager Signature</div>
+              <div>GRN Prepared By</div>
+              <div>Q. C. Inspected By</div>
+            </div>
+          </div>
         </body>
       </html>
     `;
@@ -537,6 +559,7 @@ function StoreOrdersModule() {
       grnNumber: `GRN-${selectedGrnPo.id}-${Date.now().toString().slice(-4)}`,
       grnDate: new Date().toLocaleDateString(),
       poNumber: selectedGrnPo.id,
+      supplierName: selectedGrnPo.supplier || selectedGrnPo.supplier_name,
       deliveryNote: '',
       totalDamaged: totalDamagedQty,
       items: grnItems.map(it => ({

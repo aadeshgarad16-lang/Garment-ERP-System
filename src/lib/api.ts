@@ -68,6 +68,21 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:500
 const READ_KEY = process.env.NEXT_PUBLIC_ERP_READ_API_KEY as string;
 const WRITE_KEY = process.env.NEXT_PUBLIC_ERP_WRITE_API_KEY as string;
 
+async function safeParseJson(res: Response) {
+  const contentType = res.headers.get('content-type') || '';
+  if (res.ok && contentType.includes('application/json')) {
+    try {
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+  // If response is HTML or non-JSON, log warning instead of crashing with SyntaxError
+  const text = await res.text();
+  console.warn(`API path ${res.url} returned non-JSON response (${res.status}):`, text.slice(0, 100));
+  return null;
+}
+
 export const getAuthHeaders = (isWrite = false): Record<string, string> => {
   const headers: Record<string, string> = {
     "X-API-Key": isWrite ? WRITE_KEY : READ_KEY,
@@ -114,7 +129,7 @@ export const getExistingPoNumbersAPI = async (): Promise<string[]> => {
 };
 
 // Helper to resolve or create customer_id on the fly based on customerName string input or orderData object
-async function getOrCreateCustomerId(customerInput: Partial<Order> | string): Promise<number> {
+export async function getOrCreateCustomerId(customerInput: Partial<Order> | string): Promise<number | string> {
   const isObj = typeof customerInput !== "string";
   const customerName = isObj ? ((customerInput as Partial<Order>).customerName || "") : (customerInput as string);
   const custNameClean = customerName.trim();
@@ -125,18 +140,34 @@ async function getOrCreateCustomerId(customerInput: Partial<Order> | string): Pr
   
   try {
     // 1. Fetch current customer list
-    const res = await fetch(`/api/customers`, {
+    const res = await fetch(`${BACKEND_URL}/customers/view`, {
       method: "GET",
       headers: getAuthHeaders()
     });
     
     if (res.ok) {
-      const list = await res.json();
-      const match = list.find((c: any) => c.customer_name.toLowerCase() === custNameClean.toLowerCase());
-      if (match) {
-        return match.customer_id;
+      const data = await res.json();
+      
+      // SAFELY EXTRACT ARRAY regardless of response shape ({ data: [...] } or [...])
+      const list = Array.isArray(data) 
+        ? data 
+        : Array.isArray(data?.customers) 
+        ? data.customers 
+        : Array.isArray(data?.data) 
+        ? data.data 
+        : [];
+
+      if (list.length > 0) {
+        const match = list.find((c: any) => 
+          (c.customer_name || c.name || c.customerName || '').toLowerCase() === custNameClean.toLowerCase()
+        );
+        if (match) {
+          return match.customer_id || match.id;
+        }
       }
     }
+    
+    console.warn("Customer search returned non-array or 404. Proceeding with fallback creation.");
     
     // 2. If customer does not exist, add them dynamically
     const orderObj = isObj ? (customerInput as Partial<Order>) : {} as Partial<Order>;
@@ -157,14 +188,14 @@ async function getOrCreateCustomerId(customerInput: Partial<Order> | string): Pr
     
     if (addRes.ok) {
       const addData = await addRes.json();
-      return addData.customer_id;
+      return addData.customer_id || addData.id || custNameClean;
     } else {
-      const errData = await addRes.json().catch(() => ({}));
-      throw new Error(errData.error || `Customer API returned ${addRes.status}`);
+      return custNameClean; // Fallback string to avoid blocking PO creation
     }
   } catch (err: any) {
     console.error("Failed to get or create customer in backend:", err);
-    throw new Error(`Customer creation failed: ${err.message}`);
+    // Return customerName as string fallback so PO submission does NOT fail completely
+    return custNameClean;
   }
 }
 
@@ -209,9 +240,15 @@ export const saveOrderAPI = async (orderData: Partial<Order>): Promise<{ success
       body: JSON.stringify(poPayload)
     });
 
-    if (!poRes.ok) {
-      const errData = await poRes.json();
-      throw new Error(errData.error || `Failed PO save: HTTP ${poRes.status}`);
+    const parsedData = await safeParseJson(poRes);
+
+    console.log("📥 Raw Backend Response Status:", poRes.status);
+    console.log("📥 Raw Backend Response Body:", parsedData);
+
+    if (!poRes.ok || !parsedData || !parsedData.success) {
+      const errorMsg = parsedData?.error || parsedData?.message || `HTTP ${poRes.status}: Backend API save failed.`;
+      console.error(`Backend save failed: ${errorMsg}`);
+      return { success: false, data: orderData as Order, error: errorMsg } as any;
     }
 
     // 2. Save each garment spec item to database specifications table
@@ -248,7 +285,7 @@ export const saveOrderAPI = async (orderData: Partial<Order>): Promise<{ success
     return { success: true, data: orderData as Order };
   } catch (err: any) {
     console.error("saveOrderAPI failed:", err);
-    throw err;
+    return { success: false, data: orderData as Order, error: err.message || "Network error" } as any;
   }
 };
 

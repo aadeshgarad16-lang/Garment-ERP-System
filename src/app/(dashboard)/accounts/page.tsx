@@ -1,217 +1,108 @@
 'use client';
 
 import React, { useState } from 'react';
+import { DEMO_SALES_POS } from '@/data/accountsDemoData';
+import { MASTER_PROCUREMENT_POS } from '@/data/centralProcurementStore';
 
 export default function AccountsPage() {
-  // Tier 1 Main Tab: 'sales_pos' | 'procurement_pos'
   const [mainTab, setMainTab] = useState('sales_pos');
-
-  // Tier 2 Sub-Tab (for Sales POs): 'paid' | 'unpaid' | 'overdue'
   const [subTab, setSubTab] = useState('unpaid');
-
-  // Search filter
   const [searchQuery, setSearchQuery] = useState('');
+  const [openTxDropdownId, setOpenTxDropdownId] = useState(null);
 
-  // State for View PO Modal
-  const [viewModalData, setViewModalData] = useState<any>(null);
+  // Modals state
+  const [transactionModalData, setTransactionModalData] = useState(null);
+  const [docModalData, setDocModalData] = useState(null);
+  const [contactModalData, setContactModalData] = useState(null);
 
-  // State for Contact Info Modal
-  const [contactModalData, setContactModalData] = useState<any>(null);
+  // Form Inputs
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState('Bank Transfer');
+  const [customTxId, setCustomTxId] = useState('');
 
-  // Handler to trigger Send Mail alert/action
-  const handleSendMail = (poNumber: string, recipient: string) => {
-    alert(`Email notification sent successfully to ${recipient} for ${poNumber}!`);
-  };
+  // Master PO Lists
+  const ENABLE_DEMO_DATA = true;
+  const [salesPOs, setSalesPOs] = useState<any[]>(ENABLE_DEMO_DATA ? DEMO_SALES_POS : []);
+  const [procurementPOs, setProcurementPOs] = useState<any[]>(ENABLE_DEMO_DATA ? MASTER_PROCUREMENT_POS : []);
 
-  // Handler to view Customer/Supplier Info
-  const handleOpenContactInfo = (row: any) => {
-    setContactModalData({
-      type: mainTab === 'sales_pos' ? 'Customer' : 'Supplier',
-      companyName: row.customer || row.supplier || row.company,
-      contactPerson: row.contactPerson || 'Rajesh Sharma',
-      phone: row.phone || '+91 98765 43210',
-      email: row.email || 'accounts@clientcompany.com'
-    });
-  };
+  // SAVE PAYMENT INSTALLMENT HANDLER
+  const handleSavePayment = () => {
+    const amt = Number(paymentAmount);
+    if (!amt || amt <= 0) {
+      alert('Please enter a valid payment amount');
+      return;
+    }
 
-  // State for Upload Modal
-  const [uploadModalData, setUploadModalData] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('Invoice');
-  const [uploadNotes, setUploadNotes] = useState('');
+    const todayStr = '18-08-2026';
+    const txRef = customTxId.trim() || `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
 
-  // Handler for uploading document
-  const handleUploadSubmit = () => {
-    if (!selectedFile) return;
-    
-    const newDoc = {
-      id: `DOC-${Date.now()}`,
-      fileName: selectedFile.name,
-      fileType: selectedCategory,
-      notes: uploadNotes,
-      uploadedBy: 'Accounts Department',
-      uploadedAt: new Date().toISOString(),
-      statement: 'This document was uploaded by the Accounts Department',
-      fileUrl: '#'
-    };
+    const updatePOs = (prevPOs: any[]) =>
+      prevPOs.map((po) => {
+        if (po.id === transactionModalData.id) {
+          const updatedTxList = [
+            ...(po.transactions || []),
+            { txId: txRef, amount: amt, date: todayStr, mode: paymentMode }
+          ];
 
-    if (uploadModalData.tab === 'sales_pos') {
-      setSalesPOs(prev => {
-        const updated = prev.map(po => {
-          if (po.id === uploadModalData.po.id) {
-            return { ...po, documents: [...(po.documents || []), newDoc] };
-          }
-          return po;
-        });
-        
-        // Persist to localStorage so Dispatch Management sees the documents
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('initiated_orders', JSON.stringify(updated));
-          
-          // Also sync to savedOrders if they exist there
-          const savedStr = localStorage.getItem('savedOrders');
-          if (savedStr) {
-            let savedOrders = JSON.parse(savedStr);
-            savedOrders = savedOrders.map((o: any) => o.poNumber === uploadModalData.po.id ? { ...o, documents: [...(o.documents || []), newDoc] } : o);
-            localStorage.setItem('savedOrders', JSON.stringify(savedOrders));
-          }
-        }
-        
-        return updated;
-      });
-    } else {
-      setProcurementPOs(prev => prev.map(po => {
-        if (po.id === uploadModalData.po.id) {
-          return { ...po, documents: [...(po.documents || []), newDoc] };
+          // Calculate total transactions paid
+          const totalTxPaid = updatedTxList.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+          const totalPaidOverall = (po.initialAdvance || po.advancePaid || 0) + totalTxPaid;
+          const poTotal = po.grandTotal || po.totalAmount || 0;
+          const newRemainingBalance = Math.max(0, poTotal - totalPaidOverall);
+          const newStatus = newRemainingBalance === 0 ? 'PAID' : (po.paymentStatus || po.status);
+
+          return {
+            ...po,
+            transactions: updatedTxList,
+            paymentStatus: newStatus,
+            status: newStatus
+          };
         }
         return po;
-      }));
+      });
+
+    if (mainTab === 'sales_pos') {
+      setSalesPOs(updatePOs);
+    } else {
+      setProcurementPOs(updatePOs);
     }
 
-    setUploadModalData(null);
-    setSelectedFile(null);
-    setSelectedCategory('Invoice');
-    setUploadNotes('');
-    alert(`Document successfully uploaded to ${uploadModalData.po.id}`);
+    setTransactionModalData(null);
+    setPaymentAmount('');
+    setCustomTxId('');
+    alert(`Payment of ₹${amt.toLocaleString('en-IN')} recorded successfully!`);
   };
 
-  // Master Sales PO List (Sourced from Order Initiation)
-  const [salesPOs, setSalesPOs] = useState(() => {
-    const savedOrders = typeof window !== 'undefined' ? localStorage.getItem('initiated_orders') : null;
-    return savedOrders ? JSON.parse(savedOrders) : [
-      {
-        id: 'PO-2026-0801',
-        customer: 'Reliance Retail Ltd',
-        invDate: '2026-07-15',
-        dueDate: '2026-08-05',
-        paymentTerm: 'NET 30',
-        amount: '₹4,50,000.00',
-        advanceAmount: '₹1,50,000.00',
-        balanceAmount: '₹3,00,000.00',
-        status: 'PAID',
-        contactPerson: 'Anil Ambani',
-        phone: '+91 98200 12345',
-        email: 'billing@relianceretail.com',
-        documents: []
-      },
-      {
-        id: 'PO-2026-0802',
-        customer: 'Aditya Birla Fashion',
-        invDate: '2026-07-18',
-        dueDate: '2026-08-08',
-        paymentTerm: 'NET 15',
-        amount: '₹3,20,000.00',
-        advanceAmount: '₹0.00',
-        balanceAmount: '₹3,20,000.00',
-        status: 'UNPAID',
-        contactPerson: 'Kumar Birla',
-        phone: '+91 98190 54321',
-        email: 'accounts@abfrl.com',
-        documents: []
-      },
-      {
-        id: 'PO-2026-0803',
-        customer: 'Raymond Apparel',
-        invDate: '2026-07-20',
-        dueDate: '2026-08-01',
-        paymentTerm: 'NET 45',
-        amount: '₹5,80,000.00',
-        advanceAmount: '₹2,00,000.00',
-        balanceAmount: '₹3,80,000.00',
-        status: 'OVERDUE',
-        contactPerson: 'Gautam Singhania',
-        phone: '+91 98211 99887',
-        email: 'finance@raymond.in',
-        documents: []
-      }
-    ];
-  });
+  const activeDataList = mainTab === 'sales_pos' ? salesPOs : procurementPOs;
 
-  // 2. PROCUREMENT POS MOCK DATA (Supplier Purchase Orders)
-  const [procurementPOs, setProcurementPOs] = useState<any[]>([
-    {
-      id: 'PO-PROC-2026-01',
-      supplier: 'Vardhman Yarns & Fabrics',
-      invDate: '2026-08-02',
-      dueDate: '2026-08-15',
-      paymentTerm: 'NET 15',
-      status: 'PAID',
-      amount: '₹1,85,000.00'
-    },
-    {
-      id: 'PO-PROC-2026-02',
-      supplier: 'Coats India Threads',
-      invDate: '2026-08-05',
-      dueDate: '2026-08-20',
-      paymentTerm: 'NET 30',
-      status: 'UNPAID',
-      amount: '₹42,500.00'
-    },
-    {
-      id: 'PO-FG-2026-03',
-      supplier: 'Apex Garment Manufacturers',
-      invDate: '2026-08-06',
-      dueDate: '2026-08-18',
-      paymentTerm: 'NET 30',
-      status: 'UNPAID',
-      amount: '₹3,60,000.00'
-    }
-  ]);
-
-  // FILTER LOGIC FOR SALES POS
-  const filteredSalesPOs = salesPOs.filter((po) => {
-    const matchesSearch = po.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          po.customer.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = po.status.toLowerCase() === subTab.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
-
-  // FILTER LOGIC FOR PROCUREMENT POS
-  const filteredProcurementPOs = procurementPOs.filter((po) => {
-    const matchesSearch = po.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          po.supplier.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = po.status.toLowerCase() === subTab.toLowerCase();
-    return matchesSearch && matchesStatus;
+  const filteredSales = activeDataList.filter((po) => {
+    const customerOrSupplier = po.customer || po.supplier || '';
+    const matchSearch = po.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        customerOrSupplier.toLowerCase().includes(searchQuery.toLowerCase());
+    const poStatus = po.paymentStatus || po.status;
+    const matchStatus = subTab === 'paid' ? poStatus === 'PAID' : poStatus.toLowerCase() === subTab.toLowerCase();
+    return matchSearch && matchStatus;
   });
 
   return (
-    <div className="w-full min-h-screen p-6 space-y-6 bg-[#0B0F17] text-white">
-      {/* HEADER BAR */}
-      <div className="flex justify-between items-center bg-[#131B2E] p-6 rounded-xl border border-gray-800">
+    <div className="w-full min-h-screen p-6 space-y-6 bg-[#0D1322] text-white font-sans">
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center bg-[#131B2E] p-6 rounded-2xl border border-gray-800 shadow-xl">
         <div>
           <h1 className="text-2xl font-bold">Accounts Dashboard</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage billing, monitor PO payments, and configure automated reminders.</p>
+          <p className="text-xs text-gray-400 mt-1">Manage billing, monitor PO payments, record installments, and close POs.</p>
         </div>
-        <button className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2">
+        <button className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
           ⚙ Email Settings
         </button>
       </div>
 
-      {/* TIER 1 MAIN TABS */}
+      {/* TABS */}
       <div className="flex border-b border-gray-800 gap-6">
         <button
           onClick={() => setMainTab('sales_pos')}
-          className={`pb-3 text-lg font-semibold transition-colors relative ${
+          className={`pb-3 text-base font-semibold transition-colors ${
             mainTab === 'sales_pos' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -219,7 +110,7 @@ export default function AccountsPage() {
         </button>
         <button
           onClick={() => setMainTab('procurement_pos')}
-          className={`pb-3 text-lg font-semibold transition-colors relative ${
+          className={`pb-3 text-base font-semibold transition-colors ${
             mainTab === 'procurement_pos' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -228,406 +119,271 @@ export default function AccountsPage() {
       </div>
 
       {/* MAIN CONTAINER */}
-      <div className="bg-[#131B2E] rounded-xl border border-gray-800 p-6 space-y-4">
+      <div className="bg-[#131B2E] border border-gray-800/80 rounded-2xl shadow-xl p-6 space-y-4">
         <div className="flex justify-between items-center">
-          {/* TIER 2 SUB-TABS (VISIBLE FOR BOTH PO TYPES) */}
           <div className="flex gap-2">
             <button
               onClick={() => setSubTab('paid')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-                subTab === 'paid' ? 'bg-emerald-600 text-white' : 'bg-[#1E293B] text-gray-400 hover:text-white'
-              }`}
+              className={subTab === 'paid' 
+                ? 'bg-emerald-600/20 text-emerald-400 border-2 border-emerald-500 font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/10' 
+                : 'bg-[#0D1322] text-gray-300 border border-gray-700/80 hover:bg-[#1A233A] hover:border-gray-500 hover:text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer'}
             >
               Paid POs
             </button>
             <button
               onClick={() => setSubTab('unpaid')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-                subTab === 'unpaid' ? 'bg-amber-600 text-white' : 'bg-[#1E293B] text-gray-400 hover:text-white'
-              }`}
+              className={subTab === 'unpaid' 
+                ? 'bg-amber-600/20 text-amber-400 border-2 border-amber-500 font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-amber-500/10' 
+                : 'bg-[#0D1322] text-gray-300 border border-gray-700/80 hover:bg-[#1A233A] hover:border-gray-500 hover:text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer'}
             >
               Unpaid POs
             </button>
             <button
               onClick={() => setSubTab('overdue')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-                subTab === 'overdue' ? 'bg-rose-600 text-white' : 'bg-[#1E293B] text-gray-400 hover:text-white'
-              }`}
+              className={subTab === 'overdue' 
+                ? 'bg-rose-600/20 text-rose-400 border-2 border-rose-500 font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-rose-500/10' 
+                : 'bg-[#0D1322] text-gray-300 border border-gray-700/80 hover:bg-[#1A233A] hover:border-gray-500 hover:text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer'}
             >
               Overdue POs
             </button>
           </div>
 
-          {/* SEARCH INPUT */}
           <input
             type="text"
             placeholder="Search POs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-[#1E293B] border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 w-64"
+            className="bg-[#0D1322] border border-gray-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-blue-500 w-64"
           />
         </div>
 
-        {/* PO TABLE */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        {/* TABLE WRAPPER (OVERFLOW-Y VISIBLE PREVENTS SCROLLBARS) */}
+        <div className="w-full overflow-x-auto overflow-y-visible pb-44">
+          <table className="w-full text-left border-collapse table-auto">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
-                <th className="py-3 px-4">{mainTab === 'sales_pos' ? 'PO & Customer' : 'PO & Supplier'}</th>
-                <th className="py-3 px-4">Dates</th>
-                <th className="py-3 px-4">Payment Term</th>
-                <th className="py-3 px-4">Total Amount</th>
-                {mainTab === 'sales_pos' && (
-                  <>
-                    <th className="py-3 px-4">Advance Paid</th>
-                    <th className="py-3 px-4">Balance Due</th>
-                  </>
-                )}
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+              <tr className="border-b border-gray-800 text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+                <th className="py-3.5 px-3 text-left w-[15%]">PO & Customer</th>
+                <th className="py-3.5 px-3 text-left w-[13%]">Payment Term</th>
+                <th className="py-3.5 px-3 text-left w-[11%]">Total Amount</th>
+                <th className="py-3.5 px-3 text-left w-[11%] text-emerald-400">Advance Paid</th>
+                <th className="py-3.5 px-3 text-left w-[11%] text-amber-400">Balance Due</th>
+                <th className="py-3.5 px-3 text-left w-[11%] text-blue-400">Transactions</th>
+                <th className="py-3.5 px-3 text-left w-[8%]">Status</th>
+                <th className="py-3.5 px-3 text-left w-[20%]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800 text-sm">
-              {(mainTab === 'sales_pos' ? filteredSalesPOs : filteredProcurementPOs).length > 0 ? (
-                (mainTab === 'sales_pos' ? filteredSalesPOs : filteredProcurementPOs).map((po) => (
-                  <tr key={po.id} className="hover:bg-[#1E293B]/50">
-                    <td className="py-4 px-4 font-medium">
-                      <div>{po.id}</div>
-                      <div className="text-xs text-gray-400">{po.customer || po.supplier}</div>
+
+            <tbody className="divide-y divide-gray-800 text-xs">
+              {filteredSales.map((po) => {
+                const txList = po.transactions || [];
+                
+                // 1. DYNAMIC BALANCE DUE CALCULATION: Total Amount - (Initial Advance + Sum of all Transactions)
+                const txSum = txList.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+                const totalPaidSoFar = (po.initialAdvance || po.advancePaid || 0) + txSum;
+                const grandTotalVal = po.grandTotal || po.totalAmount || 0;
+                const poStatus = po.paymentStatus || po.status;
+                const dynamicBalanceDue = poStatus === 'PAID' ? 0 : Math.max(0, grandTotalVal - totalPaidSoFar);
+                const isPaid = dynamicBalanceDue === 0 || poStatus === 'PAID';
+                const isTxOpen = openTxDropdownId === po.id;
+
+                return (
+                  <tr key={po.id} className="hover:bg-[#0D1322]/60 transition-colors">
+                    
+                    {/* COLUMN 1: PO & CUSTOMER (TIGHT FIT) */}
+                    <td className="py-3.5 px-3 align-middle text-left w-[15%]">
+                      <div className="font-bold text-white text-xs">{po.id}</div>
+                      <div className="text-[11px] text-gray-300 font-medium truncate mt-0.5">{po.customer || po.supplier}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">
+                        Invoice Date: <span className="text-gray-200 font-medium">{po.invoiceDate || po.invDate || '-'}</span>
+                      </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="text-xs">Inv: {po.invDate}</div>
-                      <div className="text-xs text-gray-400">Due: {po.dueDate}</div>
+
+                    {/* COLUMN 2: PAYMENT TERM (PULLED CLOSE TO COL 1) */}
+                    <td className="py-3.5 px-3 align-middle text-left w-[13%] whitespace-nowrap">
+                      <div className="font-bold text-white text-xs">{po.paymentTerm}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">
+                        Due Date: <span className="text-gray-200 font-medium">{po.dueDate}</span>
+                      </div>
                     </td>
-                    <td className="py-4 px-4 font-mono text-xs">{po.paymentTerm}</td>
-                    <td className="py-4 px-4 font-medium">{po.amount}</td>
-                    {mainTab === 'sales_pos' && (
-                      <>
-                        <td className="py-4 px-4 text-emerald-400 font-medium">{po.advanceAmount || '₹0.00'}</td>
-                        <td className="py-4 px-4 text-amber-400 font-medium">{po.balanceAmount || po.amount}</td>
-                      </>
+
+                    {/* FINANCIALS */}
+                    <td className="py-[18px] px-4 align-middle text-left font-bold text-white w-[11%]">
+                      ₹{(po.grandTotal || po.totalAmount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-[18px] px-4 align-middle text-left font-bold text-emerald-400 w-[11%]">
+                      ₹{totalPaidSoFar.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-[18px] px-4 align-middle text-left font-bold text-amber-400 w-[11%]">
+                      ₹{dynamicBalanceDue.toLocaleString('en-IN')}
+                    </td>
+
+              {/* TRANSACTIONS CELL WITH DOWNWARD FLOATING POPUP */}
+              <td className="py-3.5 px-3 align-middle text-left relative w-[11%]">
+                <button
+                  onClick={() => setOpenTxDropdownId(isTxOpen ? null : po.id)}
+                  className="bg-[#0D1322] hover:bg-[#1A233A] border border-blue-500/40 text-blue-400 px-2.5 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+                >
+                  💳 {txList.length} Txn{txList.length !== 1 ? 's' : ''} ▼
+                </button>
+
+                {/* DOWNWARD POPUP FLOATING OVER THE BOTTOM PADDING WITH HIGH Z-INDEX */}
+                {isTxOpen && (
+                  <div className="absolute top-12 left-0 z-50 bg-[#0D1322] border border-gray-700/80 rounded-xl p-3.5 shadow-2xl w-72 space-y-2 backdrop-blur-md">
+                    <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Transaction History</span>
+                      <span className="text-[10px] text-blue-400 font-mono">{po.id}</span>
+                    </div>
+
+                    {txList.length > 0 ? (
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {txList.map((tx, idx) => (
+                          <div key={idx} className="bg-[#131B2E] p-2 rounded-lg border border-gray-800/80 flex justify-between items-center text-[10px]">
+                            <div>
+                              <p className="font-mono text-white font-bold">{tx.txId}</p>
+                              <p className="text-[9px] text-gray-400 mt-0.5">{tx.date} • {tx.mode}</p>
+                            </div>
+                            <span className="font-bold text-emerald-400 font-mono">₹{Number(tx.amount).toLocaleString('en-IN')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-500 italic py-2 text-center">No transaction records found.</p>
                     )}
-                    <td className="py-4 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        po.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        po.status === 'UNPAID' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  </div>
+                )}
+              </td>
+
+                    {/* STATUS */}
+                    <td className="py-[18px] px-3 align-middle text-left w-[8%]">
+                      <span className={`inline-block px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase ${
+                        isPaid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                        (po.paymentStatus === 'PARTIALLY_PAID' || po.status === 'PARTIALLY_PAID') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                        'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                       }`}>
-                        {po.status}
+                        {isPaid ? 'PAID' : (po.paymentStatus === 'PARTIALLY_PAID' || po.status === 'PARTIALLY_PAID' ? 'PARTIAL' : (po.paymentStatus || po.status))}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* 1. VIEW BUTTON */}
-                        <button 
-                          onClick={() => setViewModalData(po)}
-                          className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1"
-                          title="View PO Details"
-                        >
-                          👁 View
-                        </button>
 
-                        {/* 2. CUSTOMER / SUPPLIER INFO BUTTON */}
-                        <button 
-                          onClick={() => handleOpenContactInfo(po)}
-                          className="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 hover:text-blue-300 rounded-lg text-xs font-medium flex items-center gap-1"
-                          title={mainTab === 'sales_pos' ? "Customer Info" : "Supplier Info"}
-                        >
-                          👤 Info
+                    {/* COLUMN 8: ACTIONS (LEFT-ALIGNED UNDER THE HEADER) */}
+                    <td className="py-3.5 px-3 align-middle text-left w-[18%]">
+                      <div className="flex items-center justify-start gap-1.5">
+                        <button onClick={() => setDocModalData(po)} className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-gray-300 flex items-center justify-center transition-all text-xs" title="View Docs">
+                          📁
                         </button>
-
-                        {/* UPLOAD DOCUMENT BUTTON */}
-                        <button 
-                          onClick={() => setUploadModalData({ po, tab: mainTab })}
-                          className="p-2 bg-gray-800 hover:bg-gray-700 text-emerald-400 hover:text-emerald-300 rounded-lg text-xs font-medium flex items-center gap-1"
-                          title="Upload Document"
-                        >
-                          📄+
+                        <button onClick={() => setContactModalData(po)} className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-blue-400 flex items-center justify-center transition-all text-xs" title="Customer Info">
+                          👤
                         </button>
-
-                        {/* 3. RENAMED SEND MAIL BUTTON */}
-                        <button 
-                          onClick={() => handleSendMail(po.id, po.customer || po.supplier)}
-                          className="px-3 py-2 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1 border border-indigo-500/30"
-                        >
-                          ✉ Send Mail
+                        {!isPaid && (
+                          <button onClick={() => setTransactionModalData({ ...po, remainingBalance: dynamicBalanceDue })} className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-all text-xs font-bold" title="Add Payment">
+                            💳+
+                          </button>
+                        )}
+                        <button className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-indigo-400 flex items-center justify-center transition-all text-xs" title="Send Email">
+                          ✉
+                        </button>
+                        <button className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-rose-500/50 hover:bg-[#1A233A] text-rose-400 flex items-center justify-center transition-all text-xs" title="Close PO">
+                          🔒
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={mainTab === 'sales_pos' ? 8 : 6} className="py-8 text-center text-gray-500">
-                    No orders found for this selection.
-                  </td>
-                </tr>
-              )}
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
-      {/* CONTACT INFO POPUP MODAL COMPONENT */}
-      {contactModalData && (
+
+      {/* RECORD PAYMENT MODAL */}
+      {transactionModalData && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#131B2E] border border-gray-800 rounded-xl p-6 max-w-md w-full text-white space-y-4 shadow-2xl">
+          <div className="bg-[#131B2E] border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-gray-800 pb-3">
-              <h3 className="text-lg font-bold text-blue-400">
-                👤 {contactModalData.type} Information
-              </h3>
-              <button 
-                onClick={() => setContactModalData(null)}
-                className="text-gray-400 hover:text-white text-lg font-bold"
-              >
-                ✕
-              </button>
+              <h3 className="text-base font-bold text-emerald-400">💳 Record Payment Entry ({transactionModalData.id})</h3>
+              <button onClick={() => setTransactionModalData(null)} className="text-gray-400 hover:text-white">✕</button>
             </div>
-
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="text-xs text-gray-400 uppercase font-semibold">Company Name</label>
-                <p className="text-base font-medium text-white">{contactModalData.companyName}</p>
+            <div className="space-y-3 text-xs">
+              <div className="bg-[#0D1322] p-3 rounded-xl border border-gray-800 flex justify-between items-center">
+                <span className="text-gray-400 font-semibold">Balance Due:</span>
+                <span className="font-bold text-amber-400 text-sm">₹{transactionModalData.remainingBalance.toLocaleString('en-IN')}</span>
               </div>
+              
+              {/* PAYMENT AMOUNT INPUT WITH AUTOMATIC COMMA FORMATTING */}
               <div>
-                <label className="text-xs text-gray-400 uppercase font-semibold">Contact Person</label>
-                <p className="text-white font-medium">{contactModalData.contactPerson}</p>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 uppercase font-semibold">Phone Number</label>
-                <p className="text-white font-mono">{contactModalData.phone}</p>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 uppercase font-semibold">Email Address</label>
-                <p className="text-white font-mono">{contactModalData.email}</p>
-              </div>
-            </div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-gray-300 font-semibold uppercase text-[10px]">
+                    Payment Amount (₹)
+                  </label>
+                  {paymentAmount > 0 && (
+                    <span className="text-emerald-400 font-bold text-xs">
+                      ₹ {Number(paymentAmount).toLocaleString('en-IN')}
+                    </span>
+                  )}
+                </div>
 
-            <div className="pt-2 flex justify-end">
-              <button 
-                onClick={() => setContactModalData(null)}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">₹</span>
+                  <input
+                    type="text"
+                    placeholder="e.g. 1,40,000"
+                    value={
+                      paymentAmount 
+                        ? Number(paymentAmount.toString().replace(/,/g, '')).toLocaleString('en-IN') 
+                        : ''
+                    }
+                    onChange={(e) => {
+                      // Strip out non-digit characters for state calculation
+                      const rawValue = e.target.value.replace(/\D/g, '');
+                      setPaymentAmount(rawValue);
+                    }}
+                    className="w-full bg-[#0D1322] text-white pl-7 pr-3 py-2.5 rounded-xl border border-gray-700 text-xs font-bold focus:outline-none focus:border-blue-500 font-mono tracking-wide"
+                  />
+                </div>
 
-      {/* DOCUMENT UPLOAD MODAL COMPONENT */}
-      {uploadModalData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#131B2E] border border-gray-800 rounded-xl p-6 max-w-md w-full text-white space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
-              <h3 className="text-lg font-bold text-emerald-400">
-                📄 Upload Document
-              </h3>
-              <button 
-                onClick={() => setUploadModalData(null)}
-                className="text-gray-400 hover:text-white text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="text-gray-400 text-xs uppercase font-semibold">PO Number & Entity</p>
-                <p className="font-medium text-white">{uploadModalData.po.id} - {uploadModalData.po.customer || uploadModalData.po.supplier}</p>
+                {/* HELPER READOUT */}
+                {paymentAmount > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-1 font-mono">
+                    Formatted: <span className="text-emerald-400 font-bold">₹ {Number(paymentAmount).toLocaleString('en-IN')}</span>
+                  </p>
+                )}
               </div>
 
+              {/* 2. PAYMENT MODE */}
               <div>
-                <label className="text-gray-400 text-xs uppercase font-semibold block mb-1">Select File (.pdf, .png, .jpg, .docx)</label>
-                <input 
-                  type="file" 
-                  accept=".pdf,.png,.jpg,.jpeg,.docx"
-                  onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
-                  className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer"
-                />
-              </div>
-
-              <div>
-                <label className="text-gray-400 text-xs uppercase font-semibold block mb-1">Document Category</label>
-                <select 
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-[#1E293B] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                <label className="text-gray-300 font-semibold uppercase text-[10px] block mb-1">Payment Mode</label>
+                <select
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value)}
+                  className="w-full bg-[#0D1322] text-white p-2.5 rounded-xl border border-gray-700 text-xs focus:outline-none focus:border-blue-500"
                 >
-                  <option value="Invoice">Invoice</option>
-                  <option value="Tax Receipt">Tax Receipt</option>
-                  <option value="E-Way Bill">E-Way Bill</option>
-                  <option value="Payment Guarantee">Payment Guarantee</option>
-                  <option value="Custom Note">Custom Note</option>
+                  <option>Bank Transfer (NEFT/RTGS)</option>
+                  <option>UPI</option>
+                  <option>Cheque</option>
+                  <option>Cash</option>
                 </select>
               </div>
 
+              {/* 3. TRANSACTION ID / REFERENCE NUMBER */}
               <div>
-                <label className="text-gray-400 text-xs uppercase font-semibold block mb-1">Remarks / Notes</label>
-                <textarea 
-                  value={uploadNotes}
-                  onChange={(e) => setUploadNotes(e.target.value)}
-                  placeholder="Add any remarks..."
-                  className="w-full bg-[#1E293B] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 min-h-[80px]"
+                <label className="text-gray-300 font-semibold uppercase text-[10px] block mb-1">Transaction ID / Reference No.</label>
+                <input
+                  type="text"
+                  placeholder="e.g. UTR-998822 / UPI-1029384"
+                  value={customTxId}
+                  onChange={(e) => setCustomTxId(e.target.value)}
+                  className="w-full bg-[#0D1322] text-white p-2.5 rounded-xl border border-gray-700 text-xs font-mono focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
 
-            <div className="pt-4 flex justify-end gap-3 border-t border-gray-800">
-              <button 
-                onClick={() => setUploadModalData(null)}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUploadSubmit}
-                disabled={!selectedFile}
-                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
-              >
-                Save Document
-              </button>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-800">
+              <button onClick={() => setTransactionModalData(null)} className="px-4 py-2 bg-gray-800 text-xs rounded-xl">Cancel</button>
+              <button onClick={handleSavePayment} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs rounded-xl font-bold text-white">Save Payment</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* VIEW PO MODAL COMPONENT */}
-      {viewModalData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#131B2E] border border-gray-800 rounded-xl p-6 max-w-3xl w-full text-white shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center border-b border-gray-800 pb-4 mb-4">
-              <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  👁 PO Details: <span className="text-blue-400">{viewModalData.id}</span>
-                </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Entity: <span className="font-semibold text-gray-200">{viewModalData.customer || viewModalData.supplier}</span>
-                </p>
-              </div>
-              <button 
-                onClick={() => setViewModalData(null)}
-                className="text-gray-400 hover:text-white text-2xl font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column: Info & Billing */}
-              <div className="space-y-6">
-                <div className="bg-[#1E293B] p-4 rounded-lg border border-gray-800">
-                  <h4 className="text-sm uppercase font-semibold text-gray-400 mb-3 border-b border-gray-700 pb-2">Complete Information</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500 block text-xs">Invoice Date</span>
-                      <span className="font-medium">{viewModalData.invDate}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-xs">Due Date</span>
-                      <span className="font-medium">{viewModalData.dueDate}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-xs">Payment Term</span>
-                      <span className="font-mono text-blue-400">{viewModalData.paymentTerm}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-xs">Status</span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        viewModalData.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        viewModalData.status === 'UNPAID' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                      }`}>
-                        {viewModalData.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#1E293B] p-4 rounded-lg border border-gray-800">
-                  <h4 className="text-sm uppercase font-semibold text-gray-400 mb-3 border-b border-gray-700 pb-2">Billing Breakdown</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Total Amount:</span>
-                      <span className="font-medium">{viewModalData.amount}</span>
-                    </div>
-                    {viewModalData.advanceAmount && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Advance Paid:</span>
-                        <span className="text-emerald-400 font-medium">{viewModalData.advanceAmount}</span>
-                      </div>
-                    )}
-                    {viewModalData.balanceAmount && (
-                      <div className="flex justify-between pt-2 border-t border-gray-700 mt-2">
-                        <span className="text-gray-300 font-semibold">Balance Due:</span>
-                        <span className="text-amber-400 font-bold">{viewModalData.balanceAmount}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Items & Documents */}
-              <div className="space-y-6">
-                <div className="bg-[#1E293B] p-4 rounded-lg border border-gray-800">
-                  <h4 className="text-sm uppercase font-semibold text-gray-400 mb-3 border-b border-gray-700 pb-2">Items List</h4>
-                  {viewModalData.items && viewModalData.items.length > 0 ? (
-                    <ul className="space-y-3">
-                      {viewModalData.items.map((item: any, idx: number) => (
-                        <li key={idx} className="flex justify-between text-sm bg-[#131B2E] p-2 rounded">
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-mono text-gray-300">{item.price}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-sm text-gray-500 italic p-2 bg-[#131B2E] rounded text-center">
-                      Detailed items list not available in this summary.
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-[#1E293B] p-4 rounded-lg border border-gray-800">
-                  <h4 className="text-sm uppercase font-semibold text-gray-400 mb-3 border-b border-gray-700 pb-2">Attached Documents</h4>
-                  {viewModalData.documents && viewModalData.documents.length > 0 ? (
-                    <ul className="space-y-2">
-                      {viewModalData.documents.map((doc: any, idx: number) => (
-                        <li key={idx} className="flex justify-between items-center text-sm bg-[#131B2E] p-2 rounded border border-gray-700">
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-400">📄</span>
-                            <div>
-                              <p className="font-medium text-xs">{doc.fileName}</p>
-                              <p className="text-[10px] text-gray-500">{doc.fileType}</p>
-                            </div>
-                          </div>
-                          <a href={doc.fileUrl || '#'} className="text-blue-400 hover:text-blue-300 text-xs underline">Download</a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-sm text-gray-500 italic p-2 bg-[#131B2E] rounded text-center">
-                      No documents attached to this PO.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button 
-                onClick={() => setViewModalData(null)}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-colors shadow"
-              >
-                Close Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

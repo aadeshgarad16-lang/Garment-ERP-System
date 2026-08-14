@@ -173,18 +173,34 @@ export default function ReviewPurchaseOrdersPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6 font-sans pb-12 pt-6">
-      <ProcurementStepper />
+      
+      {/* 2. SHARED 3-TAB NAVIGATION HEADER */}
+      <div className="flex gap-3 bg-[#131B2E] p-2 rounded-2xl border border-gray-800 w-fit mb-6 mt-6">
+        <button
+          onClick={() => router.push('/procurement')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+        >
+          📱 Procurement Requests <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">9 Pending</span>
+        </button>
+
+        <button
+          onClick={() => router.push('/procurement/review-po')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
+        >
+          📋 Review PO <span className="bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+        </button>
+
+        <button
+          onClick={() => router.push('/procurement/create-po')}
+          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+        >
+          + Create PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+        </button>
+      </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
         <div>
-          <button
-            onClick={() => router.push('/procurement')}
-            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Procurement Requests
-          </button>
           <h1 className="text-2xl font-bold text-foreground">Review Purchase Orders</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Batch process your pending purchase orders across {sessionData.length} suppliers.

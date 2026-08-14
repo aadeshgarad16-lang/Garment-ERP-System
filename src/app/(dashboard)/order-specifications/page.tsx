@@ -302,7 +302,14 @@ function GarmentSpecsContent() {
   const { reloadOrders } = useOrders();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentPoNumber = searchParams.get("poNumber") || `PO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+  useEffect(() => {
+    // Re-fetch orders list or sync state when page loads so Stepper updates immediately
+    if (typeof reloadOrders === 'function') {
+      reloadOrders();
+    }
+  }, []);
+
+  const currentPoNumber = searchParams.get("poNumber") || "";
 
   // --- CORE STATE MANAGEMENT ---
   const [specs, setSpecs] = useState<GarmentSpec[]>([
