@@ -37,6 +37,7 @@ import {
 
 import { getAuthHeaders } from "@/lib/api";
 import { generateGRNPDF } from "@/utils/pdfGenerator";
+import { formatIndianDate } from "@/utils/dateUtils";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
@@ -271,7 +272,7 @@ function StoreOrdersModule() {
             ...row,
             id: row.poNumber || row.id || row.order_number,
             items: (row.rawMaterials?.length || 0) + (row.finishedGoods?.length || 0) || 1,
-            date: row.orderDate || row.invDate || row.created_at ? new Date(row.created_at).toLocaleDateString() : (row.order_date || '-'),
+            date: row.orderDate || row.invDate || row.created_at ? formatIndianDate(row.created_at) : (row.order_date || '-'),
             receivedDate: row.deliveryDate || row.deliveredOn || '-',
             supplier: row.supplier_name || row.supplier || 'Unknown'
           }));
@@ -290,7 +291,7 @@ function StoreOrdersModule() {
               ...row,
               id: row.po_number || row.order_number,
               items: row.total_items || 0,
-              date: row.created_at ? new Date(row.created_at).toLocaleDateString() : (row.order_date || '-'),
+              date: row.created_at ? formatIndianDate(row.created_at) : (row.order_date || '-'),
               receivedDate: row.deliveredOn || '-',
               supplier: row.supplier_name || 'Unknown'
             }));
@@ -524,7 +525,7 @@ function StoreOrdersModule() {
       if (String(currentPoKey).trim().toLowerCase() === String(targetPoNo).trim().toLowerCase()) {
         const newReceivedQty = (o.receivedQty || 0) + Number(totalAcceptedQty);
         const newGrnId = `GRN-${o.id}-${Date.now().toString().slice(-4)}`;
-        const today = new Date().toLocaleDateString();
+        const today = formatIndianDate(new Date());
 
         const grnNumbers = [...(o.grnNumbers || []), newGrnId];
         const receivingDates = [...(o.receivingDates || []), today];
@@ -557,7 +558,7 @@ function StoreOrdersModule() {
     // Trigger PDF download
     downloadGrnPdf({
       grnNumber: `GRN-${selectedGrnPo.id}-${Date.now().toString().slice(-4)}`,
-      grnDate: new Date().toLocaleDateString(),
+      grnDate: formatIndianDate(new Date()),
       poNumber: selectedGrnPo.id,
       supplierName: selectedGrnPo.supplier || selectedGrnPo.supplier_name,
       deliveryNote: '',
@@ -1175,7 +1176,7 @@ function StockOverviewModule() {
         doc.setFontSize(16);
         doc.text(reportTitle, 14, 15);
         doc.setFontSize(10);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+        doc.text(`Generated on: ${formatIndianDate(new Date())}`, 14, 22);
 
         const isFinishedGoods = filteredStockData.length > 0 && 'production' in filteredStockData[0];
 

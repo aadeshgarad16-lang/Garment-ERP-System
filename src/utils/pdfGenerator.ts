@@ -9,6 +9,21 @@ export const formatCurrencyPDF = (amount: number) => {
   })}`;
 };
 
+export const numberToWords = (num: number): string => {
+  if (num === 0) return 'Zero';
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+  let str = '';
+  str += (Number(n[1]) != 0) ? (a[Number(n[1])] || b[n[1][0] as any] + ' ' + a[n[1][1] as any]) + 'Crore ' : '';
+  str += (Number(n[2]) != 0) ? (a[Number(n[2])] || b[n[2][0] as any] + ' ' + a[n[2][1] as any]) + 'Lakh ' : '';
+  str += (Number(n[3]) != 0) ? (a[Number(n[3])] || b[n[3][0] as any] + ' ' + a[n[3][1] as any]) + 'Thousand ' : '';
+  str += (Number(n[4]) != 0) ? (a[Number(n[4])] || b[n[4][0] as any] + ' ' + a[n[4][1] as any]) + 'Hundred ' : '';
+  str += (Number(n[5]) != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0] as any] + ' ' + a[n[5][1] as any]) : '';
+  return str.trim();
+};
+
 export const generateGRNPDF = (order: any) => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -486,8 +501,8 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
   doc.text('Dated', splitX + rightColW / 2 + 2, gridStartY + 4);
   doc.setFont('helvetica', 'normal');
   const formattedDated = poData.poDate 
-    ? new Date(poData.poDate).toLocaleDateString('en-US') 
-    : new Date().toLocaleDateString('en-US');
+    ? new Date(poData.poDate).toLocaleDateString('en-IN') 
+    : new Date().toLocaleDateString('en-IN');
   doc.text(formattedDated, splitX + rightColW / 2 + 2, gridStartY + 9);
 
   // Row 2
@@ -519,25 +534,26 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
 
 
   // Table (AutoTable)
-  const tableData = (poData.materials || []).map((m: any, i: number) => [
-    i + 1,
-    m.name,
-    poData.deliveryDate || '', 
-    m.supplierQty || m.qty || 0,
-    m.unitCost ? m.unitCost.toFixed(2) : '0.00',
-    m.unit || 'Pieces',
-    '0%',
-    m.unitCost && (m.supplierQty || m.qty) ? ((m.supplierQty || m.qty) * m.unitCost).toFixed(2) : '0.00'
-  ]);
-  
-  // Add Total row
-  tableData.push([
-    '', 'Total', '', '', '', '', '', poData.subtotal ? poData.subtotal.toFixed(2) : '0.00'
-  ]);
+  const tableData = (poData.materials || []).map((m: any, i: number) => {
+    const d = new Date(poData.deliveryDate);
+    const ddStr = poData.deliveryDate 
+      ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+      : '';
+    return [
+      i + 1,
+      m.name,
+      ddStr, 
+      m.supplierQty || m.qty || 0,
+      m.unitCost ? m.unitCost.toFixed(2) : '0.00',
+      m.unit || 'Pieces',
+      '0%',
+      m.unitCost && (m.supplierQty || m.qty) ? ((m.supplierQty || m.qty) * m.unitCost).toFixed(2) : '0.00'
+    ];
+  });
 
   autoTable(doc, {
     startY: gridBottomY,
-    head: [['Sl\nNo.', 'Description of Goods', 'Due on', 'Quantity', 'Rate', 'per', 'Disc. %', 'Amount']],
+    head: [['Sr. No.', 'Description of Goods', 'Due on', 'Quantity', 'Rate', 'per', 'Disc. %', 'Amount']],
     body: tableData,
     theme: 'plain',
     headStyles: {
@@ -545,54 +561,60 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
       textColor: [0, 0, 0],    
       fontStyle: 'bold',
       lineColor: [0, 0, 0], 
-      lineWidth: { top: 0, right: 0, bottom: 0.2, left: 0 },
+      lineWidth: { top: 0.2, right: 0, bottom: 0.2, left: 0 },
       halign: 'center',
     },
     styles: {
       fontSize: 8,
-      cellPadding: 4,
+      cellPadding: 2,
       fillColor: [255, 255, 255],
       lineColor: [0, 0, 0], 
-      lineWidth: { top: 0, right: 0, bottom: 0, left: 0 }, 
+      lineWidth: 0, 
       textColor: [0, 0, 0]     
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 }, 
-      1: { halign: 'left' },                 
-      2: { halign: 'center', cellWidth: 15 },
-      3: { halign: 'center', cellWidth: 18 },
-      4: { halign: 'right', cellWidth: 18 }, 
-      5: { halign: 'center', cellWidth: 12 },
-      6: { halign: 'center', cellWidth: 15 },
-      7: { halign: 'right', cellWidth: 25 }, 
+      0: { halign: 'center', cellWidth: 15.2 }, 
+      1: { halign: 'left', cellWidth: 72.2 },                 
+      2: { halign: 'center', cellWidth: 22.8 },
+      3: { halign: 'right', cellWidth: 19 },
+      4: { halign: 'right', cellWidth: 19 }, 
+      5: { halign: 'center', cellWidth: 11.4 },
+      6: { halign: 'right', cellWidth: 11.4 },
+      7: { halign: 'right', cellWidth: 19 }, 
     },
     margin: { left: margin, right: margin },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY || (gridBottomY + 20);
-
-  // Footer block
-  const footerY = pageHeight - margin - 35; // Moved up slightly to ensure nothing cuts off
+  const footerH = 45;
+  const footerY = pageHeight - margin - footerH;
   
-  // Total Row Line
-  doc.line(margin, finalY - 8, pageWidth - margin, finalY - 8); 
+  // Total Row Divider
+  const totalRowY = footerY - 8;
+  doc.line(margin, totalRowY, pageWidth - margin, totalRowY); 
   doc.line(margin, footerY, pageWidth - margin, footerY);
 
+  // Total Row Content
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Total', margin + 15.2 + 72.2 - 2, totalRowY + 5, { align: 'right' });
+  doc.text(poData.subtotal ? poData.subtotal.toFixed(2) : '0.00', pageWidth - margin - 2, totalRowY + 5, { align: 'right' });
+
   // Draw continuous vertical lines down to footerY
-  const colWidths = [10, 77, 15, 18, 18, 12, 15, 25];
+  const colWidths = [15.2, 72.2, 22.8, 19, 19, 11.4, 11.4, 19];
+  
+  // Redraw left and right outer borders to fix autoTable white background overlap
+  doc.line(margin, gridBottomY, margin, footerY);
+  doc.line(pageWidth - margin, gridBottomY, pageWidth - margin, footerY);
+  
   let currentX = margin;
   for (let i = 0; i < colWidths.length - 1; i++) {
     currentX += colWidths[i];
     doc.line(currentX, gridBottomY, currentX, footerY);
   }
   
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bolditalic');
-  doc.text('E. & O.E', pageWidth - margin, footerY + 4, { align: 'right' });
-  
   // Calculate Taxes and Totals
   const subtotal = poData.subtotal || 0;
-  const gstRate = 9; // 9% CGST + 9% SGST = 18% total
+  const gstRate = 6; // 6% CGST + 6% SGST = 12% total
   const cgstAmount = (subtotal * gstRate) / 100;
   const sgstAmount = (subtotal * gstRate) / 100;
   
@@ -600,17 +622,33 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
   const roundedTotal = Math.round(rawTotal);
   const roundOff = roundedTotal - rawTotal;
 
-  // Render Tax Block
+  // --- FOOTER BLOCK ---
+  const leftColWFooter = (contentWidth / 2) - 5;
+  
+  // LEFT COLUMN
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  let taxY = footerY + 10;
+  doc.text('Amount Chargeable (in words)', margin + 2, footerY + 5);
+  doc.setFont('helvetica', 'bold');
+  
+  const wordsRaw = `INR ${numberToWords(roundedTotal)} Only`;
+  const wordsLines = doc.splitTextToSize(wordsRaw, leftColWFooter);
+  doc.text(wordsLines, margin + 2, footerY + 10);
+  
+  doc.setFont('helvetica', 'bolditalic');
+  doc.text('E. & O.E', margin + leftColWFooter, footerY + 5, { align: 'right' });
+
+  // RIGHT COLUMN (Tax Table)
+  doc.setFont('helvetica', 'normal');
+  let taxY = footerY + 5;
   const amountsX = pageWidth - margin - 2;
   const labelsX = amountsX - 35;
   
-  doc.text(`Add : CGST (${gstRate}%)`, labelsX, taxY, { align: 'right' });
+  doc.text(`Add : INPUT CGST (${gstRate}%)`, labelsX, taxY, { align: 'right' });
   doc.text(cgstAmount.toFixed(2), amountsX, taxY, { align: 'right' });
   taxY += 5;
   
-  doc.text(`Add : SGST (${gstRate}%)`, labelsX, taxY, { align: 'right' });
+  doc.text(`Add : INPUT SGST (${gstRate}%)`, labelsX, taxY, { align: 'right' });
   doc.text(sgstAmount.toFixed(2), amountsX, taxY, { align: 'right' });
   taxY += 5;
   
@@ -621,27 +659,30 @@ export const generateOfficialPurchaseOrderPDF = (poData: any) => {
   // Grand Total Line
   doc.line(labelsX - 25, taxY - 4, amountsX + 2, taxY - 4);
   doc.setFont('helvetica', 'bold');
-  doc.text('Grand Total (Rs.)', labelsX, taxY, { align: 'right' });
+  doc.text('Total', labelsX, taxY, { align: 'right' });
   doc.text(roundedTotal.toFixed(2), amountsX, taxY, { align: 'right' });
   doc.line(labelsX - 25, taxY + 2, amountsX + 2, taxY + 2);
   
-  // Signatory Block Box
-  const sigW = 70;
-  const sigH = 20;
-  const sigX = pageWidth - margin - sigW;
-  const sigY = pageHeight - margin - sigH - 6;
+  // Authorization Section (Bottom Right)
+  const sigX = margin + (contentWidth / 2);
+  const sigW = contentWidth / 2;
+  const sigY = taxY + 4;
+  const sigH = pageHeight - margin - sigY;
+  
+  // Draw signature box
   doc.rect(sigX, sigY, sigW, sigH);
   
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('for SASONS WORKS WEAR PRIVATE LIMITED', sigX + 2, sigY + 4);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Authorised Signatory', sigX + sigW - 2, sigY + sigH - 2, { align: 'right' });
+  doc.text('for SASONS WORKS WEAR PRIVATE LIMITED', pageWidth - margin - 2, sigY + 4, { align: 'right' });
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Authorised Signatory', pageWidth - margin - 2, pageHeight - margin - 2, { align: 'right' });
   
   // Bottom-most tag
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.text('This is a Computer Generated Document', pageWidth / 2, pageHeight - margin, { align: 'center' });
+  doc.text('This is a Computer Generated Document', pageWidth / 2, pageHeight - margin + 4, { align: 'center' });
 
   return doc;
 };

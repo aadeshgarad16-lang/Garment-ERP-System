@@ -25,6 +25,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/context/AuthContext';
 import { getActiveBOMItems } from '@/utils/bomUtils';
 import { useOrders } from '@/contexts/order-context';
+import { formatIndianDate } from '@/utils/dateUtils';
 import { getAuthHeaders } from '@/lib/api';
 import { isStageMatch, sortSizesAscending } from '@/utils/orderUtils';
 
@@ -245,13 +246,7 @@ class BOMErrorBoundary extends React.Component<
 function formatDate(dateString?: string) {
   if (!dateString || dateString === '—' || dateString === 'N/A') return 'N/A';
   try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+    return formatIndianDate(dateString);
   } catch (e) {
     return dateString;
   }

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DEMO_SALES_POS } from '@/data/accountsDemoData';
 import { MASTER_PROCUREMENT_POS } from '@/data/centralProcurementStore';
+import { formatIndianDate } from '@/utils/dateUtils';
 
 export default function AccountsPage() {
   const [mainTab, setMainTab] = useState('sales_pos');
@@ -11,9 +12,18 @@ export default function AccountsPage() {
   const [openTxDropdownId, setOpenTxDropdownId] = useState(null);
 
   // Modals state
-  const [transactionModalData, setTransactionModalData] = useState(null);
-  const [docModalData, setDocModalData] = useState(null);
-  const [contactModalData, setContactModalData] = useState(null);
+  const [transactionModalData, setTransactionModalData] = useState<any>(null);
+  const [docModalData, setDocModalData] = useState<any>(null);
+  const [contactModalData, setContactModalData] = useState<any>(null);
+  const [reminderModalData, setReminderModalData] = useState<any>(null);
+  const [closeWarningModalData, setCloseWarningModalData] = useState<any>(null);
+  const [closureReason, setClosureReason] = useState('');
+
+  const [sharedDocs, setSharedDocs] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadDocType, setUploadDocType] = useState('Invoice');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Form Inputs
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -24,6 +34,17 @@ export default function AccountsPage() {
   const ENABLE_DEMO_DATA = true;
   const [salesPOs, setSalesPOs] = useState<any[]>(ENABLE_DEMO_DATA ? DEMO_SALES_POS : []);
   const [procurementPOs, setProcurementPOs] = useState<any[]>(ENABLE_DEMO_DATA ? MASTER_PROCUREMENT_POS : []);
+
+  useEffect(() => {
+    const txStr = localStorage.getItem('accounts_transactions');
+    if (txStr) {
+      try {
+        const txMap = JSON.parse(txStr);
+        setSalesPOs(prev => prev.map(po => txMap[po.id] ? { ...po, transactions: txMap[po.id] } : po));
+        setProcurementPOs(prev => prev.map(po => txMap[po.id] ? { ...po, transactions: txMap[po.id] } : po));
+      } catch (e) {}
+    }
+  }, []);
 
   // SAVE PAYMENT INSTALLMENT HANDLER
   const handleSavePayment = () => {
@@ -43,6 +64,14 @@ export default function AccountsPage() {
             ...(po.transactions || []),
             { txId: txRef, amount: amt, date: todayStr, mode: paymentMode }
           ];
+
+          const allTxStr = localStorage.getItem('accounts_transactions');
+          let allTx: any = {};
+          if (allTxStr) {
+            try { allTx = JSON.parse(allTxStr); } catch (e) {}
+          }
+          allTx[po.id] = updatedTxList;
+          localStorage.setItem('accounts_transactions', JSON.stringify(allTx));
 
           // Calculate total transactions paid
           const totalTxPaid = updatedTxList.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
@@ -71,6 +100,139 @@ export default function AccountsPage() {
     setPaymentAmount('');
     setCustomTxId('');
     alert(`Payment of ₹${amt.toLocaleString('en-IN')} recorded successfully!`);
+  };
+
+  const handleForceClosePO = (po: any) => {
+    if (!closureReason.trim()) {
+      alert('Please enter a reason for closing the PO.');
+      return;
+    }
+    const updatePOs = (prevPOs: any[]) =>
+      prevPOs.map((p) => (p.id === po.id ? { 
+        ...p, 
+        status: 'CLOSED', 
+        paymentStatus: 'CLOSED',
+        closureReason: closureReason.trim(),
+        closedAt: new Date().toISOString(),
+        closedBy: 'Current User'
+      } : p));
+
+    if (mainTab === 'sales_pos') {
+      setSalesPOs(updatePOs);
+    } else {
+      setProcurementPOs(updatePOs);
+    }
+    setCloseWarningModalData(null);
+    setClosureReason('');
+    alert(`PO #${po.id} has been closed and locked.`);
+  };
+
+  const handleToggleClosePO = (po: any, balance: number) => {
+    setClosureReason('');
+    setCloseWarningModalData({ po, balance });
+  };
+
+  const handleSendReminder = (po: any) => {
+    setReminderModalData(po);
+  };
+
+  const confirmSendReminder = () => {
+    setReminderModalData(null);
+    alert('Payment reminder email sent successfully!');
+  };
+
+  useEffect(() => {
+    if (docModalData) {
+      const allDocsStr = localStorage.getItem('accounts_shared_docs');
+      if (allDocsStr) {
+        try {
+          const allDocs = JSON.parse(allDocsStr);
+          setSharedDocs(allDocs[docModalData.id] || []);
+        } catch (e) {
+          setSharedDocs([]);
+        }
+      } else {
+        setSharedDocs([]);
+      }
+    }
+  }, [docModalData]);
+
+  const confirmUpload = () => {
+    if (!selectedFile || !uploadDocType || !docModalData) return;
+    
+    const newDoc = {
+      id: `DOC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      fileName: selectedFile.name,
+      type: uploadDocType,
+      date: formatIndianDate(new Date()),
+      source: 'Accounts',
+      url: '#'
+    };
+
+    const allDocsStr = localStorage.getItem('accounts_shared_docs');
+    let allDocs: any = {};
+    if (allDocsStr) {
+      try {
+        allDocs = JSON.parse(allDocsStr);
+      } catch (e) {}
+    }
+
+    if (!allDocs[docModalData.id]) allDocs[docModalData.id] = [];
+    allDocs[docModalData.id].push(newDoc);
+    localStorage.setItem('accounts_shared_docs', JSON.stringify(allDocs));
+
+    setSharedDocs(prev => [...prev, newDoc]);
+    alert('Document uploaded successfully and shared with Dispatch.');
+    
+    setShowUploadForm(false);
+    setSelectedFile(null);
+    setUploadDocType('Invoice');
+  };
+
+  const handleViewDocument = (fileName: string) => {
+    const previewHtml = `
+      <html>
+        <head><title>Preview: ${fileName}</title></head>
+        <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#525659;color:white;font-family:sans-serif;">
+          <div style="background:white;color:black;padding:40px;box-shadow:0 0 10px rgba(0,0,0,0.5);width:80%;max-width:800px;min-height:80vh;">
+            <h2>${fileName}</h2>
+            <hr/>
+            <p><strong>PO Reference:</strong> ${docModalData?.id}</p>
+            <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+            <p style="margin-top:40px;color:#666;">(This is a simulated preview of the uploaded document.)</p>
+          </div>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([previewHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
+  const handleDownloadDocument = (fileName: string) => {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleRemoveDocument = (docId: string) => {
+    if (!docModalData) return;
+    if (confirm("Are you sure you want to remove this document?")) {
+      const updatedDocs = sharedDocs.filter(d => d.id !== docId);
+      setSharedDocs(updatedDocs);
+      
+      const allDocsStr = localStorage.getItem('accounts_shared_docs');
+      if (allDocsStr) {
+        try {
+          const allDocs = JSON.parse(allDocsStr);
+          allDocs[docModalData.id] = updatedDocs;
+          localStorage.setItem('accounts_shared_docs', JSON.stringify(allDocs));
+        } catch (e) {}
+      }
+    }
   };
 
   const activeDataList = mainTab === 'sales_pos' ? salesPOs : procurementPOs;
@@ -273,17 +435,19 @@ export default function AccountsPage() {
                         <button onClick={() => setContactModalData(po)} className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-blue-400 flex items-center justify-center transition-all text-xs" title="Customer Info">
                           👤
                         </button>
-                        {!isPaid && (
+                        {!isPaid && poStatus !== 'CLOSED' && (
                           <button onClick={() => setTransactionModalData({ ...po, remainingBalance: dynamicBalanceDue })} className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-all text-xs font-bold" title="Add Payment">
                             💳+
                           </button>
                         )}
-                        <button className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-indigo-400 flex items-center justify-center transition-all text-xs" title="Send Email">
+                        <button onClick={() => handleSendReminder(po)} className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-blue-500/50 hover:bg-[#1A233A] text-indigo-400 flex items-center justify-center transition-all text-xs" title="Send Email">
                           ✉
                         </button>
-                        <button className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-rose-500/50 hover:bg-[#1A233A] text-rose-400 flex items-center justify-center transition-all text-xs" title="Close PO">
-                          🔒
-                        </button>
+                        {poStatus !== 'CLOSED' && (
+                          <button onClick={() => handleToggleClosePO(po, dynamicBalanceDue)} className="w-7 h-7 rounded-lg bg-[#0D1322] border border-gray-800 hover:border-rose-500/50 hover:bg-[#1A233A] text-rose-400 flex items-center justify-center transition-all text-xs" title="Close PO">
+                            🔒
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -384,6 +548,210 @@ export default function AccountsPage() {
         </div>
       )}
 
+      {/* 📁 VIEW ATTACHMENTS / INVOICE MODAL */}
+      {docModalData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#131B2E] border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+              <h3 className="text-base font-bold text-gray-200">📁 Attached Documents</h3>
+              <button onClick={() => setDocModalData(null)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+              <div className="bg-[#0D1322] p-3 rounded-xl border border-gray-800 flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-200 font-bold">Invoice_{docModalData.id}.pdf</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Uploaded {docModalData.invoiceDate || docModalData.invDate || 'Recently'}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleViewDocument(`Invoice_${docModalData.id}.pdf`)} className="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-700 transition-colors">View</button>
+                  <button onClick={() => handleDownloadDocument(`Invoice_${docModalData.id}.pdf`)} className="text-xs bg-indigo-600/20 text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-500/30 hover:bg-indigo-600/40 transition-colors">Download</button>
+                </div>
+              </div>
+              <div className="bg-[#0D1322] p-3 rounded-xl border border-gray-800 flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-200 font-bold">Receipt_Advance.pdf</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Uploaded Automatically</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleViewDocument(`Receipt_Advance.pdf`)} className="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-700 transition-colors">View</button>
+                  <button onClick={() => handleDownloadDocument(`Receipt_Advance.pdf`)} className="text-xs bg-indigo-600/20 text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-500/30 hover:bg-indigo-600/40 transition-colors">Download</button>
+                </div>
+              </div>
+
+              {sharedDocs.map((doc: any) => (
+                <div key={doc.id} className="bg-[#0D1322] p-3 rounded-xl border border-blue-500/30 flex justify-between items-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[8px] font-bold px-2 py-0.5 rounded-bl-lg">
+                    Uploaded by {doc.source}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-200 font-bold">{doc.fileName}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5"><span className="text-blue-400">{doc.type}</span> • Uploaded {doc.date}</p>
+                  </div>
+                  <div className="flex gap-2 z-10 items-center">
+                    <button onClick={() => handleViewDocument(doc.fileName)} className="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-700 transition-colors">View</button>
+                    <button onClick={() => handleDownloadDocument(doc.fileName)} className="text-xs bg-indigo-600/20 text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-500/30 hover:bg-indigo-600/40 transition-colors">Download</button>
+                    <button onClick={() => handleRemoveDocument(doc.id)} className="text-rose-400 hover:text-rose-500 ml-1" title="Remove Document">✖</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {showUploadForm ? (
+              <div className="pt-3 border-t border-gray-800 space-y-3">
+                <div className="flex gap-2">
+                  <select 
+                    value={uploadDocType} 
+                    onChange={(e) => setUploadDocType(e.target.value)}
+                    className="bg-[#0D1322] border border-gray-700 text-gray-300 text-xs rounded-xl px-3 py-2 outline-none flex-1"
+                  >
+                    <option value="Invoice">Invoice</option>
+                    <option value="Delivery Challan">Delivery Challan</option>
+                    <option value="LR Copy">LR Copy</option>
+                    <option value="Gate Pass (Sasons)">Gate Pass (Sasons)</option>
+                    <option value="Goods Receipt Note (GRN)">Goods Receipt Note (GRN)</option>
+                    <option value="Other Supporting Document">Other Supporting Document</option>
+                  </select>
+                  <div className="relative flex-1">
+                    <input 
+                      type="file" 
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      className="block w-full text-xs text-gray-400
+                        file:mr-2 file:py-2 file:px-3
+                        file:rounded-xl file:border-0
+                        file:text-xs file:font-semibold
+                        file:bg-indigo-600/20 file:text-indigo-400
+                        hover:file:bg-indigo-600/30 cursor-pointer
+                        border border-gray-700 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { setShowUploadForm(false); setSelectedFile(null); }} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl font-semibold transition-colors">Cancel</button>
+                  <button onClick={confirmUpload} disabled={!selectedFile} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-xl font-bold transition-colors disabled:opacity-50">Confirm Upload</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center pt-3 border-t border-gray-800">
+                <button onClick={() => setShowUploadForm(true)} className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs rounded-xl font-semibold transition-colors flex items-center gap-2">
+                  + Upload Document
+                </button>
+                <button onClick={() => setDocModalData(null)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl font-semibold transition-colors">Close</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 👤 CUSTOMER / VENDOR INFO MODAL */}
+      {contactModalData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#131B2E] border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+              <h3 className="text-base font-bold text-blue-400">👤 Profile Details</h3>
+              <button onClick={() => setContactModalData(null)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Company / Entity</p>
+                <p className="text-gray-200 font-bold">{contactModalData.customer || contactModalData.supplier || 'N/A'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Contact Person</p>
+                  <p className="text-gray-300">{contactModalData.contactPerson || 'Sasons Representative'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">GSTIN</p>
+                  <p className="text-gray-300 font-mono text-xs">{contactModalData.gstin || '27AADCS5467F1Z9'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Email Address</p>
+                  <p className="text-gray-300 text-xs">{contactModalData.email || 'billing@example.com'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Phone Number</p>
+                  <p className="text-gray-300 text-xs">{contactModalData.phone || '+91 98765 43210'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Billing Address</p>
+                <p className="text-gray-300 text-xs leading-relaxed bg-[#0D1322] p-2.5 rounded-xl border border-gray-800">
+                  {contactModalData.address || 'Factory: 1st Floor, Nana Chamber, Above Bank of Maharashtra, Kasarwadi, Pune - 34.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-3 border-t border-gray-800">
+              <button onClick={() => setContactModalData(null)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl font-semibold transition-colors">Close Profile</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✉️ SEND EMAIL / PAYMENT REMINDER MODAL */}
+      {reminderModalData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#131B2E] border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+              <h3 className="text-base font-bold text-indigo-400">✉️ Send Email Reminder</h3>
+              <button onClick={() => setReminderModalData(null)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">To</label>
+                <input type="text" readOnly value={reminderModalData.email || 'billing@example.com'} className="w-full bg-[#0D1322] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 cursor-not-allowed" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Subject</label>
+                <input type="text" readOnly value={`Payment Due Reminder for PO #${reminderModalData.id}`} className="w-full bg-[#0D1322] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 font-semibold cursor-not-allowed" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Message Preview</label>
+                <textarea readOnly rows={4} className="w-full bg-[#0D1322] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400 cursor-not-allowed" value={`Dear ${reminderModalData.customer || reminderModalData.supplier || 'Partner'},\n\nThis is a friendly reminder that an outstanding balance is due for Purchase Order ${reminderModalData.id}.\n\nPlease arrange for payment at your earliest convenience to avoid any delays.\n\nRegards,\nAccounts Team`}></textarea>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-800">
+              <button onClick={() => setReminderModalData(null)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl font-semibold transition-colors">Cancel</button>
+              <button onClick={confirmSendReminder} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-xl font-bold transition-colors shadow-lg shadow-indigo-600/20">Send Reminder</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔒 CLOSE WARNING MODAL */}
+      {closeWarningModalData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#131B2E] border border-rose-900/50 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex justify-center mb-2">
+              <div className="bg-rose-500/10 p-4 rounded-full border border-rose-500/30">
+                <span className="text-rose-500 text-2xl">⚠️</span>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-white text-center">Close PO?</h3>
+            <p className="text-xs text-gray-400 text-center leading-relaxed">
+              This PO (<span className="font-bold text-gray-200">{closeWarningModalData.po.id}</span>) has an outstanding balance of <span className="font-bold text-amber-400 text-sm">₹{closeWarningModalData.balance.toLocaleString('en-IN')}</span>.<br/>
+              Are you sure you want to close and lock this PO?
+            </p>
+
+            <div className="space-y-2 mt-4 text-left">
+              <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Reason for Closing PO <span className="text-rose-500">*</span></label>
+              <textarea 
+                rows={3} 
+                value={closureReason}
+                onChange={(e) => setClosureReason(e.target.value)}
+                placeholder="e.g., Order fulfilled offline, Client cancelled remaining units..."
+                className="w-full bg-[#0D1322] border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-3">
+              <button onClick={() => setCloseWarningModalData(null)} className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl font-semibold transition-colors">Cancel</button>
+              <button onClick={() => handleForceClosePO(closeWarningModalData.po)} disabled={!closureReason.trim()} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-xl font-bold transition-colors shadow-lg shadow-rose-600/20 disabled:opacity-50 disabled:cursor-not-allowed">Confirm Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

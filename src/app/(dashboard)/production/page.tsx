@@ -19,7 +19,8 @@ import {
   AlignEndHorizontal,
   Table,
   PackageSearch,
-  ArrowLeft
+  ArrowLeft,
+  Wrench
 } from 'lucide-react';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -27,7 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { getAllOrdersAPI } from '@/lib/api';
 
-type StageName = 'Material' | 'Cutting' | 'Stitching' | 'Fusing' | 'Kaj Button' | 'Finishing';
+type StageName = 'Material' | 'Cutting' | 'Stitching' | 'Fusing' | 'Kaj Button' | 'Finishing' | 'Repairing';
 type StageStatus = 'Pending' | 'In Progress' | 'Completed' | 'Failed' | 'Rework Required';
 export type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
@@ -66,21 +67,80 @@ interface StageData {
 export default function ProductionPage() {
   const { t } = useTranslation();
   const [stages, setStages] = useState<StageData[]>([
-    { id: 'material', name: 'Material', description: 'Material inspection & allocation', icon: PackageSearch, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '' },
     {
-      id: 'cutting', name: 'Cutting', description: 'Fabric cutting as per pattern', icon: Scissors, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
-      tasks: []
+      id: 'material',
+      name: 'Material',
+      description: 'Material inspection & allocation',
+      icon: PackageSearch,
+      status: 'Completed',
+      supervisor: 'Ramesh Pawar',
+      completedQty: 1000,
+      startTime: '',
+      endTime: '',
+      remarks: '',
+      tasks: [
+        { id: 'W-101', assignee: 'Ramesh Pawar', materialAllocatedName: 'Material Inspector', targetQty: 1000, startTime: '2026-08-14', endTime: '', status: 'Completed' }
+      ]
     },
     {
-      id: 'stitching', name: 'Stitching', description: 'Sewing and assembling pieces', icon: Layers, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '',
-      tasks: []
+      id: 'cutting', 
+      name: 'Cutting', 
+      description: 'Fabric cutting as per pattern', 
+      icon: Scissors, 
+      status: 'In Progress', 
+      supervisor: 'Suresh Patil', 
+      completedQty: 650, 
+      startTime: '', 
+      endTime: '', 
+      remarks: '',
+      tasks: [
+        { id: 'W-102', assignee: 'Suresh Patil', materialAllocatedName: 'Front & Back panels', targetQty: 500, startTime: '2026-08-14 10:00 AM', endTime: '', status: 'Completed' },
+        { id: 'W-103', assignee: 'Anil Shinde', materialAllocatedName: 'Sleeve & Collar lots', targetQty: 500, startTime: '2026-08-14 02:30 PM', endTime: '', status: 'In Progress' }
+      ]
     },
-    { id: 'fusing', name: 'Fusing', description: 'Apply fusible interlining', icon: Activity, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
-    { id: 'kaj-button', name: 'Kaj Button', description: 'Button hole & button attachment', icon: AlignEndHorizontal, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
-    { id: 'finishing', name: 'Finishing', description: 'Final touches & pressing', icon: PackageCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', tasks: [] },
+    {
+      id: 'stitching', 
+      name: 'Stitching', 
+      description: 'Sewing and assembling pieces', 
+      icon: Layers, 
+      status: 'Pending', 
+      supervisor: '', 
+      completedQty: 0, 
+      startTime: '', 
+      endTime: '', 
+      remarks: '',
+      tasks: [
+        { id: 'W-104', assignee: 'Sunita More', materialAllocatedName: 'Machine Operator', targetQty: 500, startTime: '', endTime: '', status: 'Pending' },
+        { id: 'W-105', assignee: 'Pooja Jadhav', materialAllocatedName: 'Machine Operator', targetQty: 500, startTime: '', endTime: '', status: 'Pending' }
+      ]
+    },
+    { 
+      id: 'fusing', name: 'Fusing', description: 'Apply fusible interlining', icon: Activity, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', 
+      tasks: [
+        { id: 'W-106', assignee: 'Kiran Thorat', materialAllocatedName: 'Fusing Operator', targetQty: 1000, startTime: '', endTime: '', status: 'Pending' }
+      ] 
+    },
+    { 
+      id: 'kaj-button', name: 'Kaj Button', description: 'Button hole & button attachment', icon: AlignEndHorizontal, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', 
+      tasks: [
+        { id: 'W-107', assignee: 'Mahesh Kadam', materialAllocatedName: 'Button Hole Operator', targetQty: 1000, startTime: '', endTime: '', status: 'Pending' }
+      ] 
+    },
+    { 
+      id: 'finishing', name: 'Finishing', description: 'Final touches & pressing', icon: PackageCheck, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', 
+      tasks: [
+        { id: 'W-108', assignee: 'Vikas Gaikwad', materialAllocatedName: 'Pressing & Packing', targetQty: 1000, startTime: '', endTime: '', status: 'Pending' }
+      ] 
+    },
+    { 
+      id: 'repairing', name: 'Repairing', description: 'Repair defective garments returned from QC', icon: Wrench, status: 'Pending', supervisor: '', completedQty: 0, startTime: '', endTime: '', remarks: '', 
+      tasks: [] 
+    },
   ]);
 
-  const [activeStage, setActiveStage] = useState('Cutting');
+  const [activeStageIdx, setActiveStageIdx] = useState<number | null>(1); // cutting
+  const [consumedMaterials, setConsumedMaterials] = useState<Record<string, number>>({});
+  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
   const [stagesList, setStagesList] = useState<any[]>([]);
   const [personnelList, setPersonnelList] = useState<any[]>([]);
   const [tasksList, setTasksList] = useState<any[]>([]);
@@ -121,7 +181,7 @@ export default function ProductionPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [currentOrder, setCurrentOrder] = useState<any>(null);
-  const [poNumber, setPoNumber] = useState<string>('');
+  const [poNumber, setPoNumber] = useState<string>('PO-UDF-0011');
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [activePOs, setActivePOs] = useState<string[]>([]);
   const [pendingPOs, setPendingPOs] = useState<string[]>([]);
@@ -382,11 +442,21 @@ export default function ProductionPage() {
       } catch (e) {}
     }
 
-    const currentIndex = stages.findIndex(s => s.id === currentStageId);
-    if (currentIndex !== -1 && currentIndex + 1 < stages.length) {
-      if (currentStageId === 'material') handleCompleteStage(currentIndex);
-      setActiveStageIdx(currentIndex + 1);
-    }
+    setStages(prev => {
+      const next = [...prev];
+      const currentIdx = next.findIndex(s => s.id === currentStageId);
+      if (currentIdx !== -1) {
+        next[currentIdx].status = 'Completed';
+        if (currentIdx + 1 < next.length) {
+          next[currentIdx + 1].status = 'In Progress';
+          setActiveStageIdx(currentIdx + 1);
+        } else {
+          setActiveStageIdx(null);
+        }
+        saveProductionStages(next);
+      }
+      return next;
+    });
   };
 
   const currentPoGarments = currentOrder?.garments || [];
@@ -437,7 +507,10 @@ export default function ProductionPage() {
     }
   };
 
-  const totalOrderQty = currentOrder?.specs?.reduce((sum: number, spec: any) => sum + (Number(spec.quantity) || 0), 0) || 1000;
+  const totalOrderQty = currentOrder?.specs?.reduce(
+    (sum: number, spec: any) => sum + (Number(spec?.quantity || spec?.ordered_qty) || 0), 
+    0
+  ) || currentOrder?.totalPieces || 1000;
 
   const advanceStage = async (nextPath: string, nextStage: string) => {
     if (typeof window === 'undefined') return;
@@ -470,10 +543,7 @@ export default function ProductionPage() {
     }
   };
 
-  const [activeStageIdx, setActiveStageIdx] = useState<number | null>(null);
-  const [consumedMaterials, setConsumedMaterials] = useState<Record<string, number>>({});
 
-  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
   const [expandedMaterialIds, setExpandedMaterialIds] = useState<Record<string, boolean>>({});
   const [allocationMap, setAllocationMap] = useState<Record<string, Record<string, any>>>({});
   const [materialGarmentTypes, setMaterialGarmentTypes] = useState<Record<string, string>>({});
@@ -605,8 +675,139 @@ export default function ProductionPage() {
     }
   };
 
+  // Load Repairing stage tasks from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const loadRepairTasks = () => {
+      const stored = localStorage.getItem('shared_repair_tasks');
+      if (stored) {
+        try {
+          const repairTasks = JSON.parse(stored);
+          const activeRepairTasks = repairTasks.filter((t: any) => t.poId === poNumber && t.status === 'PENDING');
+          
+          if (activeRepairTasks.length > 0) {
+            setStages(prev => {
+              return prev.map(s => {
+                if (s.id === 'repairing') {
+                  const tasks: TaskAssignment[] = activeRepairTasks.map((t: any, idx: number) => ({
+                    id: `repair-task-${idx}-${Date.now()}`,
+                    assignee: t.workerName,
+                    materialAllocatedName: `Defect: ${t.reason}`,
+                    targetQty: t.defectQty,
+                    startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    endTime: '',
+                    status: 'In Progress'
+                  }));
+                  const firstWorker = activeRepairTasks[0].workerName;
+                  return {
+                    ...s,
+                    status: 'In Progress',
+                    supervisor: firstWorker,
+                    completedQty: 0,
+                    tasks
+                  };
+                }
+                return s;
+              });
+            });
+          } else {
+            setStages(prev => prev.map(s => {
+              if (s.id === 'repairing') {
+                return {
+                  ...s,
+                  status: 'Pending',
+                  supervisor: '',
+                  completedQty: 0,
+                  tasks: []
+                };
+              }
+              return s;
+            }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    loadRepairTasks();
+    window.addEventListener('storage', loadRepairTasks);
+    const interval = setInterval(loadRepairTasks, 1000);
+    return () => {
+      window.removeEventListener('storage', loadRepairTasks);
+      clearInterval(interval);
+    };
+  }, [poNumber]);
+
+  const handleCompleteRepairTask = (assigneeName: string, targetQty: number) => {
+    const stored = localStorage.getItem('shared_repair_tasks');
+    if (stored) {
+      try {
+        const repairTasks = JSON.parse(stored);
+        const updated = repairTasks.map((t: any) => {
+          if (t.poId === poNumber && t.workerName === assigneeName && t.status === 'PENDING') {
+            return { ...t, status: 'COMPLETED' };
+          }
+          return t;
+        });
+        localStorage.setItem('shared_repair_tasks', JSON.stringify(updated));
+      } catch (e) {}
+    }
+
+    const qcTasksStored = localStorage.getItem('quality_packing_operator_tasks');
+    if (qcTasksStored) {
+      try {
+        const qcTasks = JSON.parse(qcTasksStored);
+        const activeTasks = qcTasks.quality_check || [];
+        const updatedTasks = activeTasks.map((t: any) => {
+          if (t.operatorName === assigneeName) {
+            const newDefect = Math.max(0, t.defectQty - targetQty);
+            const newPassed = t.passedQty + targetQty;
+            return {
+              ...t,
+              defectQty: newDefect,
+              passedQty: newPassed,
+              status: 'IN_PROGRESS'
+            };
+          }
+          return t;
+        });
+        qcTasks.quality_check = updatedTasks;
+        localStorage.setItem('quality_packing_operator_tasks', JSON.stringify(qcTasks));
+      } catch (e) {}
+    }
+
+    const savedBadges = localStorage.getItem('quality_packing_qc_badge_text');
+    if (savedBadges) {
+      try {
+        const qcBadges = JSON.parse(savedBadges);
+        const qcTasks = JSON.parse(localStorage.getItem('quality_packing_operator_tasks') || '{}');
+        const matchingTask = (qcTasks.quality_check || []).find((t: any) => t.operatorName === assigneeName);
+        if (matchingTask) {
+          delete qcBadges[matchingTask.id];
+          localStorage.setItem('quality_packing_qc_badge_text', JSON.stringify(qcBadges));
+        }
+      } catch (e) {}
+    }
+
+    setStages(prev => prev.map(s => {
+      if (s.id === 'repairing') {
+        return {
+          ...s,
+          status: 'Completed',
+          completedQty: s.completedQty + targetQty,
+          tasks: []
+        };
+      }
+      return s;
+    }));
+    
+    setActiveStageIdx(null);
+    alert(`${targetQty} repaired pieces returned to Quality Check for re-inspection.`);
+  };
+
   const completedStagesCount = stages.filter(s => s.status === 'Completed').length;
-  const progressPercentage = Math.round((completedStagesCount / stages.length) * 100);
+  const stagesForProgress = stages.filter(s => s.id !== 'repairing' || s.status === 'In Progress' || s.status === 'Completed');
+  const progressPercentage = Math.round((completedStagesCount / stagesForProgress.length) * 100);
 
   const overallProductionStatus = stages.some(s => s.status === 'Rework Required')
     ? 'Rework Required'
@@ -645,6 +846,8 @@ export default function ProductionPage() {
     setActiveStageIdx(null); // close form on complete
   };
 
+
+
   const getStatusBadge = (status: StageStatus) => {
     switch (status) {
       case 'Pending': return <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">{'Pending'}</span>;
@@ -676,6 +879,7 @@ export default function ProductionPage() {
       case 'fusing': return 'text-amber-600 bg-amber-100/80 dark:bg-amber-900/40 dark:text-amber-400';
       case 'kaj-button': return 'text-purple-600 bg-purple-100/80 dark:bg-purple-900/40 dark:text-purple-400';
       case 'finishing': return 'text-rose-600 bg-rose-100/80 dark:bg-rose-900/40 dark:text-rose-400';
+      case 'repairing': return 'text-rose-600 bg-rose-100/80 dark:bg-rose-900/40 dark:text-rose-400';
       default: return 'text-muted-foreground bg-muted';
     }
   };
@@ -834,7 +1038,7 @@ export default function ProductionPage() {
       </div>
 
       {/* Production Stages Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
         {stages.map((stage, idx) => {
           const Icon = stage.icon;
           const isActive = activeStageIdx === idx;
@@ -849,14 +1053,34 @@ export default function ProductionPage() {
                   <div className={`p-2 rounded-lg ${getIconColor(stage.id, stage.status, isActive)}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  {getStatusBadge(stage.status)}
+                  {stage.id === 'repairing' ? (
+                    stage.status === 'In Progress' ? (
+                      <span className="bg-rose-100 text-rose-800 dark:text-rose-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">ACTIVE</span>
+                    ) : (
+                      <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider">0 PENDING</span>
+                    )
+                  ) : (
+                    getStatusBadge(stage.status)
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground text-sm">{stage.id === 'material' ? 'Material' : (t(`production.${stage.id}`) !== `production.${stage.id}` ? t(`production.${stage.id}`) : stage.name)}</h3>
-                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">{stage.id === 'material' ? 'Inspect and verify allocated articles and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description)}</p>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {stage.completedQty > 0 ? `${stage.completedQty} ${t('production.unitsProcessed') || 'units processed'}` : (t('dashboard.recentOrders.status.pending') || 'Not started')}
-                  </p>
+                  <h3 className="font-semibold text-foreground text-sm">{stage.id === 'repairing' ? 'Repairing / Rework' : (stage.id === 'material' ? 'Material' : (t(`production.${stage.id}`) !== `production.${stage.id}` ? t(`production.${stage.id}`) : stage.name))}</h3>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 mb-1.5">{stage.id === 'repairing' ? 'Repair defective garments returned from QC.' : (stage.id === 'material' ? 'Inspect and verify allocated articles and fabrics.' : (t(`production.stages.${stage.id}.desc`) !== `production.stages.${stage.id}.desc` ? t(`production.stages.${stage.id}.desc`) : stage.description))}</p>
+                  
+                  {stage.id === 'repairing' ? (
+                    stage.status === 'In Progress' ? (
+                      <div className="text-[11px] font-medium text-rose-600 dark:text-rose-400 mt-2 space-y-0.5">
+                        <div>Defected Qty: {stage.tasks?.reduce((sum, t) => sum + t.targetQty, 0) || 0} pcs</div>
+                        <div>Worker: {stage.supervisor}</div>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-medium text-muted-foreground mt-2">Clean / No Defects</p>
+                    )
+                  ) : (
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {stage.completedQty > 0 ? `${stage.completedQty} ${t('production.unitsProcessed') || 'units processed'}` : (t('dashboard.recentOrders.status.pending') || 'Not started')}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1432,6 +1656,16 @@ export default function ProductionPage() {
                                           )}
                                         </div>
                                       </div>
+                                      {stages[activeStageIdx].id === 'repairing' && (
+                                        <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-slate-800/60">
+                                          <button
+                                            onClick={() => handleCompleteRepairTask(assignee, task.targetQty)}
+                                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-md hover:shadow-lg"
+                                          >
+                                            Complete Repair
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   ))
                                 ) : (
@@ -1516,7 +1750,14 @@ export default function ProductionPage() {
 
                       {/* Stage Advancement Flow */}
                       <div className="mt-8 flex justify-end pt-4 border-t border-border">
-                        {stages[activeStageIdx].id === 'finishing' ? (
+                        {stages[activeStageIdx].id === 'repairing' ? (
+                          <button
+                            onClick={() => setActiveStageIdx(null)}
+                            className="bg-neutral-600 hover:bg-neutral-700 text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors"
+                          >
+                            Close Drawer
+                          </button>
+                        ) : stages[activeStageIdx].id === 'finishing' ? (
                           <button
                             onClick={() => handleSendToQC(poNumber)}
                             className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-lg text-xs shadow-lg transition-all"

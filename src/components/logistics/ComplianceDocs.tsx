@@ -100,15 +100,21 @@ export default function ComplianceDocs({ order, onComplete }: ComplianceDocsProp
                 </div>
               ) : (
                 uploadedDocs.map((doc, idx) => (
-                  <div key={doc.id || idx} className="flex flex-col p-3 bg-neutral-50 dark:bg-card border border-neutral-100 dark:border-border rounded-lg gap-2">
-                    <div className="flex items-center justify-between">
+                  <div key={doc.id || idx} className="flex flex-col p-3 bg-neutral-50 dark:bg-card border border-neutral-100 dark:border-border rounded-lg gap-2 relative">
+                    {doc.source === 'Accounts' && (
+                      <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        Uploaded by Accounts
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-1">
                       <div className="flex items-center gap-3">
                         <FileCheck className="h-5 w-5 text-emerald-500" />
-                        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[180px]">{doc.fileName}</span>
+                        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[150px]">{doc.fileName}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">{t('orderInitiation.header.saveOrder') || 'Verified'}</span>
-                        <button onClick={() => handleRemoveDoc(doc.id)} className="text-red-500 hover:text-red-600 text-xs">Remove</button>
+                      <div className="flex items-center gap-1.5 z-10">
+                        <button className="text-[10px] px-2 py-1 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 text-neutral-600 dark:text-neutral-300 rounded hover:bg-neutral-100 dark:hover:bg-slate-700 transition-colors">View</button>
+                        <button className="text-[10px] px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Download</button>
+                        <button onClick={() => handleRemoveDoc(doc.id)} className="text-red-500 hover:text-red-600 text-[10px] font-medium ml-1">Remove</button>
                       </div>
                     </div>
                     {doc.statement && (

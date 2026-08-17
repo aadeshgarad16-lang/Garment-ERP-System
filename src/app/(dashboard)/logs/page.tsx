@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { formatDateDisplay } from '@/utils/dateUtils';
+import { formatIndianDate } from '@/utils/dateUtils';
 
 // --- TypeScript Interfaces ---
 export interface SystemLog {
@@ -109,7 +109,7 @@ function OrderDetailsView({
                 <td className="px-6 py-4 align-top">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-foreground">
-                      {formatDateDisplay(log.timestamp)}
+                      {formatIndianDate(log.timestamp)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

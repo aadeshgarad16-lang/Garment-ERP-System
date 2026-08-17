@@ -21,12 +21,24 @@ export default function DispatchGoodsPage() {
   const [ackFile, setAckFile] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sharedDocs, setSharedDocs] = useState<any[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const po = params.get('poNumber');
-      if (po) setPoNumber(po);
+      if (po) {
+        setPoNumber(po);
+        const docsStr = localStorage.getItem('accounts_shared_docs');
+        if (docsStr) {
+          try {
+            const docsMap = JSON.parse(docsStr);
+            if (docsMap[po]) {
+              setSharedDocs(docsMap[po]);
+            }
+          } catch (e) {}
+        }
+      }
     }
     
     // Fetch vendors
@@ -65,16 +77,22 @@ export default function DispatchGoodsPage() {
   }, [vendor]);
 
   const isFormValid = () => {
+    const hasInvoice = invoiceFile !== null || sharedDocs.some((d: any) => d.type === 'Invoice');
+    const hasChallan = challanFile !== null || sharedDocs.some((d: any) => d.type === 'Delivery Challan');
+    const hasLrCopy = lrCopyFile !== null || sharedDocs.some((d: any) => d.type === 'LR Copy');
+    const hasGatePass = gatePassFile !== null || sharedDocs.some((d: any) => d.type === 'Gate Pass (Sasons)');
+    const hasAck = ackFile !== null || sharedDocs.some((d: any) => d.type === 'Other Supporting Document');
+
     return (
       vendor !== null &&
       deliveryId.trim() !== '' &&
       branchName.trim() !== '' &&
       deliveryType !== '' &&
-      invoiceFile !== null &&
-      challanFile !== null &&
-      lrCopyFile !== null &&
-      gatePassFile !== null &&
-      ackFile !== null
+      hasInvoice &&
+      hasChallan &&
+      hasLrCopy &&
+      hasGatePass &&
+      hasAck
     );
   };
 
@@ -116,29 +134,89 @@ export default function DispatchGoodsPage() {
     }
   };
 
-  const renderFileInput = (label: string, file: File | null, setFile: (file: File | null) => void) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-        {label} <span className="text-red-500">*</span>
-      </label>
-      <div className="relative">
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="block w-full text-sm text-neutral-500 dark:text-neutral-400
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-medium
-            file:bg-indigo-50 file:text-indigo-700
-            hover:file:bg-indigo-100
-            dark:file:bg-indigo-900/30 dark:file:text-indigo-400
-            dark:hover:file:bg-indigo-900/50
-            border border-neutral-300 dark:border-neutral-700 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
+  const handleRemoveSharedDoc = (docId: string) => {
+    const updatedDocs = sharedDocs.filter(d => d.id !== docId);
+    setSharedDocs(updatedDocs);
+    const docsStr = localStorage.getItem('accounts_shared_docs');
+    if (docsStr && poNumber) {
+      try {
+        const docsMap = JSON.parse(docsStr);
+        docsMap[poNumber] = updatedDocs;
+        localStorage.setItem('accounts_shared_docs', JSON.stringify(docsMap));
+      } catch (e) {}
+    }
+  };
+
+  const handleViewDocument = (doc: any) => {
+    if (doc.url && doc.url !== '#') {
+      window.open(doc.url, '_blank', 'noopener,noreferrer');
+    } else {
+      const previewHtml = `
+        <html>
+          <head><title>Preview: ${doc.fileName}</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#525659;color:white;font-family:sans-serif;">
+            <div style="background:white;color:black;padding:40px;box-shadow:0 0 10px rgba(0,0,0,0.5);width:80%;max-width:800px;min-height:80vh;">
+              <h2>${doc.fileName}</h2>
+              <hr/>
+              <p><strong>Document Type:</strong> ${doc.type} &bull; Uploaded by ${doc.source}</p>
+              <p><strong>PO Reference:</strong> ${poNumber}</p>
+              <p><strong>Timestamp:</strong> ${doc.date || new Date().toLocaleString()}</p>
+              <p style="margin-top:40px;color:#666;">(This is a simulated preview of the uploaded document.)</p>
+            </div>
+          </body>
+        </html>
+      `;
+      const blob = new Blob([previewHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const renderFileInput = (label: string, file: File | null, setFile: (file: File | null) => void, docType?: string) => {
+    const sharedDoc = docType ? sharedDocs.find((d: any) => d.type === docType) : null;
+
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          {label} <span className="text-red-500">*</span>
+        </label>
+        {sharedDoc ? (
+          <div className="flex items-center justify-between p-2.5 border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[8px] font-bold px-1.5 py-0.5 rounded-bl-md">
+              Uploaded by {sharedDoc.source}
+            </div>
+            <div className="flex flex-col overflow-hidden w-[70%]">
+              <span className="truncate text-sm font-semibold text-indigo-700 dark:text-indigo-400">{sharedDoc.fileName}</span>
+              <span className="text-[10px] text-neutral-500">{sharedDoc.type}</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 z-10">
+              <button type="button" onClick={() => handleViewDocument(sharedDoc)} className="text-[10px] px-2 py-1 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded shadow-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-700 transition-colors">View</button>
+              <button type="button" onClick={() => handleRemoveSharedDoc(sharedDoc.id)} className="text-neutral-400 hover:text-red-500 transition-colors text-lg font-medium">
+                ✖
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-neutral-500 dark:text-neutral-400
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-md file:border-0
+                file:text-sm file:font-medium
+                file:bg-indigo-50 file:text-indigo-700
+                hover:file:bg-indigo-100
+                dark:file:bg-indigo-900/30 dark:file:text-indigo-400
+                dark:hover:file:bg-indigo-900/50
+                border border-neutral-300 dark:border-neutral-700 rounded-md
+                focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 font-sans pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -215,10 +293,10 @@ export default function DispatchGoodsPage() {
             B. Mandatory Document Uploads
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderFileInput("1. Invoice File Upload", invoiceFile, setInvoiceFile)}
-            {renderFileInput("2. Challan File Upload", challanFile, setChallanFile)}
-            {renderFileInput("3. LR Copy File Upload", lrCopyFile, setLrCopyFile)}
-            {renderFileInput("4. Gate Pass (Sasons) File Upload", gatePassFile, setGatePassFile)}
+            {renderFileInput("1. Invoice File Upload", invoiceFile, setInvoiceFile, "Invoice")}
+            {renderFileInput("2. Challan File Upload", challanFile, setChallanFile, "Delivery Challan")}
+            {renderFileInput("3. LR Copy File Upload", lrCopyFile, setLrCopyFile, "LR Copy")}
+            {renderFileInput("4. Gate Pass (Sasons) File Upload", gatePassFile, setGatePassFile, "Gate Pass (Sasons)")}
             
             <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-neutral-50 dark:bg-slate-800/50 rounded-lg border border-neutral-200 dark:border-slate-700">
               <div className="flex flex-col gap-1.5">
@@ -236,7 +314,7 @@ export default function DispatchGoodsPage() {
                   <option value="By Transport">By Transport</option>
                 </select>
               </div>
-              {renderFileInput("5b. Acknowledgement Upload", ackFile, setAckFile)}
+              {renderFileInput("5b. Acknowledgement Upload", ackFile, setAckFile, "Other Supporting Document")}
             </div>
           </div>
         </section>

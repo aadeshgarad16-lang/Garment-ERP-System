@@ -28,7 +28,7 @@ import { useOrders } from "@/contexts/order-context";
 import { usePermission } from "@/hooks/usePermission";
 import { useAuth } from "@/context/AuthContext";
 import { PermissionGuard } from "@/components/PermissionGuard";
-import { formatDateDisplay } from "@/utils/dateUtils";
+import { formatIndianDate } from "@/utils/dateUtils";
 
 interface GarmentSpec {
   id: string;
@@ -119,11 +119,11 @@ function OrdersPageContent() {
   
   // Initialize display dates when formState updates from external sources (e.g. edit mode) or user interaction
   useEffect(() => {
-    setPoDateDisplay(formState.poDate ? formatDateDisplay(formState.poDate) : "");
+    setPoDateDisplay(formState.poDate ? formatIndianDate(formState.poDate) : "");
   }, [formState.poDate]);
 
   useEffect(() => {
-    setDeliveryDateDisplay(formState.deliveryDate ? formatDateDisplay(formState.deliveryDate) : "");
+    setDeliveryDateDisplay(formState.deliveryDate ? formatIndianDate(formState.deliveryDate) : "");
   }, [formState.deliveryDate]);
 
   const handleDateMask = (field: "poDate" | "deliveryDate", rawValue: string) => {
@@ -910,7 +910,7 @@ function OrdersPageContent() {
                                 />
                               </td>
                               <td className="px-4 py-3 font-medium text-foreground">{po.poNumber}</td>
-                              <td className="px-4 py-3">{po.poDate ? formatDateDisplay(po.poDate) : "—"}</td>
+                              <td className="px-4 py-3">{po.poDate ? formatIndianDate(po.poDate) : "—"}</td>
                               <td className="px-4 py-3">{po.customerName}</td>
                               <td className="px-4 py-3">
                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${po.status === 'SUBMITTED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>

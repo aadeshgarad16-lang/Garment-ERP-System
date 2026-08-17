@@ -36,8 +36,8 @@ import { useAuth } from '@/context/AuthContext';
 import { updateOrderAndLog } from '@/lib/logger';
 import { useOrders } from '@/contexts/order-context';
 import { isStageMatch } from '@/utils/orderUtils';
-import { formatDateDisplay } from '@/utils/dateUtils';
-import { generateProcurementPDF } from '@/utils/pdfGenerator';
+import { formatIndianDate } from '@/utils/dateUtils';
+import { generateProcurementPDF, generateOfficialPurchaseOrderPDF } from '@/utils/pdfGenerator';
 
 const initialProcurementRequests: any[] = [];
 
@@ -205,14 +205,19 @@ export default function ProcurementPage() {
   const [viewPoModalData, setViewPoModalData] = useState<any>(null);
 
   const getPaymentStatus = (poNumber: string, totalAmount: number, poData?: any) => {
-    if (poData && poData.paymentStatus) {
-      const status = poData.paymentStatus === 'PARTIALLY_PAID' ? 'PARTIALLY PAID' : poData.paymentStatus;
-      const paid = poData.advancePaid || 0;
-      const due = poData.balanceDue || 0;
-      return { status, paid, due };
-    }
-
     let paymentData: any = null;
+    let localTxs: any[] = [];
+    
+    try {
+      const txStr = localStorage.getItem('accounts_transactions');
+      if (txStr) {
+        const allTx = JSON.parse(txStr);
+        if (allTx[poNumber]) {
+          localTxs = allTx[poNumber];
+        }
+      }
+    } catch(e) {}
+
     try {
       const accountsStore = localStorage.getItem('accountsStore');
       if (accountsStore) {
@@ -227,23 +232,34 @@ export default function ProcurementPage() {
       }
     } catch(e) {}
     
-    if (paymentData) {
-       const status = paymentData.status || 'UNPAID';
-       const paid = (paymentData.initialAdvance || 0) + (paymentData.transactions || []).reduce((sum: any, tx: any) => sum + Number(tx.amount || 0), 0);
+    // Combine explicit tx array or from paymentData
+    const txs = localTxs.length > 0 ? localTxs : (poData?.transactions || paymentData?.transactions || []);
+    const txCount = txs.length;
+
+    if (paymentData || localTxs.length > 0) {
+       const status = paymentData?.status || poData?.paymentStatus || 'UNPAID';
+       const paid = (paymentData?.initialAdvance || poData?.advancePaid || 0) + txs.reduce((sum: any, tx: any) => sum + Number(tx.amount || 0), 0);
        const due = Math.max(0, totalAmount - paid);
        
-       if (status === 'PAID' || due <= 0) return { status: 'PAID', paid, due: 0 };
-       if (paid > 0) return { status: 'PARTIALLY PAID', paid, due };
-       return { status: 'UNPAID', paid: 0, due: totalAmount };
+       if (status === 'PAID' || due <= 0) return { status: 'PAID', paid, due: 0, txCount, transactions: txs };
+       if (paid > 0) return { status: 'PARTIALLY PAID', paid, due, txCount, transactions: txs };
+       return { status: 'UNPAID', paid: 0, due: totalAmount, txCount, transactions: txs };
+    }
+
+    if (poData && poData.paymentStatus) {
+      const status = poData.paymentStatus === 'PARTIALLY_PAID' ? 'PARTIALLY PAID' : poData.paymentStatus;
+      const paid = poData.advancePaid || 0;
+      const due = poData.balanceDue || 0;
+      return { status, paid, due, txCount, transactions: txs };
     }
 
     const poNumStr = String(poNumber);
     if (poNumStr.includes('1') || poNumStr.includes('8') || poNumStr.includes('3')) {
-      return { status: 'PAID', paid: totalAmount, due: 0 };
+      return { status: 'PAID', paid: totalAmount, due: 0, txCount, transactions: txs };
     } else if (poNumStr.includes('9') || poNumStr.includes('0')) {
-      return { status: 'UNPAID', paid: 0, due: totalAmount };
+      return { status: 'UNPAID', paid: 0, due: totalAmount, txCount, transactions: txs };
     } else {
-      return { status: 'PARTIALLY PAID', paid: totalAmount * 0.4, due: totalAmount * 0.6 };
+      return { status: 'PARTIALLY PAID', paid: totalAmount * 0.4, due: totalAmount * 0.6, txCount, transactions: txs };
     }
   };
 
@@ -828,68 +844,52 @@ export default function ProcurementPage() {
   }, [displayRows, orderQuantities, selectedSuppliers, suppliersList]);
 
   const downloadPurchaseOrderPdf = (po: any) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const content = `
-      <html>
-        <head>
-          <title>Purchase Order - ${po.po_number || po.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 25px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
-            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .info-table td { padding: 8px; vertical-align: top; }
-            .items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-            .items-table th { background-color: #f8fafc; }
-            .total-box { margin-top: 20px; text-align: right; font-size: 16px; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>PURCHASE ORDER</h2>
-            <p>PO Number: <strong>${po.po_number || po.id}</strong> | Date: ${po.order_date || po.po_date || po.date || '2026-08-08'}</p>
-          </div>
-          <table class="info-table">
-            <tr>
-              <td><strong>Supplier:</strong><br/>${po.supplier_name || po.supplier || 'Vendor Partner'}</td>
-              <td><strong>Est. Delivery Date:</strong><br/>${po.est_delivery || po.expected_delivery || po.expectedDelivery || '2026-08-22'}</td>
-              <td><strong>Status:</strong><br/>${po.status || 'Active'}</td>
-            </tr>
-          </table>
-          <h3>Order Items Detail</h3>
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Item Description</th>
-                <th>Order Qty</th>
-                <th>Unit Price</th>
-                <th>Total Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>${po.item_name || 'Procurement Order Items Batch'}</td>
-                <td>${po.total_items || po.items || 1} Batch</td>
-                <td>${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</td>
-                <td>${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="total-box">
-            <p>Grand Total: ${po.total_amount || (po.total ? `₹${po.total.toLocaleString()}` : '₹1,85,000')}</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(content);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+    const rawMaterials = po.rawMaterials || [];
+    const finishedGoods = po.finishedGoods || [];
+    
+    const materials = [
+      ...rawMaterials.map((m: any) => ({
+        name: m.material || m.name || 'Raw Material',
+        qty: m.quantity || 0,
+        unitCost: m.unitPrice || 0,
+        unit: m.unit || 'Units'
+      })),
+      ...finishedGoods.map((g: any) => ({
+        name: g.name || 'Finished Good',
+        qty: g.totalQty || g.quantity || 0,
+        unitCost: g.unitPrice || 0,
+        unit: 'Pcs'
+      }))
+    ];
+    
+    if (materials.length === 0 && po.items) {
+      materials.push({
+        name: po.item_name || 'Procurement Order Items Batch',
+        qty: po.total_items || po.items || 1,
+        unitCost: (po.totalAmount || po.total || 0) / (po.total_items || po.items || 1),
+        unit: 'Batch'
+      });
+    }
+    
+    const subtotal = materials.reduce((sum, m) => sum + (m.qty * m.unitCost), 0) || po.totalAmount || po.total || 0;
+    
+    const mappedPo = {
+      poNumber: po.po_number || po.id,
+      poDate: po.created_at || po.order_date || po.date,
+      deliveryDate: po.est_delivery || po.expectedDelivery || po.deliveryDate || po.deliveredOn,
+      supplier: po.supplier_name || po.supplier,
+      supplierAddress: po.supplier_address || po.supplierAddress || '',
+      materials,
+      subtotal,
+      paymentTerms: po.paymentTerms || po.payment_terms || 'NET 30',
+      transportMode: po.shipping_method || po.transportMode || 'By Road',
+      branch: po.branch || 'Main Warehouse',
+      invoiceTo: 'SASONS WORKS WEAR PRIVATE LIMITED\n1st Floor, Nana Chamber,\nAbove Bank of Maharashtra,\nKasarwadi, Pune - 34.\nGSTIN: 27AABCS1234F1Z5\nState: Maharashtra',
+      consignee: 'SASONS WORKS WEAR PRIVATE LIMITED\nFactory: 1st Floor, Nana Chamber,\nKasarwadi, Pune - 34.\nGSTIN: 27AABCS1234F1Z5\nState: Maharashtra'
+    };
+  
+    const doc = generateOfficialPurchaseOrderPDF(mappedPo);
+    doc.save(`Purchase_Order_${mappedPo.poNumber}.pdf`);
   };
 
   console.log("Suppliers array in component:", suppliers);
@@ -931,8 +931,8 @@ export default function ProcurementPage() {
                   <p className="text-sm font-semibold text-emerald-600">{viewPoModalData.status || 'Active'}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg border border-border">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Order Date</p>
-                  <p className="text-sm font-semibold">{viewPoModalData.created_at ? new Date(viewPoModalData.created_at).toLocaleDateString() : viewPoModalData.order_date || viewPoModalData.date || 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Created</p>
+                  <p className="text-sm font-semibold">{viewPoModalData.created_at ? formatIndianDate(viewPoModalData.created_at) : viewPoModalData.order_date || viewPoModalData.date || 'N/A'}</p>
                 </div>
                 <div className="p-3 bg-muted/30 rounded-lg border border-border">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Expected Delivery</p>
@@ -1030,6 +1030,48 @@ export default function ProcurementPage() {
 
             </div>
 
+            {/* Payment Transactions Breakdown */}
+            <div className="px-6 pb-4 border-t border-border mt-6 pt-4">
+              {(() => {
+                const total = Number(viewPoModalData.grandTotal) || Number(viewPoModalData.total_price) || viewPoModalData.total_amount || 59000;
+                const paymentInfo = getPaymentStatus(viewPoModalData.po_number || viewPoModalData.id, total, viewPoModalData);
+                const txns = paymentInfo.transactions || [];
+                return (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3 text-indigo-400">Payment & Installment Transactions ({txns.length} {txns.length === 1 ? 'Transaction' : 'Transactions'})</h4>
+                    {txns.length > 0 ? (
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                          <thead className="bg-muted/50 border-b border-border">
+                            <tr>
+                              <th className="px-4 py-2 font-medium">Transaction ID</th>
+                              <th className="px-4 py-2 font-medium">Date & Time</th>
+                              <th className="px-4 py-2 font-medium">Payment Mode</th>
+                              <th className="px-4 py-2 font-medium text-right">Amount Paid</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {txns.map((tx: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-muted/30">
+                                <td className="px-4 py-2 font-mono text-xs">{tx.txId}</td>
+                                <td className="px-4 py-2 text-muted-foreground">{tx.date}</td>
+                                <td className="px-4 py-2">{tx.mode}</td>
+                                <td className="px-4 py-2 text-right font-semibold text-emerald-500">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="bg-muted/30 border border-border rounded-lg p-4 text-center">
+                        <p className="text-sm text-muted-foreground">No payment transactions recorded yet.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
             {/* Footer */}
             <div className="px-6 py-4 border-t border-border bg-neutral-50/50 dark:bg-card/30">
               <div className="flex flex-col items-end gap-1 mb-4">
@@ -1098,17 +1140,20 @@ export default function ProcurementPage() {
 
         {/* RETAINED TOP BUTTONS ONLY */}
         <div className="flex items-center gap-3">
-          <button 
+          {/* Existing View Purchase Orders Button */}
+          <button
             onClick={() => router.push('/procurement/review-po')}
-            className="bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-500/30 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#1C1635] text-purple-300 border border-purple-800/40 hover:bg-purple-900/40 transition-all shadow-sm"
           >
-            📋 View Purchase Orders
+            <span>📋</span> View Purchase Orders
           </button>
-          <button 
+
+          {/* RESTORED: Supplier Info Button */}
+          <button
             onClick={() => router.push('/procurement/suppliers')}
-            className="bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-500/30 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#12233B] text-blue-300 border border-blue-800/40 hover:bg-blue-900/40 transition-all shadow-sm"
           >
-            🏢 Supplier Info
+            <span>🏢</span> Supplier Info
           </button>
         </div>
       </div>
@@ -1170,28 +1215,30 @@ export default function ProcurementPage() {
       </div>
 
       {/* 2. SHARED 3-TAB NAVIGATION HEADER */}
-      <div className="flex gap-3 bg-[#131B2E] p-2 rounded-2xl border border-gray-800 w-fit mb-6 mt-6">
-        <button
-          onClick={() => router.push('/procurement')}
-          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
-        >
-          📱 Procurement Requests <span className="bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full text-[10px]">{procurementRequests.filter(i => String(i.status).toUpperCase() === 'PENDING').length} Pending</span>
-        </button>
+      {activeTab === 'pending' && (
+        <div className="flex gap-3 bg-[#131B2E] p-2 rounded-2xl border border-gray-800 w-fit mb-6 mt-6">
+          <button
+            onClick={() => router.push('/procurement')}
+            className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
+          >
+            📱 Procurement Requests <span className="bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full text-[10px]">{procurementRequests.filter(i => String(i.status).toUpperCase() === 'PENDING').length} Pending</span>
+          </button>
 
-        <button
-          onClick={() => router.push('/procurement/review-po')}
-          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
-        >
-          📋 Review PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
-        </button>
+          <button
+            onClick={() => router.push('/procurement/review-po')}
+            className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+          >
+            📋 Review PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+          </button>
 
-        <button
-          onClick={() => router.push('/procurement/create-po')}
-          className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
-        >
-          + Create PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
-        </button>
-      </div>
+          <button
+            onClick={() => router.push('/procurement/create-po')}
+            className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-[#0D1322] text-gray-400 hover:text-white border border-gray-800"
+          >
+            + Create PO <span className="bg-gray-700/50 text-gray-300 px-2 py-0.5 rounded-full text-[10px]">0 Pending</span>
+          </button>
+        </div>
+      )}
 
       {/* Procurement Requests Table */}
       {activeTab === 'pending' && (
@@ -1724,7 +1771,7 @@ export default function ProcurementPage() {
                     <tr key={po.po_number || po.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-4 font-medium">{po.po_number || po.id}</td>
                       <td className="px-6 py-4">{po.supplier_name || po.supplier}</td>
-                      <td className="px-6 py-4">{po.orderDate || (po.created_at ? new Date(po.created_at).toLocaleDateString() : po.order_date || po.date)}</td>
+                      <td className="px-6 py-4">{po.orderDate || (po.created_at ? formatIndianDate(po.created_at) : po.order_date || po.date)}</td>
                       <td className="px-6 py-4">{po.deliveryDate || po.est_delivery || po.expectedDelivery || 'TBD'}</td>
                       <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-medium">
                         {po.grandTotal ? `₹${Number(po.grandTotal).toLocaleString('en-IN')}` : po.total_price ? `₹${Number(po.total_price).toLocaleString('en-IN')}` : po.total_amount || '-'}
@@ -1789,7 +1836,7 @@ export default function ProcurementPage() {
                       <td className="px-6 py-4 font-medium">{po.po_number || po.id}</td>
                       <td className="px-6 py-4 text-xs font-mono">{po.grnNumbers?.join(', ') || 'N/A'}</td>
                       <td className="px-6 py-4">{po.supplier_name || po.supplier}</td>
-                      <td className="px-6 py-4">{po.orderDate || po.deliveryDate || (po.created_at ? new Date(po.created_at).toLocaleDateString() : po.deliveredOn || 'N/A')}</td>
+                      <td className="px-6 py-4">{po.orderDate || po.deliveryDate || (po.created_at ? formatIndianDate(po.created_at) : po.deliveredOn || 'N/A')}</td>
                       <td className="px-6 py-4 font-medium">{po.receivedQty || po.totalItems || po.total_items} / {po.totalItems || po.total_items || po.items}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200`}>
@@ -1800,7 +1847,7 @@ export default function ProcurementPage() {
                         <button onClick={() => setViewPoModalData(po)} className="p-1.5 rounded-lg bg-[#0D1322] hover:bg-[#1A233A] text-gray-300 hover:text-white" title="View PO Details">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => generateProcurementPDF(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Download PDF">
+                        <button onClick={() => downloadPurchaseOrderPdf(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Download PDF">
                           <Download className="h-4 w-4" />
                         </button>
                       </td>
@@ -1857,7 +1904,7 @@ export default function ProcurementPage() {
                     <tr key={po.po_number || po.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-4 font-medium">{po.po_number || po.id}</td>
                       <td className="px-6 py-4">{po.supplier_name || po.supplier}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{po.deliveryDate || (po.created_at ? new Date(po.created_at).toLocaleDateString() : po.deliveredOn || po.date || '-')}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{po.deliveryDate || (po.created_at ? formatIndianDate(po.created_at) : po.deliveredOn || po.date || '-')}</td>
                       <td className="px-6 py-4">{po.totalItems || po.total_items || po.items || '-'}</td>
                       <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-medium">
                         {po.grandTotal ? `₹${Number(po.grandTotal).toLocaleString('en-IN')}` : po.total_price ? `₹${Number(po.total_price).toLocaleString('en-IN')}` : po.totalAmount ? `₹${Number(po.totalAmount).toLocaleString('en-IN')}` : po.total_amount || '-'}
@@ -1865,32 +1912,48 @@ export default function ProcurementPage() {
                       {(() => {
                         const total = Number(po.grandTotal) || Number(po.total_price) || po.total_amount || 59000;
                         const payment = getPaymentStatus(po.po_number || po.id, total, po);
+                        const txCountStr = payment.txCount === 0 ? '0 Txns' : payment.txCount === 1 ? '1 Txn' : `${payment.txCount} Txns`;
                         
                         if (payment.status === 'UNPAID') {
                           return (
                             <td className="px-6 py-4">
-                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1">
-                                UNPAID
-                              </span>
-                              <span className="text-[10px] text-gray-400 block font-mono">Due: ₹{payment.due.toLocaleString('en-IN')}</span>
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    UNPAID
+                                  </span>
+                                  <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono border border-slate-700">{txCountStr}</span>
+                                </div>
+                                <span className="text-[10px] text-gray-400 block font-mono">Due: ₹{payment.due.toLocaleString('en-IN')}</span>
+                              </div>
                             </td>
                           );
                         } else if (payment.status === 'PARTIALLY PAID') {
                           return (
                             <td className="px-6 py-4">
-                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 mb-1">
-                                PARTIALLY PAID
-                              </span>
-                              <span className="text-[10px] text-gray-400 block font-mono">Paid: ₹{payment.paid.toLocaleString('en-IN')} | Due: ₹{payment.due.toLocaleString('en-IN')}</span>
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                    PARTIALLY PAID
+                                  </span>
+                                  <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono border border-slate-700">{txCountStr}</span>
+                                </div>
+                                <span className="text-[10px] text-gray-400 block font-mono">Paid: ₹{payment.paid.toLocaleString('en-IN')} | Due: ₹{payment.due.toLocaleString('en-IN')}</span>
+                              </div>
                             </td>
                           );
                         } else {
                           return (
                             <td className="px-6 py-4">
-                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-1">
-                                PAID
-                              </span>
-                              <span className="text-[10px] text-gray-400 block font-mono">Paid: ₹{payment.paid.toLocaleString('en-IN')}</span>
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    PAID
+                                  </span>
+                                  <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono border border-slate-700">{txCountStr}</span>
+                                </div>
+                                <span className="text-[10px] text-gray-400 block font-mono">Paid: ₹{payment.paid.toLocaleString('en-IN')}</span>
+                              </div>
                             </td>
                           );
                         }
@@ -1903,7 +1966,7 @@ export default function ProcurementPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Export PDF">
+                        <button onClick={() => downloadPurchaseOrderPdf(po)} className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Export PDF">
                           <Download className="h-4 w-4" />
                         </button>
                       </td>
@@ -1939,7 +2002,7 @@ export default function ProcurementPage() {
                   <tr key={idx} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="px-6 py-3 text-sm font-medium text-foreground">{item.material}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.linkedPO}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDateDisplay(item.archivedDate)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatIndianDate(item.archivedDate)}</td>
                     <td className="px-4 py-3 text-sm text-neutral-500 italic">{item.archiveReason}</td>
                   </tr>
                 ))}

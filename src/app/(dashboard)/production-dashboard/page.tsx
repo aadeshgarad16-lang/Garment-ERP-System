@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 import { useRouter } from 'next/navigation';
 import { useOrders } from '@/contexts/order-context';
+import { formatIndianDate } from '@/utils/dateUtils';
 import {
   Factory,
   CheckCircle2,
@@ -376,7 +377,7 @@ export default function ProductionDashboardPage() {
                           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
                             <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-                              <span>{order.deliveryDate ? order.deliveryDate.split('T')[0] : 'TBD'}</span>
+                              <span>{order.deliveryDate ? formatIndianDate(order.deliveryDate) : 'TBD'}</span>
                             </div>
                           </td>
                           <td className="px-2 py-[18px] text-center align-middle">

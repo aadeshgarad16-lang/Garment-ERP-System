@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { formatDateDisplay } from '@/utils/dateUtils';
+import { formatIndianDate } from '@/utils/dateUtils';
 import { Edit, Eye, List, X, ExternalLink, Calendar, DollarSign, Package, ArrowLeft } from 'lucide-react';
 import { getAllOrdersAPI, Order } from '@/lib/api';
 import { navigateToStage } from '@/utils/navigation';
@@ -161,7 +161,7 @@ export default function OrderListPage() {
                       {order.customerName || 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
-                      {formatDateDisplay(order.date)}
+                      {formatIndianDate(order.date)}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
                       ₹{order.poAmount?.toLocaleString() || order.totalAmount?.toLocaleString() || '0'}

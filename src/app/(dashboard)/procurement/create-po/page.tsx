@@ -7,6 +7,7 @@ import ProcurementStepper from '@/components/ProcurementStepper';
 import { useTranslation } from '@/hooks/useTranslation';
 import jsPDF from 'jspdf';
 import { generateOfficialPurchaseOrderPDF } from '@/utils/pdfGenerator';
+import { formatIndianDate } from '@/utils/dateUtils';
 import 'jspdf-autotable';
 
 // Mock Data
@@ -1170,7 +1171,7 @@ PAN: ABCDE1234F`;
                           <div className="w-1/2 p-1.5">
                             <div className="text-[10px]">Dated</div>
                             <div className="font-bold mt-0.5 text-[11px]">
-                              {poDate ? new Date(poDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-') : new Date().toLocaleDateString('en-US')}
+                              {poDate ? formatIndianDate(poDate) : formatIndianDate(new Date())}
                             </div>
                           </div>
                         </div>
@@ -1228,7 +1229,7 @@ PAN: ABCDE1234F`;
                             <tr key={m.id} className="align-top !bg-white !text-black border-none">
                               <td className="border-r border-neutral-700 py-1 px-1">{i + 1}</td>
                               <td className="border-r border-neutral-700 py-1 px-2 text-left font-bold">{m.name}</td>
-                              <td className="border-r border-neutral-700 py-1 px-1">{deliveryDate ? new Date(deliveryDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-') : ''}</td>
+                              <td className="border-r border-neutral-700 py-1 px-1">{deliveryDate ? formatIndianDate(deliveryDate) : ''}</td>
                               <td className="border-r border-neutral-700 py-1 px-1 font-bold">{(m.supplierQty || m.qty).toString()} {m.unit}</td>
                               <td className="border-r border-neutral-700 py-1 px-1 text-right pr-2">{(m.unitCost).toFixed(2)}</td>
                               <td className="border-r border-neutral-700 py-1 px-1">{m.unit}</td>

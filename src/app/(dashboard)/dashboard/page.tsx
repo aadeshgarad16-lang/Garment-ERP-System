@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/language-context';
 import { MetricCard, MetricCardVariant } from '@/components/MetricCard';
 import WorkflowIndicator from '@/components/WorkflowIndicator';
+import { formatIndianDate } from '@/utils/dateUtils';
 import {
   ShoppingCart,
   Factory,
@@ -216,13 +217,13 @@ export default function DashboardHomePage({
           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
             <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Calendar className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{pDate ? String(pDate).split('T')[0] : '—'}</span>
+              <span>{pDate ? formatIndianDate(pDate) : '—'}</span>
             </div>
           </td>
           <td className="px-2 py-[18px] whitespace-nowrap align-middle text-center">
             <div className="flex items-center justify-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400">
               <Clock className="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              <span>{dDate ? String(dDate).split(' ')[0].split('T')[0] : '—'}</span>
+              <span>{dDate ? formatIndianDate(dDate) : '—'}</span>
             </div>
           </td>
           <td className="px-2 py-[18px] text-center text-sm font-medium whitespace-nowrap align-middle">

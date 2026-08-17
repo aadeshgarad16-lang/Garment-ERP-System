@@ -81,17 +81,40 @@ export default function DispatchManagementPage() {
       } else if (ordersStr) {
         try {
           loadedOrders = JSON.parse(ordersStr);
-          // Filter out archived or non-logistics orders if needed for the table, but we'll show all for now or active logistics
-          setOrders(loadedOrders.filter((o: any) => o.stage === 'Logistics' || o.stage === 'Quality & Packing' || o.logisticsStep));
         } catch (e) {
           console.error(e);
         }
       }
 
+      // 3. Inject Mock Sales POs from Accounts for cross-module demo
+      const demoSalesPOs = [
+        { poNumber: "PO-2026-0801", customerName: "Reliance Retail Ltd", stage: "Logistics", logisticsStep: 1 },
+        { poNumber: "PO-2026-0802", customerName: "Aditya Birla Fashion", stage: "Logistics", logisticsStep: 1 }
+      ];
+      
+      demoSalesPOs.forEach(demoPO => {
+        if (!loadedOrders.find(o => o.poNumber === demoPO.poNumber)) {
+          loadedOrders.push(demoPO);
+        }
+      });
+
+      setOrders(loadedOrders.filter((o: any) => o.stage === 'Logistics' || o.stage === 'Quality & Packing' || o.logisticsStep));
+
       if (po) {
         setPoNumber(po);
         const found = loadedOrders.find((o: any) => o.poNumber === po);
         if (found) {
+          // Read shared documents from Accounts
+          const sharedDocsStr = localStorage.getItem('accounts_shared_docs');
+          if (sharedDocsStr) {
+            try {
+              const sharedDocsMap = JSON.parse(sharedDocsStr);
+              if (sharedDocsMap[po]) {
+                found.documents = [...(found.documents || []), ...sharedDocsMap[po]];
+              }
+            } catch(e) {}
+          }
+          
           setCurrentOrder(found);
           if (found.logisticsStep) {
             setCurrentStep(found.logisticsStep);

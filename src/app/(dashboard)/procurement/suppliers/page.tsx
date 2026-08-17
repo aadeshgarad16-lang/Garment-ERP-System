@@ -311,47 +311,36 @@ export default function SupplierHistoryPage() {
   }, [selectedSupplierId]);
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-6 font-sans pb-12 pt-4">
-      <WorkflowIndicator currentStep="Procurement" />
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto font-sans pb-12 pt-4">
+      {/* Back link */}
+      <button 
+        onClick={() => router.push('/procurement')} 
+        className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
+      >
+        ← Back to Procurement
+      </button>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
+      {/* Page Title & Action Button */}
+      <div className="flex items-center justify-between">
         <div>
-          <button
-            onClick={() => router.push('/procurement')}
-            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Procurement
-          </button>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-indigo-600" />
-            Supplier Directory & Purchase History
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            🏢 Supplier Directory & Purchase History
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Manage your suppliers, view their general information, and track complete purchase and return histories.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <button
-            onClick={() => setIsCompanyAddressModalOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-border text-foreground font-medium rounded-lg shadow-sm hover:bg-muted transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Address
-          </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Supplier
-          </button>
-        </div>
+
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2"
+        >
+          + Add Supplier
+        </button>
       </div>
 
-      {/* Supplier Directory Summary Block */}
-      <div className="w-full">
+      {/* Supplier Directory Summary Table */}
+      <div className="bg-[#131B2E] border border-gray-800 rounded-2xl p-6">
         <SupplierDirectorySummary />
       </div>
 

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, FileText, MapPin, Calendar, IndianRupee, CreditCard, Package } from 'lucide-react';
 import Link from 'next/link';
+import { formatIndianDate } from '@/utils/dateUtils';
 
 export default function OrderDetailsPage() {
   const params = useParams();
@@ -56,11 +57,11 @@ export default function OrderDetailsPage() {
             </div>
             <div>
               <p className="text-muted-foreground">PO Date</p>
-              <p className="font-medium text-foreground">{order.poDate ? order.poDate.split('T')[0] : '-'}</p>
+              <p className="font-medium text-foreground">{order.poDate ? formatIndianDate(order.poDate) : '-'}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Delivery Date</p>
-              <p className="font-medium text-foreground">{order.deliveryDate ? order.deliveryDate.split('T')[0] : '-'}</p>
+              <p className="font-medium text-foreground">{order.deliveryDate ? formatIndianDate(order.deliveryDate) : '-'}</p>
             </div>
           </div>
         </div>
